@@ -1,0 +1,49 @@
+services:
+  # FastAPI Application
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: pe_orgair_platform_api
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env  # Simpler: loads all variables from .env file
+    environment:
+      - REDIS_URL=redis://redis:6379/0  # Override to use Docker network
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - pe_orgair_network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: pe_orgair_platform_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pe_orgair_network
+
+networks:
+  pe_orgair_network:
+    driver: bridge
+
+volumes:
+  redis_data:

@@ -1,0 +1,251 @@
+openapi: 3.0.0
+info:
+  title: Health Check API
+  version: 1.0.0
+  description: API for checking service health and dependency status.
+
+servers:
+  - url: /app/v1/
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, unhealthy, degraded]
+          example: "healthy"
+        timestamp:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00Z"
+        version:
+          type: string
+          example: "1.0.0"
+        uptime:
+          type: string
+          example: "5d 12h 30m 15s"
+        dependencies:
+          type: object
+          properties:
+            snowflake:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [up, down]
+                  example: "up"
+                responseTime:
+                  type: string
+                  example: "45ms"
+                message:
+                  type: string
+                  example: "Snowflake connection established"
+            redis:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [up, down]
+                  example: "up"
+                responseTime:
+                  type: string
+                  example: "3ms"
+                message:
+                  type: string
+                  example: "Redis cache is operational"
+            s3:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [up, down]
+                  example: "up"
+                responseTime:
+                  type: string
+                  example: "25ms"
+                message:
+                  type: string
+                  example: "S3 bucket is accessible"
+
+    Error401:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "Unauthorized"
+        message:
+          type: string
+          example: "Authentication required to access health details"
+        timestamp:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00Z"
+
+    Error403:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "Forbidden"
+        message:
+          type: string
+          example: "Insufficient permissions to access health endpoint"
+        timestamp:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00Z"
+
+    Error500:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "Internal Server Error"
+        message:
+          type: string
+          example: "Failed to retrieve health status"
+        timestamp:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00Z"
+
+    Error503:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "Service Unavailable"
+        message:
+          type: string
+          example: "Service is currently unavailable"
+        timestamp:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00Z"
+        dependencies:
+          type: object
+          properties:
+            snowflake:
+              type: object
+              properties:
+                status:
+                  type: string
+                  example: "down"
+                responseTime:
+                  type: string
+                  example: "N/A"
+                message:
+                  type: string
+                  example: "Snowflake connection failed"
+            redis:
+              type: object
+              properties:
+                status:
+                  type: string
+                  example: "up"
+                responseTime:
+                  type: string
+                  example: "3ms"
+                message:
+                  type: string
+                  example: "Redis cache is operational"
+            s3:
+              type: object
+              properties:
+                status:
+                  type: string
+                  example: "down"
+                responseTime:
+                  type: string
+                  example: "N/A"
+                message:
+                  type: string
+                  example: "S3 bucket is unreachable"
+
+paths:
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check with dependency status
+      description: Returns the health status of the service and all its dependencies including Snowflake, Redis, and S3.
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              example:
+                status: "healthy"
+                timestamp: "2024-01-15T10:30:00Z"
+                version: "1.0.0"
+                uptime: "5d 12h 30m 15s"
+                dependencies:
+                  snowflake:
+                    status: "up"
+                    responseTime: "45ms"
+                    message: "Snowflake connection established"
+                  redis:
+                    status: "up"
+                    responseTime: "3ms"
+                    message: "Redis cache is operational"
+                  s3:
+                    status: "up"
+                    responseTime: "25ms"
+                    message: "S3 bucket is accessible"
+        '401':
+          description: Unauthorized - Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error401'
+              example:
+                error: "Unauthorized"
+                message: "Authentication required to access health details"
+                timestamp: "2024-01-15T10:30:00Z"
+        '403':
+          description: Forbidden - Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error403'
+              example:
+                error: "Forbidden"
+                message: "Insufficient permissions to access health endpoint"
+                timestamp: "2024-01-15T10:30:00Z"
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error500'
+              example:
+                error: "Internal Server Error"
+                message: "Failed to retrieve health status due to unexpected error"
+                timestamp: "2024-01-15T10:30:00Z"
+        '503':
+          description: Service Unavailable - One or more dependencies are down
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error503'
+              example:
+                error: "Service Unavailable"
+                message: "Service is degraded due to dependency failures"
+                timestamp: "2024-01-15T10:30:00Z"
+                dependencies:
+                  snowflake:
+                    status: "down"
+                    responseTime: "N/A"
+                    message: "Snowflake connection failed: Authentication error"
+                  redis:
+                    status: "up"
+                    responseTime: "3ms"
+                    message: "Redis cache is operational"
+                  s3:
+                    status: "down"
+                    responseTime: "N/A"
+                    message: "S3 bucket is unreachable: Access denied"

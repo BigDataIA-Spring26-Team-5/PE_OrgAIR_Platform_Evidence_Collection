@@ -1,0 +1,424 @@
+openapi: 3.0.3
+info:
+  title: PE Org-AIR Assessments API
+  version: 1.0.0
+  description: >
+    API for managing AI-readiness assessments of portfolio companies,
+    with filtering, pagination, and status management.
+
+servers:
+  - url: /api/v1
+
+paths:
+  /assessments:
+    post:
+      summary: Create a new assessment
+      description: >
+        Creates a new assessment for a company. Validates that the company exists
+        and sets initial status to 'draft'.
+      operationId: createAssessment
+      tags:
+        - Assessments
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssessmentCreate'
+      responses:
+        '201':
+          description: Assessment created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssessmentResponse'
+              examples:
+                created_assessment:
+                  value:
+                    id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                    company_id: "550e8400-e29b-41d4-a716-446655440003"
+                    assessment_type: "due_diligence"
+                    assessment_date: "2026-01-27"
+                    status: "draft"
+                    primary_assessor: "John Doe"
+                    secondary_assessor: null
+                    v_r_score: null
+                    confidence_lower: null
+                    confidence_upper: null
+                    created_at: "2026-01-27T12:00:00Z"
+        '404':
+          $ref: '#/components/responses/CompanyNotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    get:
+      summary: List assessments
+      description: >
+        Returns a paginated list of assessments with optional filtering
+        by company_id, assessment_type, and status.
+      operationId: listAssessments
+      tags:
+        - Assessments
+      parameters:
+        - name: page
+          in: query
+          description: Page number (1-indexed)
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: page_size
+          in: query
+          description: Number of items per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: company_id
+          in: query
+          description: Filter by company UUID
+          schema:
+            type: string
+            format: uuid
+        - name: assessment_type
+          in: query
+          description: Filter by assessment type
+          schema:
+            type: string
+            enum: [screening, due_diligence, quarterly, exit_prep]
+        - name: status
+          in: query
+          description: Filter by assessment status
+          schema:
+            type: string
+            enum: [draft, in_progress, submitted, approved, superseded]
+      responses:
+        '200':
+          description: Paginated assessment list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAssessmentResponse'
+              examples:
+                assessment_list:
+                  value:
+                    items:
+                      - id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                        company_id: "550e8400-e29b-41d4-a716-446655440003"
+                        assessment_type: "due_diligence"
+                        assessment_date: "2026-01-27"
+                        status: "in_progress"
+                        primary_assessor: "John Doe"
+                        secondary_assessor: "Jane Smith"
+                        v_r_score: null
+                        confidence_lower: null
+                        confidence_upper: null
+                        created_at: "2026-01-27T12:00:00Z"
+                    total: 1
+                    page: 1
+                    page_size: 20
+                    total_pages: 1
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /assessments/{id}:
+    get:
+      summary: Get assessment by ID
+      description: >
+        Retrieves a single assessment by its UUID, including associated dimension scores.
+      operationId: getAssessmentById
+      tags:
+        - Assessments
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Assessment UUID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Assessment found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssessmentResponse'
+              examples:
+                assessment_detail:
+                  value:
+                    id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                    company_id: "550e8400-e29b-41d4-a716-446655440003"
+                    assessment_type: "due_diligence"
+                    assessment_date: "2026-01-27"
+                    status: "submitted"
+                    primary_assessor: "John Doe"
+                    secondary_assessor: "Jane Smith"
+                    v_r_score: 72.5
+                    confidence_lower: 68.0
+                    confidence_upper: 77.0
+                    created_at: "2026-01-27T12:00:00Z"
+        '404':
+          $ref: '#/components/responses/AssessmentNotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /assessments/{id}/status:
+    patch:
+      summary: Update assessment status
+      description: >
+        Updates the status of an existing assessment. Valid transitions depend on current status.
+      operationId: updateAssessmentStatus
+      tags:
+        - Assessments
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Assessment UUID
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StatusUpdate'
+      responses:
+        '200':
+          description: Status updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssessmentResponse'
+              examples:
+                status_updated:
+                  value:
+                    id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                    company_id: "550e8400-e29b-41d4-a716-446655440003"
+                    assessment_type: "due_diligence"
+                    assessment_date: "2026-01-27"
+                    status: "approved"
+                    primary_assessor: "John Doe"
+                    secondary_assessor: "Jane Smith"
+                    v_r_score: 72.5
+                    confidence_lower: 68.0
+                    confidence_upper: 77.0
+                    created_at: "2026-01-27T12:00:00Z"
+        '404':
+          $ref: '#/components/responses/AssessmentNotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  schemas:
+    AssessmentBase:
+      type: object
+      properties:
+        company_id:
+          type: string
+          format: uuid
+          description: Foreign key reference to Company
+        assessment_type:
+          type: string
+          enum: [screening, due_diligence, quarterly, exit_prep]
+          description: >
+            Type of assessment:
+            - screening: Quick external assessment
+            - due_diligence: Deep dive with internal access
+            - quarterly: Regular portfolio monitoring
+            - exit_prep: Pre-exit assessment
+        assessment_date:
+          type: string
+          format: date
+          description: Date of the assessment
+        primary_assessor:
+          type: string
+          maxLength: 255
+          nullable: true
+          description: Name of the primary assessor
+        secondary_assessor:
+          type: string
+          maxLength: 255
+          nullable: true
+          description: Name of the secondary assessor
+
+    AssessmentCreate:
+      allOf:
+        - $ref: '#/components/schemas/AssessmentBase'
+      required:
+        - company_id
+        - assessment_type
+        - assessment_date
+
+    AssessmentResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique assessment identifier
+        company_id:
+          type: string
+          format: uuid
+          description: Foreign key reference to Company
+        assessment_type:
+          type: string
+          enum: [screening, due_diligence, quarterly, exit_prep]
+          description: Type of assessment
+        assessment_date:
+          type: string
+          format: date
+          description: Date of the assessment
+        status:
+          type: string
+          enum: [draft, in_progress, submitted, approved, superseded]
+          default: draft
+          description: >
+            Current status of the assessment:
+            - draft: Initial state
+            - in_progress: Assessment is being conducted
+            - submitted: Submitted for review
+            - approved: Approved and finalized
+            - superseded: Replaced by a newer assessment
+        primary_assessor:
+          type: string
+          nullable: true
+          description: Name of the primary assessor
+        secondary_assessor:
+          type: string
+          nullable: true
+          description: Name of the secondary assessor
+        v_r_score:
+          type: number
+          minimum: 0
+          maximum: 100
+          nullable: true
+          description: Value-Readiness score (calculated in later case studies)
+        confidence_lower:
+          type: number
+          minimum: 0
+          maximum: 100
+          nullable: true
+          description: Lower bound of confidence interval
+        confidence_upper:
+          type: number
+          minimum: 0
+          maximum: 100
+          nullable: true
+          description: Upper bound of confidence interval (must be >= confidence_lower)
+        created_at:
+          type: string
+          format: date-time
+          description: Record creation timestamp (UTC)
+
+    StatusUpdate:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [draft, in_progress, submitted, approved, superseded]
+          description: New status for the assessment
+
+    PaginatedAssessmentResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AssessmentResponse'
+          description: List of assessments for the current page
+        total:
+          type: integer
+          description: Total number of assessments matching the filter
+        page:
+          type: integer
+          description: Current page number
+        page_size:
+          type: integer
+          description: Number of items per page
+        total_pages:
+          type: integer
+          description: Total number of pages
+
+    ErrorResponse:
+      type: object
+      required:
+        - error_code
+        - message
+        - timestamp
+      properties:
+        error_code:
+          type: string
+          description: Machine-readable error code
+        message:
+          type: string
+          description: Human-readable error message
+        details:
+          type: object
+          nullable: true
+          description: Additional error details
+        timestamp:
+          type: string
+          format: date-time
+          description: Error occurrence timestamp
+
+  responses:
+    AssessmentNotFound:
+      description: Assessment not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error_code: ASSESSMENT_NOT_FOUND
+            message: Assessment not found
+            timestamp: "2026-01-27T12:00:00Z"
+
+    CompanyNotFound:
+      description: Company not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error_code: COMPANY_NOT_FOUND
+            message: Company does not exist
+            timestamp: "2026-01-27T12:00:00Z"
+
+    ValidationError:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error_code: VALIDATION_ERROR
+            message: Invalid input data
+            details:
+              field: "assessment_type"
+              reason: "must be one of: screening, due_diligence, quarterly, exit_prep"
+            timestamp: "2026-01-27T12:00:00Z"
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error_code: INTERNAL_SERVER_ERROR
+            message: Unexpected server error
+            timestamp: "2026-01-27T12:00:00Z"

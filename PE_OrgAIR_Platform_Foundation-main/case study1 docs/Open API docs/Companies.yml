@@ -1,0 +1,371 @@
+openapi: 3.0.3
+info:
+  title: PE Org-AIR Companies API
+  version: 1.0.0
+  description: >
+    Fully documented Companies API with pagination, soft deletion,
+    standardized error handling, and comprehensive edge-case coverage.
+
+servers:
+  - url: /api/v1
+
+paths:
+  /companies:
+    post:
+      summary: Create a new company
+      description: >
+        Creates a new company. Validates schema, checks industry existence,
+        and enforces business uniqueness rules.
+      operationId: createCompany
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompanyCreate'
+      responses:
+        '201':
+          description: Company created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyResponse'
+              examples:
+                created_company:
+                  value:
+                    id: "11111111-2222-3333-4444-555555555555"
+                    name: "OpenAI"
+                    ticker_symbol: "OPENAI"
+                    industry_id: "550e8400-e29b-41d4-a716-446655440003"
+                    position_factor: 0.3
+                    created_at: "2026-01-27T23:09:48.359Z"
+                    updated_at: "2026-01-27T23:09:48.359Z"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/IndustryNotFound'
+        '409':
+          $ref: '#/components/responses/DuplicateCompany'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+    get:
+      summary: List companies
+      description: >
+        Returns a paginated list of non-deleted companies.
+      operationId: listCompanies
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: industry_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Paginated company list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedCompanyResponse'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /companies/{id}:
+    get:
+      summary: Get company by ID
+      description: >
+        Retrieves a company by UUID. Returns 410 if soft-deleted.
+      operationId: getCompanyById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Company found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyResponse'
+        '404':
+          $ref: '#/components/responses/CompanyNotFound'
+        '410':
+          $ref: '#/components/responses/CompanyDeleted'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    put:
+      summary: Update company
+      description: >
+        Updates company data and invalidates cache.
+      operationId: updateCompany
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompanyUpdate'
+      responses:
+        '200':
+          description: Company updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyResponse'
+        '404':
+          $ref: '#/components/responses/CompanyNotFound'
+        '410':
+          $ref: '#/components/responses/CompanyDeleted'
+        '409':
+          $ref: '#/components/responses/DuplicateCompany'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      summary: Soft delete company
+      description: >
+        Marks a company as deleted. Cache is invalidated.
+      operationId: deleteCompany
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Company deleted
+        '404':
+          $ref: '#/components/responses/CompanyNotFound'
+        '410':
+          $ref: '#/components/responses/CompanyDeleted'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  schemas:
+    CompanyBase:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        ticker_symbol:
+          type: string
+          minLength: 1
+          maxLength: 10
+          pattern: '^[A-Z]+$'
+          nullable: true
+        industry_id:
+          type: string
+          format: uuid
+        position_factor:
+          type: number
+          minimum: -1.0
+          maximum: 1.0
+          default: 0.0
+
+    CompanyCreate:
+      allOf:
+        - $ref: '#/components/schemas/CompanyBase'
+      required:
+        - name
+        - industry_id
+
+    CompanyUpdate:
+      allOf:
+        - $ref: '#/components/schemas/CompanyBase'
+
+    CompanyResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        ticker_symbol:
+          type: string
+          nullable: true
+        industry_id:
+          type: string
+          format: uuid
+        position_factor:
+          type: number
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    PaginatedCompanyResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CompanyResponse'
+        total:
+          type: integer
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total_pages:
+          type: integer
+
+    ErrorResponse:
+      type: object
+      required:
+        - error_code
+        - message
+        - timestamp
+      properties:
+        error_code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+          nullable: true
+        timestamp:
+          type: string
+          format: date-time
+
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error_code: INVALID_REQUEST
+            message: Malformed JSON request
+            timestamp: "2026-01-27T23:40:00Z"
+
+    ValidationError:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error_code: VALIDATION_ERROR
+            message: position_factor must be between -1.0 and 1.0
+            timestamp: "2026-01-27T23:41:00Z"
+
+    DuplicateCompany:
+      description: Duplicate company
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error_code: DUPLICATE_COMPANY
+            message: Company already exists in this industry
+            timestamp: "2026-01-27T23:42:00Z"
+
+    CompanyNotFound:
+      description: Company not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error_code: COMPANY_NOT_FOUND
+            message: Company not found
+            timestamp: "2026-01-27T23:43:00Z"
+
+    IndustryNotFound:
+      description: Industry not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error_code: INDUSTRY_NOT_FOUND
+            message: Industry does not exist
+            timestamp: "2026-01-27T23:44:00Z"
+
+    CompanyDeleted:
+      description: Company deleted
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error_code: COMPANY_DELETED
+            message: Company has been deleted
+            timestamp: "2026-01-27T23:45:00Z"
+
+    RateLimitExceeded:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error_code: RATE_LIMIT_EXCEEDED
+            message: Too many requests
+            timestamp: "2026-01-27T23:46:00Z"
+
+    ServiceUnavailable:
+      description: Service unavailable
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error_code: SERVICE_UNAVAILABLE
+            message: Downstream service unavailable
+            timestamp: "2026-01-27T23:47:00Z"
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error_code: INTERNAL_SERVER_ERROR
+            message: Unexpected server error
+            timestamp: "2026-01-27T23:48:00Z"
