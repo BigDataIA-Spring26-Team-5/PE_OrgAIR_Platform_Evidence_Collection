@@ -9,6 +9,8 @@ from app.routers.industries import router as industries_router  # NEW
 from app.routers.health import router as health_router
 from app.routers.assessments import router as assessments_router
 from app.routers.dimensionScores import router as dimension_scores_router
+from app.routers.documents import router as documents_router
+
 
 load_dotenv()
 
@@ -43,6 +45,7 @@ async def root():
 
 
 # REGISTER ROUTERS
+app.include_router(documents_router)
 app.include_router(health_router)
 app.include_router(companies_router)
 app.include_router(industries_router)  # NEW: Separate industries router
