@@ -35,7 +35,7 @@ def _clean_nan(value: Any) -> Any:
 
 from app.pipelines.pipeline2_state import Pipeline2State
 from app.pipelines.keywords import AI_KEYWORDS, AI_TECHSTACK_KEYWORDS
-from app.models.pipeline2_models import JobPosting
+from app.models.job_signals import JobPosting
 
 # Rate limiting delay for JobSpy (seconds)
 JOBSPY_REQUEST_DELAY = 6.0
