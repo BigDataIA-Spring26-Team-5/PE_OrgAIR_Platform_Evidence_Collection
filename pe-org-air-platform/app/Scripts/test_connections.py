@@ -78,18 +78,19 @@ def test_redis():
         print(str(e))
         return False
 
-
 def test_s3():
     print("\n🔹 Testing AWS S3 connection...")
     try:
         import boto3
         from botocore.exceptions import ClientError
 
-        bucket = os.getenv("S3_BUCKET", "pe-orgair-platform")
+        bucket = os.getenv("S3_BUCKET")  # pe-orgair-platform-group5
         region = os.getenv("AWS_REGION")
 
+        if not bucket:
+            raise ValueError("S3_BUCKET not set in .env")
         if not region:
-            raise ValueError("AWS_REGION not set")
+            raise ValueError("AWS_REGION not set in .env")
 
         s3 = boto3.client(
             "s3",
@@ -98,20 +99,32 @@ def test_s3():
             region_name=region,
         )
 
+        # 🔑 Verify AWS identity
+        sts = boto3.client("sts")
+        identity = sts.get_caller_identity()
+        print(f"🔑 AWS Identity: {identity['Arn']}")
+
+        # 🪣 Check bucket access
         s3.head_bucket(Bucket=bucket)
+
+        # ✍️ Write + delete test object
+        test_key = "infra_test/healthcheck.txt"
+        s3.put_object(Bucket=bucket, Key=test_key, Body=b"ok")
+        s3.delete_object(Bucket=bucket, Key=test_key)
+
         print(f"✅ S3 access successful (Bucket: {bucket}, Region: {region})")
         return True
 
     except ClientError as e:
         print("❌ S3 access failed")
-        print(e.response["Error"]["Code"], e.response["Error"]["Message"])
+        print("AWS Error Code:", e.response["Error"]["Code"])
+        print("AWS Error Message:", e.response["Error"]["Message"])
         return False
 
     except Exception as e:
         print("❌ S3 access failed")
         print(str(e))
         return False
-
 
 def main():
     print("🚀 PE Org-AI-R Platform – Infrastructure Smoke Test")
