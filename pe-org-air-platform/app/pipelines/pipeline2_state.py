@@ -1,5 +1,5 @@
 """
-Pipeline 2 State - Job Scraping Only
+Pipeline 2 State - Job Scraping and Patent Collection
 app/pipelines/pipeline2_state.py
 """
 
@@ -62,4 +62,7 @@ class Pipeline2State:
         self.summary["companies_processed"] = len(self.companies)
         self.summary["ai_jobs_found"] = sum(
             1 for p in self.job_postings if p.get("is_ai_role")
+        )
+        self.summary["ai_patents_found"] = sum(
+            1 for p in self.patents if p.get("is_ai_patent")
         )
