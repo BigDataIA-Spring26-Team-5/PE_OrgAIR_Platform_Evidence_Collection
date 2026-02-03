@@ -74,7 +74,7 @@ st.sidebar.markdown("---")
 
 page = st.sidebar.radio(
     "Navigation",
-    ["🏠 Home", "📊 ERD Diagram", "❄️ Snowflake Setup", "📋 Data Management", "🔌 API Explorer", "🧪 Test Runner"]
+    ["🏠 Home", "📊 ERD Diagram", "❄️ Snowflake Setup", "📋 Data Management", "🔌 API Explorer", "🧪 Test Runner", "SEC EDGAR Pipeline"]
 )
 
 # =============================================================================
@@ -2089,7 +2089,464 @@ elif page == "🧪 Test Runner":
         st.metric("Model Tests", model_tests)
         st.metric("API Tests", api_tests)
 
+elif page == "SEC EDGAR Pipeline":
+   # =============================================================================
+# Add this section to your Snowflake Setup page in app.py
+# Place it AFTER the "Delete Table" section (Section 3)
 # =============================================================================
+
+# =============================================================================
+# Add this section to your Snowflake Setup page in app.py
+# Place it AFTER the "Delete Table" section (Section 3)
+# =============================================================================
+
+    # =========================================================================
+    # SECTION 4: SEC EDGAR PIPELINE SCHEMA
+    # =========================================================================
+    st.markdown('<p class="section-header">4. SEC EDGAR Pipeline Schema</p>', unsafe_allow_html=True)
+    
+    # Ensure project_root is defined
+    project_root = get_project_root()
+
+    st.info("""
+    📄 **Pipeline 1: Document Collection**
+    
+    This creates the database tables needed for the SEC EDGAR document pipeline:
+    - `documents` - Stores metadata for each SEC filing (10-K, 10-Q, 8-K, DEF 14A)
+    - `document_chunks` - Stores text chunks for LLM processing
+    """)
+
+    # Show target companies
+    with st.expander("📋 Target Companies for Evidence Collection"):
+        target_companies = pd.DataFrame({
+            "Ticker": ["CAT", "DE", "UNH", "HCA", "ADP", "PAYX", "WMT", "TGT", "JPM", "GS"],
+            "Company": [
+                "Caterpillar Inc.", "Deere & Company", "UnitedHealth Group", "HCA Healthcare",
+                "Automatic Data Processing", "Paychex Inc.", "Walmart Inc.", "Target Corporation",
+                "JPMorgan Chase", "Goldman Sachs"
+            ],
+            "Sector": [
+                "Industrials", "Industrials", "Healthcare", "Healthcare",
+                "Services", "Services", "Consumer", "Consumer",
+                "Financial", "Financial"
+            ],
+            "Industry": [
+                "Manufacturing", "Manufacturing", "Healthcare Services", "Healthcare Services",
+                "Business Services", "Business Services", "Retail", "Retail",
+                "Financial Services", "Financial Services"
+            ]
+        })
+        st.dataframe(target_companies, use_container_width=True, hide_index=True)
+
+    # Show filing types
+    with st.expander("📑 SEC Filing Types"):
+        filing_types = pd.DataFrame({
+            "Form": ["10-K", "10-Q", "8-K", "DEF 14A"],
+            "Frequency": ["Annual", "Quarterly", "As needed", "Annual"],
+            "AI-Relevant Sections": [
+                "Item 1 (Business), Item 1A (Risk Factors), Item 7 (MD&A)",
+                "Item 2 (MD&A), Item 1A (Risk Factors updates)",
+                "Item 8.01 (Other Events) - AI announcements",
+                "Executive comp tied to technology metrics"
+            ]
+        })
+        st.dataframe(filing_types, use_container_width=True, hide_index=True)
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("#### 🏗️ Create Document Schema")
+        st.warning("⚠️ This will create `documents` and `document_chunks` tables.")
+        
+        if st.button("🏗️ CREATE DOCUMENT SCHEMA", key="create_doc_schema", type="primary"):
+            with st.spinner("Creating document schema..."):
+                try:
+                    conn = get_streamlit_snowflake_connection()
+                    cursor = conn.cursor()
+                    results = []
+                    
+                    # =========================================================
+                    # STEP 1: Setup
+                    # =========================================================
+                    setup_statements = [
+                        ("USE WAREHOUSE", "USE WAREHOUSE PE_ORGAIR_WH"),
+                        ("USE DATABASE", "USE DATABASE PE_ORGAIR_DB"),
+                        ("USE SCHEMA", "USE SCHEMA PLATFORM"),
+                    ]
+                    
+                    for name, sql in setup_statements:
+                        try:
+                            cursor.execute(sql)
+                            results.append(f"✅ {name}")
+                        except Exception as e:
+                            results.append(f"❌ {name}: {str(e)[:80]}")
+                    
+                    # =========================================================
+                    # STEP 2: Drop existing tables (in correct order)
+                    # =========================================================
+                    drop_statements = [
+                        ("DROP document_chunks", "DROP TABLE IF EXISTS document_chunks"),
+                        ("DROP documents", "DROP TABLE IF EXISTS documents"),
+                    ]
+                    
+                    for name, sql in drop_statements:
+                        try:
+                            cursor.execute(sql)
+                            results.append(f"✅ {name}")
+                        except Exception as e:
+                            results.append(f"❌ {name}: {str(e)[:80]}")
+                    
+                    # =========================================================
+                    # STEP 3: Create documents table (exactly as per assignment)
+                    # =========================================================
+                    try:
+                        cursor.execute("""
+                            CREATE TABLE IF NOT EXISTS documents (
+                                id VARCHAR(36) PRIMARY KEY,
+                                company_id VARCHAR(36) NOT NULL REFERENCES companies(id),
+                                ticker VARCHAR(10) NOT NULL,
+                                filing_type VARCHAR(20) NOT NULL,
+                                filing_date DATE NOT NULL,
+                                source_url VARCHAR(500),
+                                local_path VARCHAR(500),
+                                s3_key VARCHAR(500),
+                                content_hash VARCHAR(64),
+                                word_count INT,
+                                chunk_count INT,
+                                status VARCHAR(20) DEFAULT 'pending',
+                                error_message VARCHAR(1000),
+                                created_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
+                                processed_at TIMESTAMP_NTZ
+                            )
+                        """)
+                        results.append("✅ CREATE TABLE documents")
+                    except Exception as e:
+                        results.append(f"❌ CREATE TABLE documents: {str(e)[:80]}")
+                    
+                    # =========================================================
+                    # STEP 4: Create document_chunks table (exactly as per assignment)
+                    # =========================================================
+                    try:
+                        cursor.execute("""
+                            CREATE TABLE IF NOT EXISTS document_chunks (
+                                id VARCHAR(36) PRIMARY KEY,
+                                document_id VARCHAR(36) NOT NULL REFERENCES documents(id),
+                                chunk_index INT NOT NULL,
+                                content TEXT NOT NULL,
+                                section VARCHAR(50),
+                                start_char INT,
+                                end_char INT,
+                                word_count INT,
+                                created_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
+                                UNIQUE (document_id, chunk_index)
+                            )
+                        """)
+                        results.append("✅ CREATE TABLE document_chunks")
+                    except Exception as e:
+                        results.append(f"❌ CREATE TABLE document_chunks: {str(e)[:80]}")
+                    
+                    cursor.close()
+                    conn.close()
+                    
+                    # Count successes and failures
+                    success_count = sum(1 for r in results if r.startswith("✅"))
+                    fail_count = sum(1 for r in results if r.startswith("❌"))
+                    
+                    if fail_count == 0:
+                        st.success(f"✅ Document schema created successfully! ({success_count} items)")
+                    else:
+                        st.warning(f"⚠️ Schema created with {fail_count} errors. Check details below.")
+                    
+                    with st.expander("📋 View Details", expanded=(fail_count > 0)):
+                        for r in results:
+                            st.text(r)
+                                
+                except Exception as e:
+                    st.error(f"❌ Connection error: {str(e)}")
+
+    with col2:
+        st.markdown("#### 📥 Seed Sample Documents")
+        st.info("💡 Adds 10 target companies and sample SEC filings.")
+        
+        if st.button("📥 SEED DOCUMENTS", key="seed_documents", type="primary"):
+            with st.spinner("Seeding sample documents..."):
+                try:
+                    conn = get_streamlit_snowflake_connection()
+                    cursor = conn.cursor()
+                    results = []
+                    
+                    # =========================================================
+                    # Insert 10 target companies (if not exist)
+                    # =========================================================
+                    companies = [
+                        ('comp-cat-001', 'Caterpillar Inc.', 'CAT', '550e8400-e29b-41d4-a716-446655440002', 0.15),
+                        ('comp-de-002', 'Deere & Company', 'DE', '550e8400-e29b-41d4-a716-446655440002', 0.12),
+                        ('comp-unh-003', 'UnitedHealth Group', 'UNH', '550e8400-e29b-41d4-a716-446655440003', 0.20),
+                        ('comp-hca-004', 'HCA Healthcare', 'HCA', '550e8400-e29b-41d4-a716-446655440003', 0.08),
+                        ('comp-adp-005', 'Automatic Data Processing', 'ADP', '550e8400-e29b-41d4-a716-446655440001', 0.25),
+                        ('comp-payx-006', 'Paychex Inc.', 'PAYX', '550e8400-e29b-41d4-a716-446655440001', 0.10),
+                        ('comp-wmt-007', 'Walmart Inc.', 'WMT', '550e8400-e29b-41d4-a716-446655440004', 0.30),
+                        ('comp-tgt-008', 'Target Corporation', 'TGT', '550e8400-e29b-41d4-a716-446655440004', 0.18),
+                        ('comp-jpm-009', 'JPMorgan Chase', 'JPM', '550e8400-e29b-41d4-a716-446655440005', 0.35),
+                        ('comp-gs-010', 'Goldman Sachs', 'GS', '550e8400-e29b-41d4-a716-446655440005', 0.28),
+                    ]
+                    
+                    for comp in companies:
+                        try:
+                            cursor.execute(f"SELECT COUNT(*) FROM companies WHERE ticker = '{comp[2]}'")
+                            exists = cursor.fetchone()[0] > 0
+                            
+                            if not exists:
+                                cursor.execute(f"""
+                                    INSERT INTO companies (id, name, ticker, industry_id, position_factor)
+                                    VALUES ('{comp[0]}', '{comp[1]}', '{comp[2]}', '{comp[3]}', {comp[4]})
+                                """)
+                                results.append(f"✅ Company: {comp[2]}")
+                            else:
+                                results.append(f"⏭️ Company: {comp[2]} (exists)")
+                        except Exception as e:
+                            results.append(f"❌ Company {comp[2]}: {str(e)[:50]}")
+                    
+                    # =========================================================
+                    # Insert sample documents using direct INSERT
+                    # =========================================================
+                    documents = [
+                        ('doc-cat-10k-2024', 'comp-cat-001', 'CAT', '10-K', '2024-02-15', 'https://sec.gov/cat-10k', 'data/raw/sec/CAT/10-K/filing.txt', 'raw/sec/CAT/10-K/filing.txt', 'hash123abc', 45230, 52, 'indexed'),
+                        ('doc-cat-10q-2024', 'comp-cat-001', 'CAT', '10-Q', '2024-05-02', 'https://sec.gov/cat-10q', 'data/raw/sec/CAT/10-Q/filing.txt', 'raw/sec/CAT/10-Q/filing.txt', 'hash456def', 18500, 22, 'indexed'),
+                        ('doc-jpm-10k-2024', 'comp-jpm-009', 'JPM', '10-K', '2024-02-20', 'https://sec.gov/jpm-10k', 'data/raw/sec/JPM/10-K/filing.txt', 'raw/sec/JPM/10-K/filing.txt', 'hash789ghi', 125000, 145, 'indexed'),
+                        ('doc-jpm-8k-2024', 'comp-jpm-009', 'JPM', '8-K', '2024-03-15', 'https://sec.gov/jpm-8k', 'data/raw/sec/JPM/8-K/filing.txt', 'raw/sec/JPM/8-K/filing.txt', 'hashjkl012', 3200, 5, 'indexed'),
+                        ('doc-wmt-10k-2024', 'comp-wmt-007', 'WMT', '10-K', '2024-03-28', 'https://sec.gov/wmt-10k', 'data/raw/sec/WMT/10-K/filing.txt', 'raw/sec/WMT/10-K/filing.txt', 'hashmno345', 98500, 112, 'indexed'),
+                        ('doc-unh-10k-2024', 'comp-unh-003', 'UNH', '10-K', '2024-02-22', 'https://sec.gov/unh-10k', 'data/raw/sec/UNH/10-K/filing.txt', 'raw/sec/UNH/10-K/filing.txt', 'hashpqr678', 78000, 89, 'indexed'),
+                    ]
+                    
+                    for doc in documents:
+                        try:
+                            cursor.execute(f"SELECT COUNT(*) FROM documents WHERE id = '{doc[0]}'")
+                            exists = cursor.fetchone()[0] > 0
+                            
+                            if not exists:
+                                cursor.execute(f"""
+                                    INSERT INTO documents (
+                                        id, company_id, ticker, filing_type, filing_date,
+                                        source_url, local_path, s3_key, content_hash,
+                                        word_count, chunk_count, status
+                                    ) VALUES (
+                                        '{doc[0]}', '{doc[1]}', '{doc[2]}', '{doc[3]}', '{doc[4]}',
+                                        '{doc[5]}', '{doc[6]}', '{doc[7]}', '{doc[8]}',
+                                        {doc[9]}, {doc[10]}, '{doc[11]}'
+                                    )
+                                """)
+                                results.append(f"✅ Document: {doc[2]} {doc[3]}")
+                            else:
+                                results.append(f"⏭️ Document: {doc[2]} {doc[3]} (exists)")
+                        except Exception as e:
+                            results.append(f"❌ Document {doc[2]} {doc[3]}: {str(e)[:50]}")
+                    
+                    # =========================================================
+                    # Insert sample chunks using direct INSERT
+                    # =========================================================
+                    chunks = [
+                        ('chunk-cat-001', 'doc-cat-10k-2024', 0, 'item_1', 'Item 1. Business. Caterpillar Inc. is the worlds leading manufacturer of construction and mining equipment.', 0, 105, 16),
+                        ('chunk-cat-002', 'doc-cat-10k-2024', 1, 'item_1', 'We are investing significantly in artificial intelligence and machine learning technologies.', 106, 197, 12),
+                        ('chunk-cat-003', 'doc-cat-10k-2024', 2, 'item_1a', 'Item 1A. Risk Factors. Our business involves various risks related to technology investments.', 198, 291, 13),
+                        ('chunk-cat-004', 'doc-cat-10k-2024', 3, 'item_7', 'Item 7. MD and A. During fiscal year 2023, we advanced our digital and AI initiatives.', 292, 374, 14),
+                    ]
+                    
+                    for chunk in chunks:
+                        try:
+                            cursor.execute(f"SELECT COUNT(*) FROM document_chunks WHERE id = '{chunk[0]}'")
+                            exists = cursor.fetchone()[0] > 0
+                            
+                            if not exists:
+                                content_escaped = chunk[4].replace("'", "''")
+                                cursor.execute(f"""
+                                    INSERT INTO document_chunks (
+                                        id, document_id, chunk_index, section, content,
+                                        start_char, end_char, word_count
+                                    ) VALUES (
+                                        '{chunk[0]}', '{chunk[1]}', {chunk[2]}, '{chunk[3]}',
+                                        '{content_escaped}', {chunk[5]}, {chunk[6]}, {chunk[7]}
+                                    )
+                                """)
+                                results.append(f"✅ Chunk: {chunk[0]}")
+                            else:
+                                results.append(f"⏭️ Chunk: {chunk[0]} (exists)")
+                        except Exception as e:
+                            results.append(f"❌ Chunk {chunk[0]}: {str(e)[:50]}")
+                    
+                    cursor.close()
+                    conn.close()
+                    
+                    success_count = sum(1 for r in results if r.startswith("✅"))
+                    skip_count = sum(1 for r in results if r.startswith("⏭️"))
+                    fail_count = sum(1 for r in results if r.startswith("❌"))
+                    
+                    if fail_count == 0:
+                        st.success(f"✅ Sample data seeded! ({success_count} new, {skip_count} skipped)")
+                    else:
+                        st.warning(f"⚠️ Seeding completed with {fail_count} errors.")
+                    
+                    with st.expander("📋 View Details", expanded=(fail_count > 0)):
+                        for r in results:
+                            st.text(r)
+                                
+                except Exception as e:
+                    st.error(f"❌ Connection error: {str(e)}")
+
+    # =========================================================================
+    # View current documents
+    # =========================================================================
+    st.markdown("#### 📊 Current Documents in Database")
+    
+    if st.button("🔄 Refresh Document Data", key="refresh_documents"):
+        st.rerun()
+
+    try:
+        conn = get_streamlit_snowflake_connection()
+        cursor = conn.cursor()
+        
+        # Check if documents table exists
+        cursor.execute("""
+            SELECT COUNT(*) FROM information_schema.tables 
+            WHERE table_schema = 'PLATFORM' AND table_name = 'DOCUMENTS'
+        """)
+        table_exists = cursor.fetchone()[0] > 0
+        
+        if table_exists:
+            # Get document summary
+            cursor.execute("""
+                SELECT 
+                    ticker,
+                    filing_type,
+                    status,
+                    COUNT(*) as count,
+                    SUM(COALESCE(word_count, 0)) as total_words,
+                    SUM(COALESCE(chunk_count, 0)) as total_chunks
+                FROM documents
+                GROUP BY ticker, filing_type, status
+                ORDER BY ticker, filing_type
+            """)
+            rows = cursor.fetchall()
+            
+            if rows:
+                df = pd.DataFrame(rows, columns=["Ticker", "Filing Type", "Status", "Count", "Words", "Chunks"])
+                st.dataframe(df, use_container_width=True, hide_index=True)
+                
+                # Summary metrics
+                cursor.execute("SELECT COUNT(*), SUM(COALESCE(chunk_count, 0)) FROM documents")
+                total_docs, total_chunks = cursor.fetchone()
+                
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("Total Documents", total_docs or 0)
+                with col2:
+                    st.metric("Total Chunks", int(total_chunks or 0))
+                with col3:
+                    cursor.execute("SELECT COUNT(DISTINCT ticker) FROM documents")
+                    unique_tickers = cursor.fetchone()[0]
+                    st.metric("Companies", unique_tickers or 0)
+            else:
+                st.info("No documents found. Click **SEED DOCUMENTS** to add sample data.")
+        else:
+            st.warning("📋 `documents` table does not exist. Click **CREATE DOCUMENT SCHEMA** first.")
+        
+        cursor.close()
+        conn.close()
+        
+    except Exception as e:
+        st.warning(f"Could not fetch document data: {str(e)}")
+
+    # =========================================================================
+    # Pipeline status view
+    # =========================================================================
+    st.markdown("#### 📈 Pipeline Status")
+    
+    try:
+        conn = get_streamlit_snowflake_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT COUNT(*) FROM information_schema.tables 
+            WHERE table_schema = 'PLATFORM' AND table_name = 'DOCUMENTS'
+        """)
+        table_exists = cursor.fetchone()[0] > 0
+        
+        if table_exists:
+            cursor.execute("""
+                SELECT 
+                    status,
+                    COUNT(*) as document_count,
+                    COUNT(DISTINCT ticker) as company_count
+                FROM documents
+                GROUP BY status
+                ORDER BY 
+                    CASE status 
+                        WHEN 'pending' THEN 1
+                        WHEN 'downloaded' THEN 2
+                        WHEN 'parsed' THEN 3
+                        WHEN 'chunked' THEN 4
+                        WHEN 'indexed' THEN 5
+                        WHEN 'failed' THEN 6
+                    END
+            """)
+            rows = cursor.fetchall()
+            
+            if rows:
+                status_colors = {
+                    "pending": "🟡",
+                    "downloaded": "🔵", 
+                    "parsed": "🟣",
+                    "chunked": "🟠",
+                    "indexed": "🟢",
+                    "failed": "🔴"
+                }
+                
+                cols = st.columns(len(rows))
+                for i, (status, doc_count, company_count) in enumerate(rows):
+                    with cols[i]:
+                        emoji = status_colors.get(status, "⚪")
+                        st.markdown(f"""
+                        <div style="text-align: center; padding: 1rem; border-radius: 0.5rem; background: #f8fafc;">
+                            <div style="font-size: 1.5rem;">{emoji}</div>
+                            <div style="font-size: 1.25rem; font-weight: bold;">{doc_count}</div>
+                            <div style="font-size: 0.8rem; color: #64748b;">{status.upper()}</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+        
+        cursor.close()
+        conn.close()
+        
+    except Exception as e:
+        pass
+
+    # =========================================================================
+    # Delete document tables
+    # =========================================================================
+    st.markdown("---")
+    st.markdown("#### 🗑️ Delete Document Tables")
+    st.warning("⚠️ This will permanently DROP the document tables and all data!")
+    
+    delete_doc_table = st.selectbox(
+        "Select Table to Delete",
+        ["document_chunks", "documents"],
+        key="delete_doc_table_select"
+    )
+    
+    st.info("**Note:** Delete `document_chunks` first (it references `documents`).")
+    
+    confirm_doc_delete = st.checkbox("I understand this action is irreversible", key="confirm_doc_delete")
+    
+    if st.button("🗑️ DELETE DOCUMENT TABLE", key="delete_doc_table_btn", type="secondary", disabled=not confirm_doc_delete):
+        with st.spinner(f"Deleting {delete_doc_table}..."):
+            try:
+                conn = get_streamlit_snowflake_connection()
+                cursor = conn.cursor()
+                cursor.execute(f"DROP TABLE IF EXISTS {delete_doc_table}")
+                cursor.close()
+                conn.close()
+                st.success(f"✅ Table `{delete_doc_table}` deleted successfully!")
+            except Exception as e:
+                st.error(f"❌ Error deleting table: {str(e)}")
 # FOOTER
 # =============================================================================
 

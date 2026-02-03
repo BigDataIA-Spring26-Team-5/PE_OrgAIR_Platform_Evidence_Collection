@@ -108,28 +108,35 @@ $$;
 -- =============================================================================
 
 CREATE OR REPLACE PROCEDURE insert_company(
-    p_id VARCHAR,
     p_name VARCHAR,
     p_ticker VARCHAR,
-    p_industry_id VARCHAR,
-    p_position_factor DECIMAL
+    p_industry_id VARCHAR
 )
 RETURNS VARCHAR
 LANGUAGE SQL
 AS
 $$
+DECLARE
+    v_id VARCHAR;
 BEGIN
-    IF (:p_position_factor IS NOT NULL AND (:p_position_factor < -1.0 OR :p_position_factor > 1.0)) THEN
-        RETURN 'ERROR: position_factor must be between -1.0 and 1.0';
-    END IF;
-    
-    INSERT INTO companies (id, name, ticker, industry_id, position_factor)
-    VALUES (:p_id, :p_name, :p_ticker, :p_industry_id, :p_position_factor);
-    
-    RETURN 'SUCCESS: Company inserted';
+    v_id := UUID_STRING();
+
+    INSERT INTO companies (
+        id,
+        name,
+        ticker,
+        industry_id
+    )
+    VALUES (
+        :v_id,
+        :p_name,
+        :p_ticker,
+        :p_industry_id
+    );
+
+    RETURN 'SUCCESS: Company inserted with id = ' || v_id;
 END;
 $$;
-
 
 -- =============================================================================
 -- INSERT ASSESSMENT

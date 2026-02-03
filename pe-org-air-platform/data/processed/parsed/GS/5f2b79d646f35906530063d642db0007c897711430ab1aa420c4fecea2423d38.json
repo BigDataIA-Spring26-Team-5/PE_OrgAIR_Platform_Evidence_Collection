@@ -1,0 +1,18 @@
+{
+  "document_id": "5f2b79d646f35906530063d642db0007c897711430ab1aa420c4fecea2423d38",
+  "ticker": "GS",
+  "filing_type": "10-K",
+  "filing_date": "2025-01-01T00:00:00+00:00",
+  "content_hash": "5f2b79d646f35906530063d642db0007c897711430ab1aa420c4fecea2423d38",
+  "word_count": 2027837,
+  "sections": {
+    "item_1": "Item 1\nBusiness\n1\nIntroduction\n1\nOur Business Segments\n1\nGlobal Banking & Markets\n1\nAsset & Wealth Management\n4\nPlatform Solutions\n5\nBusiness Continuity and Information Security\n5\nHuman Capital Management\n6\nSustainability\n8\nCompetition\n9\nRegulation\n10\nInformation about our Executive Officers\n27\nAvailable Information\n28\nForward-Looking Statements\n28\nItem 1A\nRisk Factors\n31\nItem 1B\nUnresolved Staff Comments\n60\nItem 1C\nCybersecurity\n60\n",
+    "item_1a": "Item 1A\nRisk Factors\n31\nItem 1B\nUnresolved Staff Comments\n60\nItem 1C\nCybersecurity\n60\nItem 2\nProperties\n60\nItem 3\nLegal Proceedings\n60\nItem 4\nMine Safety Disclosures\n60\nPART II\n61\nItem 5\nMarket for Registrant's Common Equity, Related Stockholder\nMatters and Issuer Purchases of Equity Securities\n61\nPage No.\n",
+    "item_7a": "Item 7A\nQuantitative and Qualitative Disclosures About Market Risk\n127\nGoldman Sachs 2024 Form 10-K\nTHE GOLDMAN SACHS GROUP, INC. AND SUBSIDIARIES\nINDEX\nPage No.\nItem 8\nFinancial Statements a\nnd Supplementary Data\n127\nManagement\u2019s\nReport on Internal Control over Financial Reporting\n127\nReport of Independent Registered Public Accounting Firm\n128\nConsolidated Financial Statements\n131\nConsolidated Statements of Earnings\n131\nConsolidated Statements of Comprehensive Income\n131\nConsolidated Balance Sheets\n132\nConsolidated Statements of Changes in Shareholders\u2019 Equity\n133\nConsolidated Statements of Cash Flows\n134\nNotes to Consolidated Financial Statements\n135\nNote 1. Description of Business\n135\nNote 2. Basis of Presentation\n136\nNote 3. Significant Accounting Policies\n136\nNote 4. Fair Value Measurements\n142\nNote 5.\nFair Value Hierarchy\n147\nNote 6. Trading Assets and Liabilities\n161\nNote 7. Derivatives and Hedging Activities\n162\nNote 8. Investments\n168\nNote 9. Loans\n172\nNote 10. Fair Value Option\n181\nNote 11. Collateralized Agreements and Financings\n183\nNote 12. Other Assets\n186\nNote 13. Deposits\n189\nNote 14. Unsecured Borrowings\n190\nNote 15. Other Liabilities\n192\nNote 16. Securitization Activities\n193\nNote 17. Variable Interest Entities\n195\nNote 18. Commitments, Contingencies and Guarantees\n198\nNote 19. Shareholders\u2019 Equity\n202\nNote 20. Regulation and Capital Adequacy\n205\nNote 21. Earnings Per Common Share\n211\nNote 22. Transactions with Affiliated Funds\n211\nNote 23. Interest Income and Interest Expense\n212\nNote 24. Income Taxes\n212\nNote 25. Business Segments\n215\nNote 26. Credit Concentrations\n217\nNote 27. Legal Proceedings\n218\nNote 28. Employee Benefit Plans\n230\nNote 29. Employee Incentive Plans\n231\nNote 30. Parent Company\n233\nPage No.\nSupplemental Financial Information\n235\nCommon Stock Performance\n235\nStatistical Disclosures\n235\n"
+  },
+  "source": {
+    "local_path": "data\\raw\\sec\\sec-edgar-filings\\GS\\10-K\\0000886982-25-000005\\full-submission.txt",
+    "s3_raw_key": "raw/sec/GS/10-K/0000886982-25-000005/full-submission.txt"
+  },
+  "created_at": "2026-02-03T02:35:03.022551+00:00"
+}
