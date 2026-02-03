@@ -12,7 +12,7 @@ from typing import Any, Dict, List
 
 @dataclass
 class Pipeline2State:
-    """State container for Pipeline 2 job scraping."""
+    """State container for Pipeline 2 job scraping and patent collection."""
 
     # Configuration
     request_delay: float = 6.0  # Rate limiting delay (seconds)
@@ -24,14 +24,20 @@ class Pipeline2State:
     # Collected job postings
     job_postings: List[Dict[str, Any]] = field(default_factory=list)
 
+    # Collected patents
+    patents: List[Dict[str, Any]] = field(default_factory=list)
+
     # Scores (company_id -> score)
     job_market_scores: Dict[str, float] = field(default_factory=dict)
+    patent_scores: Dict[str, float] = field(default_factory=dict)
 
     # Summary tracking
     summary: Dict[str, Any] = field(default_factory=lambda: {
         "companies_processed": 0,
         "job_postings_collected": 0,
         "ai_jobs_found": 0,
+        "patents_collected": 0,
+        "ai_patents_found": 0,
         "errors": [],
         "started_at": None,
         "completed_at": None,
