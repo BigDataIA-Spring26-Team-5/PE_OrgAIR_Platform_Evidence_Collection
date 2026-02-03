@@ -3,8 +3,8 @@ Pipeline 2 Runner - Job and Patent Collection
 app/pipelines/pipeline2_runner.py
 
 Scrapes job postings and fetches patents for companies.
-Outputs JSON files for both signals.
-No database dependencies required.
+Stores data in S3 (raw) and Snowflake (aggregated signals).
+Use --local-only flag to save to local JSON files instead.
 """
 
 from __future__ import annotations
@@ -35,6 +35,7 @@ async def run_pipeline2(
     patents_results_per_company: int = 100,
     patents_years_back: int = 5,
     patents_api_key: Optional[str] = None,
+    use_cloud_storage: bool = True,
 ) -> Pipeline2State:
     """
     Run Pipeline 2: Job and Patent Collection.
@@ -50,6 +51,7 @@ async def run_pipeline2(
         patents_results_per_company: Max patents per company
         patents_years_back: How many years back to search for patents
         patents_api_key: PatentsView API key (or set PATENTSVIEW_API_KEY env var)
+        use_cloud_storage: If True, store in S3 + Snowflake. If False, local JSON only.
 
     Returns:
         Pipeline2State with all collected data and scores
@@ -84,16 +86,20 @@ async def run_pipeline2(
         print("\n" + "-" * 60)
         print("Job Scraping Pipeline")
         print("-" * 60)
-        
+        if use_cloud_storage:
+            print("Storage: S3 + Snowflake")
+        else:
+            print("Storage: Local JSON files only")
+
         # Create a separate state for job scraping
         job_state = Pipeline2State(
             request_delay=jobs_request_delay,
             output_dir=jobs_output_dir
         )
         job_state.companies = state.companies
-        
-        job_state = await run_job_signals(job_state)
-        
+
+        job_state = await run_job_signals(job_state, use_cloud_storage=use_cloud_storage)
+
         # Copy job results to main state
         state.job_postings = job_state.job_postings
         state.job_market_scores = job_state.job_market_scores
@@ -130,22 +136,22 @@ async def run_pipeline2(
         state.summary["errors"].extend(patent_state.summary.get("errors", []))
 
     # Print summary
-    _print_summary(state, mode)
+    _print_summary(state, mode, use_cloud_storage)
 
     return state
 
 
-def _print_summary(state: Pipeline2State, mode: str = "jobs") -> None:
+def _print_summary(state: Pipeline2State, mode: str = "jobs", use_cloud_storage: bool = True) -> None:
     """Print pipeline execution summary."""
     print("\n" + "=" * 60)
     print("Pipeline Complete")
     print("=" * 60)
-    
+
     if mode in ["jobs", "both"]:
         print(f"Companies processed: {state.summary.get('companies_processed', 0)}")
         print(f"Total job postings: {state.summary.get('job_postings_collected', 0)}")
         print(f"AI-related jobs: {state.summary.get('ai_jobs_found', 0)}")
-        
+
         if state.job_market_scores:
             print(f"\nJob Market Scores:")
             for company_id, score in state.job_market_scores.items():
@@ -156,11 +162,11 @@ def _print_summary(state: Pipeline2State, mode: str = "jobs") -> None:
                         company_name = c.get("name", company_id)
                         break
                 print(f"  {company_name}: {score:.2f}/100")
-    
+
     if mode in ["patents", "both"]:
         print(f"\nTotal patents: {state.summary.get('patents_collected', 0)}")
         print(f"AI-related patents: {state.summary.get('ai_patents_found', 0)}")
-        
+
         if state.patent_scores:
             print(f"\nPatent Portfolio Scores:")
             for company_id, score in state.patent_scores.items():
@@ -171,17 +177,15 @@ def _print_summary(state: Pipeline2State, mode: str = "jobs") -> None:
                         company_name = c.get("name", company_id)
                         break
                 print(f"  {company_name}: {score:.2f}/100")
-    
+
     print(f"\nErrors: {len(state.summary.get('errors', []))}")
-    
-    # Print output directories
-    if mode == "jobs":
-        print(f"\nOutput saved to: data/signals/jobs")
-    elif mode == "patents":
-        print(f"\nOutput saved to: data/signals/patents")
-    else:  # both
-        print(f"\nJob outputs saved to: data/signals/jobs")
-        print(f"Patent outputs saved to: data/signals/patents")
+
+    # Print storage locations
+    print("\nStorage:")
+    if use_cloud_storage:
+        print("  S3: raw/jobs/{company}/{timestamp}.json")
+        print("  Snowflake: external_signals table")
+    print(f"  Local: data/signals/jobs (working files)")
 
     # Print errors if any
     if state.summary.get("errors"):
@@ -197,8 +201,11 @@ async def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Scrape jobs for specific companies (default mode)
+  # Scrape jobs and store in S3 + Snowflake (default)
   python -m app.pipelines.pipeline2_runner --companies Microsoft Google Amazon
+
+  # Scrape jobs and save to local JSON only (no cloud storage)
+  python -m app.pipelines.pipeline2_runner --companies Microsoft --local-only
 
   # Fetch patents for specific companies
   python -m app.pipelines.pipeline2_runner --companies Microsoft --mode patents
@@ -294,6 +301,12 @@ Get PatentsView API key at: https://patentsview.org/apis/keyrequest
         dest="patents_api_key",
         help="PatentsView API key (or set PATENTSVIEW_API_KEY env var)"
     )
+    parser.add_argument(
+        "--local-only",
+        action="store_true",
+        dest="local_only",
+        help="Save to local JSON files only (skip S3 and Snowflake)"
+    )
 
     args = parser.parse_args()
 
@@ -308,6 +321,7 @@ Get PatentsView API key at: https://patentsview.org/apis/keyrequest
         patents_results_per_company=args.patents_results_per_company,
         patents_years_back=args.patents_years_back,
         patents_api_key=args.patents_api_key,
+        use_cloud_storage=not args.local_only,
     )
 
 
