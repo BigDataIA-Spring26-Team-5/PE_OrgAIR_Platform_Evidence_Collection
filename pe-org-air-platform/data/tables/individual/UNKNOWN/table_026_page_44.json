@@ -1,0 +1,57 @@
+{
+  "table_index": 26,
+  "headers": [
+    "Capitalized research and development $ 15,041 $ 10,739"
+  ],
+  "rows": [
+    [
+      "Tax credit carryforwards 8,643 8,856"
+    ],
+    [
+      "Accrued liabilities and other reserves 6,154 6,114"
+    ],
+    [
+      "Deferred revenue 2,953 3,413"
+    ],
+    [
+      "Lease liabilities 2,577 2,410"
+    ],
+    [
+      "Other 3,049 3,341"
+    ],
+    [
+      "Total deferred tax assets 38,417 34,873"
+    ],
+    [
+      "Less: Valuation allowance (10,966) (8,866)"
+    ],
+    [
+      "Total deferred tax assets, net 27,451 26,007"
+    ],
+    [
+      "Deferred tax liabilities:"
+    ],
+    [
+      "Depreciation 3,276 2,551"
+    ],
+    [
+      "Right-of-use assets 2,300 2,125"
+    ],
+    [
+      "Minimum tax on foreign earnings 1,217 1,674"
+    ],
+    [
+      "Other 678 455"
+    ],
+    [
+      "Total deferred tax liabilities 7,471 6,805"
+    ],
+    [
+      "Net deferred tax assets $ 19,980 $ 19,202"
+    ]
+  ],
+  "row_count": 15,
+  "col_count": 1,
+  "page": 44,
+  "source": "PDF: _10-K-2025-As-Filed.pdf"
+}

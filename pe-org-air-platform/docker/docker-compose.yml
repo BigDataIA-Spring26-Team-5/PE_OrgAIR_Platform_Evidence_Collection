@@ -11,6 +11,8 @@ services:
       - .env  # Simpler: loads all variables from .env file
     environment:
       - REDIS_URL=redis://redis:6379/0  # Override to use Docker network
+    volumes:
+      - ./data:/app/data  # Mount local data folder to container
     depends_on:
       redis:
         condition: service_healthy

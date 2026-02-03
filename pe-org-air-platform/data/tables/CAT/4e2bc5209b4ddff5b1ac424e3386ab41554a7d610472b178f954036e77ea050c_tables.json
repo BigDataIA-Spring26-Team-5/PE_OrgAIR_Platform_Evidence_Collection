@@ -1,0 +1,1048 @@
+{
+  "document_id": "4e2bc5209b4ddff5b1ac424e3386ab41554a7d610472b178f954036e77ea050c",
+  "ticker": "CAT",
+  "filing_type": "8-K",
+  "table_count": 57,
+  "tables": [
+    {
+      "table_index": 0,
+      "headers": [
+        "Delaware",
+        "",
+        "1-768",
+        "",
+        "37-0602744"
+      ],
+      "rows": [
+        [
+          "(State or other jurisdiction of incorporation)",
+          "",
+          "(Commission File Number)",
+          "",
+          "(I.R.S Employer Identification No.)"
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 5,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 1,
+      "headers": [
+        "5025 N. O’Connor Boulevard",
+        "",
+        ""
+      ],
+      "rows": [
+        [
+          "Suite 100, Irving, Texas",
+          "",
+          "75039"
+        ],
+        [
+          "(Address of principal executive offices)",
+          "",
+          "(Zip Code)"
+        ]
+      ],
+      "row_count": 2,
+      "col_count": 3,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 2,
+      "headers": [
+        "¨",
+        "Written communications pursuant to Rule 425 under the Securities Act (17 CFR 230.425)"
+      ],
+      "rows": [
+        [
+          "¨",
+          "Soliciting material pursuant to Rule 14a-12 under the Exchange Act (17 CFR 240.14a-12)"
+        ],
+        [
+          "¨",
+          "Pre-commencement communications pursuant to Rule 14d-2(b) under the Exchange Act (17 CFR 240.14d-2(b))"
+        ],
+        [
+          "¨",
+          "Pre-commencement communications pursuant to Rule 13e-4(c) under the Exchange Act (17 CFR 240.13e-4(c))"
+        ]
+      ],
+      "row_count": 3,
+      "col_count": 2,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 3,
+      "headers": [
+        "Title of each class",
+        "Trading Symbol (s)",
+        "Name of each exchange which registered"
+      ],
+      "rows": [
+        [
+          "Common Stock ($1.00 par value)",
+          "CAT",
+          "The New York Stock Exchange"
+        ],
+        [
+          "5.3% Debentures due September 15, 2035",
+          "CAT35",
+          "The New York Stock Exchange"
+        ]
+      ],
+      "row_count": 2,
+      "col_count": 3,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 4,
+      "headers": [],
+      "rows": [
+        [
+          "",
+          "Item 5.02",
+          "Departure of Directors or Certain Officers; Election of Directors; Appointment of Certain Officers; Compensatory Arrangements of Certain Officers"
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 3,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 6,
+      "headers": [
+        "Director",
+        "For",
+        "Against",
+        "Abstain",
+        "Broker Non-Votes"
+      ],
+      "rows": [
+        [
+          "Kelly A. Ayotte",
+          "337,153,577",
+          "26,152,270",
+          "1,006,370",
+          "77,106,982"
+        ],
+        [
+          "David L. Calhoun",
+          "346,579,592",
+          "16,528,916",
+          "1,203,075",
+          "77,106,982"
+        ],
+        [
+          "Daniel M. Dickinson",
+          "338,028,087",
+          "25,088,162",
+          "1,195,968",
+          "77,106,982"
+        ],
+        [
+          "James C. Fish, Jr.",
+          "359,142,893",
+          "3,419,332",
+          "1,749,992",
+          "77,106,982"
+        ],
+        [
+          "Gerald Johnson",
+          "352,698,931",
+          "10,450,262",
+          "1,163,025",
+          "77,106,982"
+        ],
+        [
+          "David W. MacLennan",
+          "352,864,097",
+          "10,238,729",
+          "1,209,391",
+          "77,106,982"
+        ],
+        [
+          "Judith F. Marks",
+          "357,546,076",
+          "4,757,086",
+          "2,009,055",
+          "77,106,982"
+        ],
+        [
+          "Debra L. Reed-Klages",
+          "351,717,023",
+          "11,231,803",
+          "1,363,391",
+          "77,106,982"
+        ],
+        [
+          "Susan C. Schwab",
+          "347,508,232",
+          "15,859,588",
+          "944,396",
+          "77,106,982"
+        ],
+        [
+          "D. James Umpleby III",
+          "340,583,197",
+          "22,564,980",
+          "1,164,040",
+          "77,106,982"
+        ],
+        [
+          "Rayford Wilkins, Jr.",
+          "351,375,110",
+          "11,855,308",
+          "1,081,800",
+          "77,106,982"
+        ]
+      ],
+      "row_count": 11,
+      "col_count": 5,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 7,
+      "headers": [
+        "For",
+        "Against",
+        "Abstain"
+      ],
+      "rows": [
+        [
+          "422,584,139",
+          "17,764,420",
+          "1,070,640"
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 3,
+      "context": "The proposal requesting ratification of the appointment of PricewaterhouseCoopers LLP as the Company’s independent registered public accounting firm for 2023 was approved with the following vote:",
+      "source": "HTML"
+    },
+    {
+      "table_index": 8,
+      "headers": [
+        "For",
+        "Against",
+        "Abstain",
+        "Broker Non-Votes"
+      ],
+      "rows": [
+        [
+          "337,625,659",
+          "24,751,142",
+          "1,935,416",
+          "77,106,982"
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 4,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 9,
+      "headers": [
+        "One Year",
+        "Two Years",
+        "Three Years",
+        "Abstain",
+        "Broker Non-Votes"
+      ],
+      "rows": [
+        [
+          "354,150,471",
+          "1,253,898",
+          "7,540,750",
+          "1,367,098",
+          "77,106,982"
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 5,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 10,
+      "headers": [
+        "For",
+        "Against",
+        "Abstain",
+        "Broker Non-Votes"
+      ],
+      "rows": [
+        [
+          "343,730,656",
+          "18,868,155",
+          "1,708,848",
+          "77,106,982"
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 4,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 11,
+      "headers": [
+        "For",
+        "Against",
+        "Abstain",
+        "Broker Non-Votes"
+      ],
+      "rows": [
+        [
+          "102,172,952",
+          "257,373,570",
+          "4,765,695",
+          "77,106,982"
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 4,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 12,
+      "headers": [
+        "For",
+        "Against",
+        "Abstain",
+        "Broker Non-Votes"
+      ],
+      "rows": [
+        [
+          "105,105,356",
+          "254,563,554",
+          "4,643,307",
+          "77,106,982"
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 4,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 13,
+      "headers": [
+        "For",
+        "Against",
+        "Abstain",
+        "Broker Non-Votes"
+      ],
+      "rows": [
+        [
+          "51,666,560",
+          "307,250,497",
+          "5,395,160",
+          "77,106,982"
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 4,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 14,
+      "headers": [
+        "For",
+        "Against",
+        "Abstain",
+        "Broker Non-Votes"
+      ],
+      "rows": [
+        [
+          "6,236,964",
+          "353,646,222",
+          "4,429,032",
+          "77,106,982"
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 4,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 16,
+      "headers": [
+        "Exhibit",
+        ""
+      ],
+      "rows": [
+        [
+          "Number",
+          "Description"
+        ],
+        [
+          "10.1",
+          "Caterpillar Inc. 2023 Long-Term Incentive Plan"
+        ],
+        [
+          "99.1",
+          "Caterpillar Inc. press release dated June 14, 2023"
+        ],
+        [
+          "104",
+          "The cover page from this Current Report on Form 8-K, formatted in Inline XBRL"
+        ]
+      ],
+      "row_count": 4,
+      "col_count": 2,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 17,
+      "headers": [
+        "",
+        "CATERPILLAR INC."
+      ],
+      "rows": [
+        [
+          "June 20, 2023",
+          "By:",
+          "/s/ Suzette M. Long"
+        ],
+        [
+          "",
+          "",
+          "Suzette M. Long Chief Legal Officer and General Counsel"
+        ]
+      ],
+      "row_count": 2,
+      "col_count": 3,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 25,
+      "headers": [],
+      "rows": [
+        [
+          "",
+          "(h)",
+          "“Committee” shall mean the Compensation and Human Resources Committee of the Board, or any successor or subcommittee thereof, consisting of two or more members of the Board, each of whom is intended to be (i) a “Non-Employee Director” within the meaning of Rule 16b-3 under the Exchange Act, and (ii) “independent” within the meaning of the rules of the New York Stock Exchange or, if the Common Stock is not listed on the New York Stock Exchange, within the meaning of the rules of the principal stock exchange on which the Common Stock is then traded."
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 3,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 31,
+      "headers": [],
+      "rows": [
+        [
+          "",
+          "(n)",
+          "“Fair Market Value” shall mean, as of any given date, the fair market value of a share of Common Stock on a particular date determined by such methods or procedures as may be established from time to time by the Committee. Unless otherwise determined by the Committee, the Fair Market Value of a share of Common Stock as of any date shall be the closing transaction price of a share of Common Stock as reported on the New York Stock Exchange for that date or, if no closing price is reported for that date, the closing price on the next preceding date for which transactions were reported. Notwithstanding the foregoing, unless otherwise determined by the Committee, for purposes of clause (D) of Section 2.1(c) of the Plan, Fair Market Value means the actual price at which the shares of Common Stock used to acquire the shares of Common Stock are sold."
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 3,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 32,
+      "headers": [],
+      "rows": [
+        [
+          "",
+          "(o)",
+          "“Free-Standing SAR” shall mean a SAR which is not granted in tandem with, or by reference to, an Option, which entitles the holder thereof to receive, upon exercise, shares of Common Stock (which may be Restricted Stock) or, to the extent provided in the applicable Award Notice, cash or a combination thereof, with an aggregate value equal to the excess of the Fair Market Value of one share of Common Stock on the date of exercise over the base price of such SAR, multiplied by the number of such SARs which are exercised."
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 3,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 34,
+      "headers": [],
+      "rows": [
+        [
+          "",
+          "(q)",
+          "“Incentive Stock Option” shall mean an option to purchase shares of Common Stock that meets the requirements of Section 422 of the Code, or any successor provision, which is intended by the Committee to constitute an Incentive Stock Option."
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 3,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 39,
+      "headers": [],
+      "rows": [
+        [
+          "",
+          "(v)",
+          "“Performance Measures” shall mean the criteria and objectives, established by the Committee, which shall be satisfied or met (i) as a condition to the grant or exercisability of all or a portion of an Option or SAR or (ii) during the applicable Restriction Period or Performance Period as a condition to the vesting of the holder’s interest, in the case of a Restricted Stock Award, of the shares of Common Stock subject to such award, or, in the case of a Restricted Stock Unit Award, to the holder’s receipt of the shares of Common Stock subject to such award or of payment with respect to such award. Such criteria and objectives may consist of one or more corporate-wide or subsidiary, division, operating unit, individual or other measures, including, without limitation, any of the following: (i) attainment by a share of Common Stock of a specified Fair Market Value for a specified period of time, (ii) cash flow from operations, (iii) cash flow margin or free cash flow, (iv) cash flow per share, (v) earnings of the Company before or after taxes and/or interest, (vi) earnings before interest, taxes, depreciation, and/or amortization (“EBITDA”), (vii) EBITDA margin, (viii) economic value added, (ix) expense levels or cost reduction goals, (x) gross profit or margin, (xi) increase in stockholder value, (xii) interest expense, (xiii) inventory, (xiv) market share, (xv) net assets, (xvi) net cash provided by operations, (xvii) net operating profits after taxes, (xviii) operating expenses, (xix) operating income, (xx) operating margin, (xxi) operating profit after capital charge (“OPACC”), (xxii) percent of dealer deliveries (“PODD”), (xxiii) percent of industry sales (“PINS”), (xxiv) percent of parts sales (“POPS”), (xxv) percent of parts sales – Caterpillar branded (“POPS-C”), (xxvi) pretax income, (xxvii) price-to-earnings growth, (xxviii) price realization, (xxix) primary or fully diluted earnings per share or profit per share, (xxx) profit after tax, (xxxi) return on assets, (xxxii) return on equity, (xxxiii) return on invested capital, (xxxiv) return on investments, (xxxv) return on sales, (xxxvi) revenues, (xxxvii) sales, (xxxviii) total cash flow, (xxxix) total stockholder (shareholder) return and (xl) strategic business criteria consisting of one or more objectives based on meeting specified goals relating to (A) acquisitions or divestitures, (B) business expansion, (C) realized production system benefits, (D) cost targets, (E) customer acquisition, (F) customer satisfaction, (G) diversity and inclusion, (H) efficiency, (I) inventory turns, (J) realized lean benefits, (K) management of employment practices and employee benefits, (L) market penetration, (M) purchasing material costs, (N) quality and quality audit scores, (O) reductions in errors and omissions, (P) reductions in lost business, (Q) supervision of litigation and information technology, (R) sustainability or (S) realized 6 Sigma benefits. Each such goal may be expressed on an absolute or relative basis and may include comparisons based on current internal targets, the past performance of the Company (including the performance of one or more subsidiaries, divisions, or operating units) or the past or current performance of other companies (or a combination of such past and current performance). In addition to the ratios specifically enumerated above, performance goals may include comparisons relating to capital (including, but not limited to, the cost of capital), shareholders’ equity, shares outstanding, assets or net assets, sales, or any combination thereof. The applicable performance measures may be applied on a pre- or post-tax basis and may be established or adjusted to include or exclude any components of any performance measure, including, without limitation, special charges such as restructuring or impairment charges, debt refinancing costs, extraordinary or noncash items, unusual, nonrecurring, infrequently occurring or one-time events affecting the Company or its financial statements or changes in law or accounting principles (“Adjustment Events”). In the sole discretion of the Committee, the Committee may amend or adjust the performance measures (including adjustments in the method of calculating attainment of the performance measures) or other terms and conditions of an outstanding award in recognition of any Adjustment Events."
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 3,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 40,
+      "headers": [],
+      "rows": [
+        [
+          "",
+          "(w)",
+          "“Performance Period” shall mean any period designated by the Committee during which (i) the Performance Measures applicable to an award shall be measured and (ii) the conditions to vesting applicable to an award shall remain in effect."
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 3,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 43,
+      "headers": [],
+      "rows": [
+        [
+          "",
+          "(z)",
+          "“Prior Plan” shall mean the Caterpillar Inc. 2014 Long-Term Incentive Plan and each other plan previously maintained by the Company under which equity awards remain outstanding as of the Effective Date."
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 3,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 44,
+      "headers": [],
+      "rows": [
+        [
+          "",
+          "(aa)",
+          "“Restricted Stock” shall mean shares of Common Stock which are subject to a Restriction Period and which may, in addition thereto, be subject to the attainment of specified Performance Measures within a specified Performance Period."
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 3,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 46,
+      "headers": [],
+      "rows": [
+        [
+          "",
+          "(cc)",
+          "“Restricted Stock Unit” shall mean a right to receive one share of Common Stock or, in lieu thereof and to the extent provided in the applicable Award Notice, the Fair Market Value of such share of Common Stock in cash, which shall be contingent upon the expiration of a specified Restriction Period and which may, in addition thereto, be contingent upon the attainment of specified Performance Measures within a specified Performance Period."
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 3,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 48,
+      "headers": [],
+      "rows": [
+        [
+          "",
+          "(ee)",
+          "“Restriction Period” shall mean any period designated by the Committee during which (i) the Common Stock subject to a Restricted Stock Award may not be sold, transferred, assigned, pledged, hypothecated or otherwise encumbered or disposed of, except as provided in this Plan or the Award Notice relating to such award, or (ii) the conditions to vesting applicable to a Restricted Stock Unit Award shall remain in effect."
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 3,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 51,
+      "headers": [],
+      "rows": [
+        [
+          "",
+          "(hh)",
+          "“Subsidiary” shall mean any corporation, limited liability company, partnership, joint venture or similar entity in which the Company owns, directly or indirectly, an equity interest possessing more than 50% of the combined voting power of the total outstanding equity interests of such entity or, in the case of a partnership, joint venture or similar entity, the possession, directly or indirectly, of the power to direct or cause the direction of management or policies of the controlled entity."
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 3,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 52,
+      "headers": [],
+      "rows": [
+        [
+          "",
+          "(ii)",
+          "“Substitute Award” shall mean an award granted under this Plan upon the assumption of, or in substitution for, outstanding equity awards previously granted by a company or other entity in connection with a corporate transaction, including a merger, combination, consolidation or acquisition of property or stock; provided, however, that in no event shall the term “Substitute Award” be construed to refer to an award made in connection with the cancellation and repricing of an Option or SAR."
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 3,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 53,
+      "headers": [],
+      "rows": [
+        [
+          "",
+          "(jj)",
+          "“Tandem SAR” shall mean a SAR which is granted in tandem with, or by reference to, an Option (including a Nonqualified Stock Option granted prior to the date of grant of the SAR), which entitles the holder thereof to receive, upon exercise of such SAR and surrender for cancellation of all or a portion of such Option, shares of Common Stock (which may be Restricted Stock) or, to the extent provided in the applicable Award Notice, cash or a combination thereof, with an aggregate value equal to the excess of the Fair Market Value of one share of Common Stock on the date of exercise over the base price of such SAR, multiplied by the number of shares of Common Stock subject to such Option, or portion thereof, which is surrendered."
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 3,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 58,
+      "headers": [],
+      "rows": [
+        [
+          "",
+          "(a)",
+          "Number of Shares and Grant Price. The number of shares of Common Stock subject to an Option and the grant price per share of Common Stock purchasable upon exercise of the Option shall be determined by the Committee; provided, however, that the grant price per share of Common Stock purchasable upon exercise of an Option shall not be less than 100% of the Fair Market Value of a share of Common Stock on the date of grant of such Option; provided further, that if an Incentive Stock Option shall be granted to any person who, at the time such Option is granted, owns capital stock possessing more than 10 percent of the total combined voting power of all classes of capital stock of the Company (or of any parent or Subsidiary) (a “Ten Percent Holder\"), the grant price per share of Common Stock shall not be less than the price (currently 110% of Fair Market Value) required by the Code in order to constitute an Incentive Stock Option."
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 3,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 59,
+      "headers": [],
+      "rows": [
+        [
+          "",
+          "(b)",
+          "Option Period and Exercisability. The period during which an Option may be exercised shall be determined by the Committee; provided, however, that no Option shall be exercised later than ten (10) years after its date of grant; provided further, that if an Incentive Stock Option shall be granted to a Ten Percent Holder, such Option shall not be exercised later than five years after its date of grant; provided, further, that with respect to a Nonqualified Stock Option, if the expiration date of such Option occurs during any period when the participant is prohibited from trading in securities of the Company pursuant to the Company’s insider trading policy or other policy of the Company or during a period when the exercise of such Option would violate applicable securities laws (each, a “Blackout Period”), then the period during which such Option shall be exercisable shall continue until the date that is 30 days after the expiration of such Blackout Period. The Committee may, in its discretion, establish Performance Measures which shall be satisfied or met as a condition to the grant of an Option or to the exercisability of all or a portion of an Option. The Committee shall determine whether an Option shall become exercisable in cumulative or non-cumulative installments and in part or in full at any time. An exercisable Option, or portion thereof, may be exercised only with respect to whole shares of"
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 3,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 60,
+      "headers": [],
+      "rows": [
+        [
+          "",
+          "(c)",
+          "Method of Exercise. An Option may be exercised (i) by giving written or electronic notice to the Company or its designated agent, in accordance with procedures prescribed by the Company, specifying the number of whole shares of Common Stock to be purchased and paying the aggregate purchase price in full (or arrangement made for such payment to the Company’s satisfaction) either (A) in cash, (B) by delivery (either actual delivery or by attestation procedures established by the Company) of shares of Common Stock having a Fair Market Value, determined as of the date of exercise, equal to the aggregate purchase price payable by reason of such exercise, (C) authorizing the Company to withhold whole shares of Common Stock which would otherwise be delivered having an aggregate Fair Market Value, determined as of the date of exercise, equal to the amount necessary to satisfy such obligation, (D) in cash by a broker-dealer acceptable to the Company to whom the optionee has submitted an irrevocable notice of exercise or (E) a combination of (A), (B) and (C), in each case to the extent set forth in the Award Notice relating to the Option, (ii) if applicable, by surrendering to the Company any Tandem SARs which are cancelled by reason of the exercise of the Option and (iii) by executing such documents as the Company may reasonably request. No shares of Common Stock shall be issued and no certificate representing shares of Common Stock shall be delivered until the full purchase price therefor and any withholding taxes thereon, as described in Section 4.5, have been paid (or arrangement made for such payment to the Company’s satisfaction)."
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 3,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 61,
+      "headers": [],
+      "rows": [
+        [
+          "",
+          "(a)",
+          "Number of SARs and Base Price. The number of SARs subject to an award shall be determined by the Committee. Any Tandem SAR related to an Incentive Stock Option shall be granted at the same time that such Incentive Stock Option is granted. The base price of a Tandem SAR shall be the grant price per share of Common Stock of the related Option. The base price of a Free-Standing SAR shall be determined by the Committee; provided, however, that such base price shall not be less than 100% of the Fair Market Value of a share of Common Stock on the date of grant of such SAR (or, if earlier, the date of grant of the Option for which the SAR is exchanged or substituted)."
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 3,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 62,
+      "headers": [],
+      "rows": [
+        [
+          "",
+          "(b)",
+          "Exercise Period and Exercisability. The period for the exercise of a SAR shall be determined by the Committee; provided, however, that no SAR shall be exercised later than ten (10) years after its date of grant; provided further, that no Tandem SAR shall be exercised later than the expiration, cancellation, forfeiture or other termination of the related Option; provided, further, if the expiration date of a SAR occurs during any Blackout Period, then the period during which such SAR shall be exercisable shall continue until the date that is 30 days after the expiration of such Blackout Period. The Committee may, in its discretion, establish Performance Measures which shall be satisfied or met as a condition to the grant of a SAR or to the exercisability of all or a portion of a SAR. The Committee shall determine whether a SAR may be exercised in cumulative or non-cumulative installments and in part or in full at any time. An exercisable SAR, or portion thereof, may be exercised only with respect to whole shares of Common Stock. If a SAR is exercised for shares of Restricted Stock, a certificate or certificates representing such Restricted Stock shall be issued in accordance with Section 3.3(c), or such shares shall be transferred to the holder in book entry form with restrictions on the shares duly noted, and the holder of such Restricted Stock shall have such rights of a stockholder of the Company as determined pursuant to Section 3.3(d). Prior to the exercise of a stock-settled SAR, the holder of such SAR shall have no rights as a stockholder of the Company with respect to the shares of Common Stock subject to such SAR, including the right to receive dividends or dividend equivalents."
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 3,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 63,
+      "headers": [],
+      "rows": [
+        [
+          "",
+          "(c)",
+          "Method of Exercise. A Tandem SAR may be exercised (i) by giving written or electronic notice to the Company or its designated agent, in accordance with procedures prescribed by the Company, specifying the number of whole SARs which are being exercised, (ii) by surrendering to the Company any Options which are cancelled by reason of the exercise of the Tandem SAR and (iii) by executing such documents as the Company may reasonably request. A Free-Standing SAR may be exercised (A) by giving written or electronic notice to the Company, in accordance with procedures prescribed by the Company, specifying the whole number of SARs which are being exercised and (B) by"
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 3,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 64,
+      "headers": [],
+      "rows": [
+        [
+          "",
+          "(a)",
+          "Number of Shares and Other Terms. The number of shares of Common Stock subject to a Restricted Stock Award and the Restriction Period, Performance Period (if any) and Performance Measures (if any) applicable to a Restricted Stock Award shall be determined by the Committee."
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 3,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 65,
+      "headers": [],
+      "rows": [
+        [
+          "",
+          "(b)",
+          "Vesting and Forfeiture. The Award Notice relating to a Restricted Stock Award shall provide, in the manner determined by the Committee, in its discretion, and subject to the provisions of this Plan, for the vesting of the shares of Common Stock subject to such award (i) if the holder of such award remains continuously in the employment of the Company during the specified Restriction Period and (ii) if specified Performance Measures (if any) are satisfied or met during a specified Performance Period, and for the forfeiture of the shares of Common Stock subject to such award (x) if the holder of such award does not remain continuously in the employment of the Company during the specified Restriction Period or (y) if specified Performance Measures (if any) are not satisfied or met during a specified Performance Period."
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 3,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 66,
+      "headers": [],
+      "rows": [
+        [
+          "",
+          "(c)",
+          "Stock Issuance. During the Restriction Period, the shares of Restricted Stock shall be held by a custodian in book entry form with restrictions on such shares duly noted or, alternatively, a certificate or certificates representing a Restricted Stock Award shall be registered in the holder’s name and may bear a legend, in addition to any legend which may be required pursuant to Section 4.7, indicating that the ownership of the shares of Common Stock represented by such certificate is subject to the restrictions, terms and conditions of this Plan and the Award Notice relating to the Restricted Stock Award. All such certificates shall be deposited with the Company, together with stock powers or other instruments of assignment (including a power of attorney), each endorsed in blank with a guarantee of signature if deemed necessary or appropriate, which would permit transfer to the Company of all or a portion of the shares of Common Stock subject to the Restricted Stock Award in the event such award is forfeited in whole or in part. Upon termination of any applicable Restriction Period (and the satisfaction or attainment of applicable Performance Measures), subject to the Company’s right to require payment of any taxes in accordance with Section 4.5, the restrictions shall be removed from the requisite number of any shares of Common Stock that are held in book entry"
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 3,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 67,
+      "headers": [],
+      "rows": [
+        [
+          "",
+          "(d)",
+          "Rights with Respect to Restricted Stock Awards. Unless otherwise set forth in the Award Notice relating to a Restricted Stock Award, and subject to the terms and conditions of a Restricted Stock Award, the holder of such award shall have all rights as a stockholder of the Company, including, but not limited to, voting rights, the right to receive dividends and the right to participate in any capital adjustment applicable to all holders of Common Stock; provided, however, that (i) a distribution with respect to shares of Common Stock, other than a regular cash dividend, and (ii) a regular cash dividend with respect to shares of Common Stock, in each case, shall be deposited with the Company and shall be subject to the same restrictions as the shares of Common Stock with respect to which such distribution was made."
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 3,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 68,
+      "headers": [],
+      "rows": [
+        [
+          "",
+          "(a)",
+          "Number of Shares and Other Terms. The number of shares of Common Stock subject to a Restricted Stock Unit Award and the Restriction Period, Performance Period (if any) and Performance Measures (if any) applicable to a Restricted Stock Unit Award shall be determined by the Committee."
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 3,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 69,
+      "headers": [],
+      "rows": [
+        [
+          "",
+          "(b)",
+          "Vesting and Forfeiture. The Award Notice relating to a Restricted Stock Unit Award shall provide, in the manner determined by the Committee, in its discretion, and subject to the provisions of this Plan, for the vesting of such Restricted Stock Unit Award (i) if the holder of such award remains continuously in the employment of the Company during the specified Restriction Period and (ii) if specified Performance Measures (if any) are satisfied or met during a specified Performance Period, and for the forfeiture of the shares of Common Stock subject to such award (x) if the holder of such award does not remain continuously in the employment of the Company during the specified Restriction Period or (y) if specified Performance Measures (if any) are not satisfied or met during a specified Performance Period."
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 3,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 70,
+      "headers": [],
+      "rows": [
+        [
+          "",
+          "(c)",
+          "Settlement of Vested Restricted Stock Unit Awards. The Award Notice relating to a Restricted Stock Unit Award shall specify (i) whether such award may be settled in shares of Common Stock or cash or a combination thereof and (ii) whether the holder thereof shall be entitled to receive, on a current or deferred basis, dividend equivalents, and, if determined by the Committee, interest on, or the deemed reinvestment of, any deferred dividend equivalents, with respect to the number of shares of Common Stock subject to such award. Any dividend equivalents with respect to Restricted Stock Units shall be subject to the same restrictions as such Restricted Stock Units. Prior to the settlement of a Restricted Stock Unit Award, the holder of such award shall have no rights as a stockholder of the Company with respect to the shares of Common Stock subject to such award."
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 3,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 71,
+      "headers": [],
+      "rows": [
+        [
+          "",
+          "(a)",
+          "Except as provided in Section 4.4(b), no award shall be transferable other than by will, the laws of descent and distribution, pursuant to beneficiary designation procedures approved by the Company, pursuant to a domestic relations order or, to the extent expressly permitted in the Award Notice relating to such award, to the holder’s family members, a trust or entity established by the holder for estate planning purposes or a charitable organization designated by the holder (a “Permitted Transferee”), in each case, without consideration. Except to the extent permitted by the foregoing sentence or the Award Notice relating to an award, each award may be exercised or settled during the holder’s lifetime only by the holder or the holder’s legal representative, agent or similar person. Except as permitted by the second preceding sentence, no award may be sold, transferred, assigned, pledged, hypothecated, encumbered or otherwise disposed of (whether by operation of law or otherwise) or be subject to execution, attachment or similar process. Upon any attempt to so sell, transfer, assign, pledge, hypothecate, encumber or otherwise dispose of any award, such award and all rights thereunder shall immediately become null and void."
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 3,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 72,
+      "headers": [],
+      "rows": [
+        [
+          "",
+          "(b)",
+          "Restricted Stock, Restricted Stock Units, Nonqualified Stock Options and SARs (except for any Tandem SAR granted in tandem with an Incentive Stock Option), whether vested or unvested, held by (A) participants who are considered officers of the Company for purposes of Section 16 of the Exchange Act; (B) participants who are directors; or (C) any participants who previously held the positions in clauses (A) and (B) may be transferred by gift or by domestic relations order to one or more Permitted Transferees. Restricted Stock, Restricted Stock Units, Nonqualified Stock Options and SARs (except for any Tandem SAR granted in tandem with an Incentive Stock Option), whether vested or unvested, held by all other participants and by Permitted Transferees may be transferred by gift or by domestic relations order only to Permitted Transferees and, in the case of transfers other than in connection with a domestic relations order, upon the prior written approval of the Company’s head of Total Rewards."
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 3,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 73,
+      "headers": [],
+      "rows": [
+        [
+          "",
+          "(a)",
+          "Impact of a Change in Control. Notwithstanding any other provision of the Plan to the contrary, unless otherwise provided in an Award Notice, in the event of a Change in Control:"
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 3,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 74,
+      "headers": [],
+      "rows": [
+        [
+          "",
+          "(i)",
+          "If and to the extent that outstanding awards under the Plan are (A) continued by the Company, (B) assumed by the successor corporation (or affiliate thereto) or (C) replaced with awards that preserve the existing value of the awards at the time of the Change in Control and provide for subsequent payout in accordance with a vesting schedule and Performance Measures, as applicable, that are the same or more favorable to the participants than the vesting schedule and Performance Measures applicable to the awards, then all such awards or such substitutes therefor shall remain outstanding and be governed by their respective terms and the provisions of the Plan subject to Section 4.9(a)(iv) below."
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 3,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 75,
+      "headers": [],
+      "rows": [
+        [
+          "",
+          "(ii)",
+          "If and to the extent that outstanding awards under the Plan are not continued, assumed or replaced in accordance with Section 4.9(a)(i) above, then upon the Change in Control: (A) outstanding Options and SARs shall immediately vest and become exercisable and (B) the Restriction Period applicable to outstanding Restricted Stock Awards and Restricted Stock Unit Awards shall immediately lapse; and, with respect to Restricted Stock Unit Awards, shall be payable immediately in accordance with their terms or, if later, as of the earliest permissible date under Section 409A of the Code."
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 3,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 76,
+      "headers": [],
+      "rows": [
+        [
+          "",
+          "(iii)",
+          "If and to the extent that outstanding awards under the Plan are not continued, assumed or replaced in accordance with Section 4.9(a)(i) above, then the Board may, in its sole discretion, require outstanding awards to be surrendered to the Company by the holder, and to be immediately cancelled by the Company, and to provide for the holder to receive a cash payment in an amount equal to (1) in the case of an Option or a SAR, the aggregate number of shares of Common Stock then subject to the portion of such Option or SAR surrendered multiplied by the excess, if any, of the Fair Market Value of a share of Common Stock as of the date of the Change in Control, over the grant price or base price per share of Common Stock subject to such Option or SAR and (2) in the case of a Stock Award, the aggregate number of shares of Common Stock then subject to the portion of such award surrendered to the extent the Performance Measures applicable to such award have been satisfied or are deemed satisfied pursuant to Section 4.9(a)(ii), multiplied by the Fair Market Value of a share of Common Stock as of the date of the Change in Control."
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 3,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 77,
+      "headers": [],
+      "rows": [
+        [
+          "",
+          "(iv)",
+          "If and to the extent that (A) outstanding awards are continued, assumed or replaced in accordance with Section 4.9(a)(i) above and (B) a participant’s employment with, or performance of services for, the Company (or the company resulting from or succeeding to the business of the Company pursuant to such Change in Control) is terminated by the Company for any reason other than Cause or by such participant for Good Reason, in each case, within the 24-month period commencing on the date of the Change in Control, then, as of the date of such participant’s termination: (A) outstanding Options and SARs shall immediately vest and become exercisable and (B) the Restriction Period applicable to outstanding Restricted Stock Awards and Restricted Stock Unit Awards shall immediately lapse; and, with respect to Restricted Stock Unit Awards, shall be payable immediately in accordance with their terms or, if later, as of the earliest permissible date under Section 409A of the Code."
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 3,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 78,
+      "headers": [],
+      "rows": [
+        [
+          "",
+          "(v)",
+          "Outstanding Options or SARs that are assumed or replaced in accordance with Section 4.9(a)(i) may be exercised by the participant in accordance with the applicable terms and conditions of such award as set forth in the applicable Award Notice or elsewhere; provided, however, that Options or SARs that become exercisable in accordance with Section 4.9(a)(iv) may be exercised until the expiration of the original full term of such Option or SAR notwithstanding the other original terms and conditions of such award."
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 3,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 79,
+      "headers": [],
+      "rows": [
+        [
+          "",
+          "(b)",
+          "For purposes of this Plan, unless otherwise provided in an Award Notice, “Change in Control” means the occurrence of any one of the following events:"
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 3,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 80,
+      "headers": [],
+      "rows": [
+        [
+          "",
+          "(i)",
+          "During any twenty-four (24) month period, individuals who, as of the beginning of such period, constitute the Board (the “Incumbent Directors”) cease for any reason to constitute at least a majority of the Board; provided that any person becoming a director subsequent to the beginning of such period whose election or nomination for election was approved by a vote of at least a majority of the Incumbent Directors then on the Board (either by a specific vote or by approval of the proxy statement of the Company in which such person is named as a nominee for director, without written objection to such nomination) shall be an Incumbent Director; provided, however, that no individual initially elected or nominated as a director of the Company as a result of an actual or threatened election contest with respect to directors or as a result of any other actual or threatened solicitation of proxies by or on behalf of any person other than the Board shall be deemed to be an Incumbent Director;"
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 3,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 81,
+      "headers": [],
+      "rows": [
+        [
+          "",
+          "(ii)",
+          "Any “person” (as such term is defined in the Exchange Act and as used in Sections 13(d)(3) and 14(d)(2) of the Exchange Act) is or becomes a “beneficial owner” (as defined in Rule 13d-3 under the Exchange Act), directly or indirectly, of securities of the Company representing 20% or more of the combined voting power of the Company’s then outstanding securities eligible to vote for the election of the Board (the “Company Voting Securities”), unless the Board, as constituted immediately prior to the date on which such person acquires such beneficial interest, by resolution negates the effect of this provision in a particular circumstance, deeming that resolution to be in the best interests of Company stockholders; provided, however, that the event described in this paragraph (ii) shall not be deemed to be a Change in Control by virtue of any of the following acquisitions: (A) by the Company or any Subsidiary; (B) by any employee benefit plan (or related trust) sponsored or maintained by the Company or any Subsidiary; (C) by any underwriter temporarily holding securities pursuant to an offering of such securities; or (D) by any person of Company Voting Securities from the Company, if a majority of the Incumbent Board approves in advance the acquisition of beneficial ownership of 20% or more of Company Voting Securities by such person;"
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 3,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 82,
+      "headers": [],
+      "rows": [
+        [
+          "",
+          "(iii)",
+          "The consummation of a merger, consolidation, statutory share exchange or similar form of corporate transaction involving the Company or any of its Subsidiaries that requires the approval of the Company’s stockholders, whether for such transaction or the issuance of securities in the transaction (a “Business Combination”), that results in the voting securities of the Company outstanding immediately prior thereto representing (either by remaining outstanding or by being converted into voting securities of the surviving entity) less than 50% of the combined voting power of the voting securities of the Company or such surviving entity outstanding immediately after such Business Combination; or"
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 3,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 83,
+      "headers": [],
+      "rows": [
+        [
+          "",
+          "(iv)",
+          "The stockholders of the Company approve a plan of complete liquidation or dissolution of the Company or the consummation of a sale of all or substantially all of the Company’s assets."
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 3,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 84,
+      "headers": [],
+      "rows": [
+        [
+          "",
+          "(c)",
+          "For purposes of this Section 4.9, “Cause” means, unless otherwise provided in an Award Notice, a willful engaging in gross misconduct materially and demonstrably injurious to the Company. For this purpose, “willful” means an act or omission in bad faith and without a reasonable belief that such act or omission was in or not opposed to the best interests of the Company."
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 3,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 85,
+      "headers": [],
+      "rows": [
+        [
+          "",
+          "(d)",
+          "For purposes of this Section 4.9, “Good Reason” means, unless otherwise provided in an Award Notice, the occurrence of any of the following circumstances (unless such circumstances are fully corrected by the Company before a participant’s termination of employment or the participant fails to provide written notice of such circumstances within 30 days after the participant becomes, or reasonably should have become, aware of such circumstances): (A) the Company’s assignment of any duties materially inconsistent with the participant’s position with the Company, or which result in a material adverse alteration in the nature or status of the responsibilities of the participant’s employment; or (B) a material reduction by the Company in the participant’s annual base salary, unless such reduction is part of a compensation reduction program affecting all similarly situated management employees."
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 3,
+      "context": "",
+      "source": "HTML"
+    }
+  ],
+  "extracted_at": "2026-02-03T22:22:28.886296+00:00"
+}

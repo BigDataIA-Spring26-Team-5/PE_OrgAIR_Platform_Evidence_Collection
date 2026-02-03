@@ -1,0 +1,15 @@
+{
+  "table_index": 3,
+  "headers": [
+    "S&P 500 Index $ 100 $ 137 $ 115 $ 136 $ 185 $ 217"
+  ],
+  "rows": [
+    [
+      "Dow Jones U.S. Technology Total Stock\nMarket Index $ 100 $ 147 $ 107 $ 147 $ 220 $ 287"
+    ]
+  ],
+  "row_count": 1,
+  "col_count": 1,
+  "page": 23,
+  "source": "PDF: _10-K-2025-As-Filed.pdf"
+}

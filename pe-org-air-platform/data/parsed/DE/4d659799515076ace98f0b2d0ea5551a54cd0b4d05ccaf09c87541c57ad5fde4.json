@@ -1,0 +1,13 @@
+{
+  "document_id": "4d659799515076ace98f0b2d0ea5551a54cd0b4d05ccaf09c87541c57ad5fde4",
+  "ticker": "DE",
+  "filing_type": "DEF 14A",
+  "filing_date": "2024-01-01T00:00:00+00:00",
+  "content_hash": "4d659799515076ace98f0b2d0ea5551a54cd0b4d05ccaf09c87541c57ad5fde4",
+  "word_count": 446684,
+  "table_count": 533,
+  "sections": {},
+  "source_path": "data/raw/sec/sec-edgar-filings/DE/DEF 14A/0001558370-24-000170/full-submission.txt",
+  "accession": "0001558370-24-000170",
+  "parsed_at": "2026-02-03T22:31:30.218429+00:00"
+}

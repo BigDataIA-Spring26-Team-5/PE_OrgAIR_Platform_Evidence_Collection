@@ -1,0 +1,24 @@
+{
+  "table_index": 21,
+  "headers": [
+    "Machinery, equipment and internal-use software 83,420 80,205"
+  ],
+  "rows": [
+    [
+      "Leasehold improvements 15,091 14,233"
+    ],
+    [
+      "Gross property, plant and equipment 125,848 119,128"
+    ],
+    [
+      "Accumulated depreciation (76,014) (73,448)"
+    ],
+    [
+      "Total property, plant and equipment, net $ 49,834 $ 45,680"
+    ]
+  ],
+  "row_count": 4,
+  "col_count": 1,
+  "page": 42,
+  "source": "PDF: _10-K-2025-As-Filed.pdf"
+}
