@@ -1,0 +1,33 @@
+{
+  "table_index": 30,
+  "headers": [
+    "2027 1,988 73 2,061"
+  ],
+  "rows": [
+    [
+      "2028 1,848 51 1,899"
+    ],
+    [
+      "2029 1,585 48 1,633"
+    ],
+    [
+      "2030 1,381 43 1,424"
+    ],
+    [
+      "Thereafter 5,956 801 6,757"
+    ],
+    [
+      "Total undiscounted liabilities 14,725 1,579 16,304"
+    ],
+    [
+      "Less: Imputed interest (2,235) (349) (2,584)"
+    ],
+    [
+      "Total lease liabilities $ 12,490 $ 1,230 $ 13,720"
+    ]
+  ],
+  "row_count": 7,
+  "col_count": 1,
+  "page": 46,
+  "source": "PDF: _10-K-2025-As-Filed.pdf"
+}

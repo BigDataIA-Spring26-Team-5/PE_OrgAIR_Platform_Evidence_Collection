@@ -1,0 +1,2238 @@
+{
+  "document_id": "8dbcf027b9fc22c0fd60cba6f89713a91d919259763b3d34d6be7a1b1b6138c3",
+  "ticker": "CAT",
+  "filing_type": "8-K",
+  "table_count": 60,
+  "tables": [
+    {
+      "table_index": 0,
+      "headers": [
+        "Delaware",
+        "",
+        "1-768",
+        "",
+        "37-0602744"
+      ],
+      "rows": [
+        [
+          "(State or other jurisdiction of incorporation)",
+          "",
+          "(Commission File Number)",
+          "",
+          "(I.R.S Employer Identification No.)"
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 5,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 1,
+      "headers": [
+        "5205 N. O'Connor Blvd. Suite 100, Irving, Texas",
+        "",
+        "75039"
+      ],
+      "rows": [
+        [
+          "(Address of principal executive offices)",
+          "",
+          "(Zip Code)"
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 3,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 2,
+      "headers": [
+        "¨",
+        "Written communications pursuant to Rule 425 under the Securities Act (17 CFR 230.425)"
+      ],
+      "rows": [
+        [
+          "¨",
+          "Soliciting material pursuant to Rule 14a-12 under the Exchange Act (17 CFR 240.14a-12)"
+        ],
+        [
+          "¨",
+          "Pre-commencement communications pursuant to Rule 14d-2(b) under the Exchange Act (17 CFR 240.14d-2(b))"
+        ],
+        [
+          "¨",
+          "Pre-commencement communications pursuant to Rule 13e-4(c) under the Exchange Act (17 CFR 240.13e-4(c))"
+        ]
+      ],
+      "row_count": 3,
+      "col_count": 2,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 3,
+      "headers": [
+        "Title of each class",
+        "Trading Symbol (s)",
+        "Name of each exchange which registered"
+      ],
+      "rows": [
+        [
+          "Common Stock ($1.00 par value)",
+          "CAT",
+          "The New York Stock Exchange"
+        ],
+        [
+          "5.3% Debentures due September 15, 2035",
+          "CAT35",
+          "The New York Stock Exchange"
+        ]
+      ],
+      "row_count": 2,
+      "col_count": 3,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 5,
+      "headers": [],
+      "rows": [
+        [
+          "·",
+          "An increase in Mr. Creed’s target award under the Company’s Annual Incentive Plan to 160% of his base salary; and"
+        ],
+        [
+          "·",
+          "A long-term incentive grant with a grant date fair value of $5.5 million, one-half of which was comprised of performance-based restricted stock units, one-quarter of which was comprised of non-qualified stock options and one-quarter of which was comprised of time-based restricted stock units."
+        ]
+      ],
+      "row_count": 2,
+      "col_count": 2,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 8,
+      "headers": [
+        "",
+        "(d)",
+        "Exhibits:"
+      ],
+      "rows": [
+        [
+          "",
+          "",
+          "The following is furnished as an exhibit to this report:"
+        ],
+        [
+          "",
+          "",
+          "99.1",
+          "Caterpillar Inc. press release dated April 15, 2025."
+        ],
+        [
+          "",
+          "",
+          "104",
+          "The cover page from this Current Report on Form 8-K, formatted in Inline XBRL."
+        ]
+      ],
+      "row_count": 3,
+      "col_count": 4,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 9,
+      "headers": [
+        "",
+        "CATERPILLAR INC."
+      ],
+      "rows": [
+        [
+          "April 15, 2025",
+          "By:",
+          "/s/ Derek Owens"
+        ],
+        [
+          "",
+          "",
+          "Derek Owens"
+        ],
+        [
+          "",
+          "",
+          "Chief Legal Officer and General Counsel"
+        ]
+      ],
+      "row_count": 3,
+      "col_count": 3,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 10,
+      "headers": [
+        "Cover",
+        "Apr. 09, 2025"
+      ],
+      "rows": [
+        [
+          "Document Information [Line Items]",
+          ""
+        ],
+        [
+          "Document Type",
+          "8-K"
+        ],
+        [
+          "Amendment Flag",
+          "false"
+        ],
+        [
+          "Document Period End Date",
+          "Apr. 09, 2025"
+        ],
+        [
+          "Entity File Number",
+          "1-768"
+        ],
+        [
+          "Entity Registrant Name",
+          "CATERPILLAR INC."
+        ],
+        [
+          "Entity Central Index Key",
+          "0000018230"
+        ],
+        [
+          "Entity Tax Identification Number",
+          "37-0602744"
+        ],
+        [
+          "Entity Incorporation, State or Country Code",
+          "DE"
+        ],
+        [
+          "Entity Address, Address Line One",
+          "5205 N. O'Connor Blvd."
+        ],
+        [
+          "Entity Address, Address Line Two",
+          "Suite 100"
+        ],
+        [
+          "Entity Address, City or Town",
+          "Irving"
+        ],
+        [
+          "Entity Address, State or Province",
+          "TX"
+        ],
+        [
+          "Entity Address, Postal Zip Code",
+          "75039"
+        ],
+        [
+          "City Area Code",
+          "972"
+        ],
+        [
+          "Local Phone Number",
+          "891-7700"
+        ],
+        [
+          "Written Communications",
+          "false"
+        ],
+        [
+          "Soliciting Material",
+          "false"
+        ],
+        [
+          "Pre-commencement Tender Offer",
+          "false"
+        ],
+        [
+          "Pre-commencement Issuer Tender Offer",
+          "false"
+        ],
+        [
+          "Entity Emerging Growth Company",
+          "false"
+        ],
+        [
+          "Common Stock [Member]",
+          ""
+        ],
+        [
+          "Document Information [Line Items]",
+          ""
+        ],
+        [
+          "Title of 12(b) Security",
+          "Common Stock ($1.00 par value)"
+        ],
+        [
+          "Trading Symbol",
+          "CAT"
+        ],
+        [
+          "Security Exchange Name",
+          "NYSE"
+        ],
+        [
+          "Sec 5. 3 Debentures Due September 152035 [Member]",
+          ""
+        ],
+        [
+          "Document Information [Line Items]",
+          ""
+        ],
+        [
+          "Title of 12(b) Security",
+          "5.3% Debentures due September 15, 2035"
+        ],
+        [
+          "Trading Symbol",
+          "CAT35"
+        ],
+        [
+          "Security Exchange Name",
+          "NYSE"
+        ]
+      ],
+      "row_count": 31,
+      "col_count": 2,
+      "context": "v3.25.1",
+      "source": "HTML"
+    },
+    {
+      "table_index": 11,
+      "headers": [
+        "X"
+      ],
+      "rows": [
+        [
+          "- DefinitionBoolean flag that is true when the XBRL content amends previously-filed or accepted submission. + ReferencesNo definition available. + Details Name: dei_AmendmentFlag Namespace Prefix: dei_ Data Type: xbrli:booleanItemType Balance Type: na Period Type: duration",
+          "Name:",
+          "dei_AmendmentFlag",
+          "Namespace Prefix:",
+          "dei_",
+          "Data Type:",
+          "xbrli:booleanItemType",
+          "Balance Type:",
+          "na",
+          "Period Type:",
+          "duration"
+        ],
+        [
+          "Name:",
+          "dei_AmendmentFlag"
+        ],
+        [
+          "Namespace Prefix:",
+          "dei_"
+        ],
+        [
+          "Data Type:",
+          "xbrli:booleanItemType"
+        ],
+        [
+          "Balance Type:",
+          "na"
+        ],
+        [
+          "Period Type:",
+          "duration"
+        ]
+      ],
+      "row_count": 6,
+      "col_count": 11,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 12,
+      "headers": [
+        "Name:",
+        "dei_AmendmentFlag"
+      ],
+      "rows": [
+        [
+          "Namespace Prefix:",
+          "dei_"
+        ],
+        [
+          "Data Type:",
+          "xbrli:booleanItemType"
+        ],
+        [
+          "Balance Type:",
+          "na"
+        ],
+        [
+          "Period Type:",
+          "duration"
+        ]
+      ],
+      "row_count": 4,
+      "col_count": 2,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 13,
+      "headers": [
+        "X"
+      ],
+      "rows": [
+        [
+          "- DefinitionArea code of city + ReferencesNo definition available. + Details Name: dei_CityAreaCode Namespace Prefix: dei_ Data Type: xbrli:normalizedStringItemType Balance Type: na Period Type: duration",
+          "Name:",
+          "dei_CityAreaCode",
+          "Namespace Prefix:",
+          "dei_",
+          "Data Type:",
+          "xbrli:normalizedStringItemType",
+          "Balance Type:",
+          "na",
+          "Period Type:",
+          "duration"
+        ],
+        [
+          "Name:",
+          "dei_CityAreaCode"
+        ],
+        [
+          "Namespace Prefix:",
+          "dei_"
+        ],
+        [
+          "Data Type:",
+          "xbrli:normalizedStringItemType"
+        ],
+        [
+          "Balance Type:",
+          "na"
+        ],
+        [
+          "Period Type:",
+          "duration"
+        ]
+      ],
+      "row_count": 6,
+      "col_count": 11,
+      "context": "X - DefinitionBoolean flag that is true when the XBRL content amends previously-filed or accepted submission. + ReferencesNo definition available. + Details Name: dei_AmendmentFlag Namespace Prefix: d",
+      "source": "HTML"
+    },
+    {
+      "table_index": 14,
+      "headers": [
+        "Name:",
+        "dei_CityAreaCode"
+      ],
+      "rows": [
+        [
+          "Namespace Prefix:",
+          "dei_"
+        ],
+        [
+          "Data Type:",
+          "xbrli:normalizedStringItemType"
+        ],
+        [
+          "Balance Type:",
+          "na"
+        ],
+        [
+          "Period Type:",
+          "duration"
+        ]
+      ],
+      "row_count": 4,
+      "col_count": 2,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 15,
+      "headers": [
+        "X"
+      ],
+      "rows": [
+        [
+          "- DefinitionLine items represent financial concepts included in a table. These concepts are used to disclose reportable information associated with domain members defined in one or many axes to the table. + ReferencesNo definition available. + Details Name: dei_DocumentInformationLineItems Namespace Prefix: dei_ Data Type: xbrli:stringItemType Balance Type: na Period Type: duration",
+          "Name:",
+          "dei_DocumentInformationLineItems",
+          "Namespace Prefix:",
+          "dei_",
+          "Data Type:",
+          "xbrli:stringItemType",
+          "Balance Type:",
+          "na",
+          "Period Type:",
+          "duration"
+        ],
+        [
+          "Name:",
+          "dei_DocumentInformationLineItems"
+        ],
+        [
+          "Namespace Prefix:",
+          "dei_"
+        ],
+        [
+          "Data Type:",
+          "xbrli:stringItemType"
+        ],
+        [
+          "Balance Type:",
+          "na"
+        ],
+        [
+          "Period Type:",
+          "duration"
+        ]
+      ],
+      "row_count": 6,
+      "col_count": 11,
+      "context": "X - DefinitionArea code of city + ReferencesNo definition available. + Details Name: dei_CityAreaCode Namespace Prefix: dei_ Data Type: xbrli:normalizedStringItemType Balance Type: na Period Type: dur",
+      "source": "HTML"
+    },
+    {
+      "table_index": 16,
+      "headers": [
+        "Name:",
+        "dei_DocumentInformationLineItems"
+      ],
+      "rows": [
+        [
+          "Namespace Prefix:",
+          "dei_"
+        ],
+        [
+          "Data Type:",
+          "xbrli:stringItemType"
+        ],
+        [
+          "Balance Type:",
+          "na"
+        ],
+        [
+          "Period Type:",
+          "duration"
+        ]
+      ],
+      "row_count": 4,
+      "col_count": 2,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 17,
+      "headers": [
+        "X"
+      ],
+      "rows": [
+        [
+          "- DefinitionFor the EDGAR submission types of Form 8-K: the date of the report, the date of the earliest event reported; for the EDGAR submission types of Form N-1A: the filing date; for all other submission types: the end of the reporting or transition period. The format of the date is YYYY-MM-DD. + ReferencesNo definition available. + Details Name: dei_DocumentPeriodEndDate Namespace Prefix: dei_ Data Type: xbrli:dateItemType Balance Type: na Period Type: duration",
+          "Name:",
+          "dei_DocumentPeriodEndDate",
+          "Namespace Prefix:",
+          "dei_",
+          "Data Type:",
+          "xbrli:dateItemType",
+          "Balance Type:",
+          "na",
+          "Period Type:",
+          "duration"
+        ],
+        [
+          "Name:",
+          "dei_DocumentPeriodEndDate"
+        ],
+        [
+          "Namespace Prefix:",
+          "dei_"
+        ],
+        [
+          "Data Type:",
+          "xbrli:dateItemType"
+        ],
+        [
+          "Balance Type:",
+          "na"
+        ],
+        [
+          "Period Type:",
+          "duration"
+        ]
+      ],
+      "row_count": 6,
+      "col_count": 11,
+      "context": "X - DefinitionLine items represent financial concepts included in a table. These concepts are used to disclose reportable information associated with domain members defined in one or many axes to the ",
+      "source": "HTML"
+    },
+    {
+      "table_index": 18,
+      "headers": [
+        "Name:",
+        "dei_DocumentPeriodEndDate"
+      ],
+      "rows": [
+        [
+          "Namespace Prefix:",
+          "dei_"
+        ],
+        [
+          "Data Type:",
+          "xbrli:dateItemType"
+        ],
+        [
+          "Balance Type:",
+          "na"
+        ],
+        [
+          "Period Type:",
+          "duration"
+        ]
+      ],
+      "row_count": 4,
+      "col_count": 2,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 19,
+      "headers": [
+        "X"
+      ],
+      "rows": [
+        [
+          "- DefinitionThe type of document being provided (such as 10-K, 10-Q, 485BPOS, etc). The document type is limited to the same value as the supporting SEC submission type, or the word 'Other'. + ReferencesNo definition available. + Details Name: dei_DocumentType Namespace Prefix: dei_ Data Type: dei:submissionTypeItemType Balance Type: na Period Type: duration",
+          "Name:",
+          "dei_DocumentType",
+          "Namespace Prefix:",
+          "dei_",
+          "Data Type:",
+          "dei:submissionTypeItemType",
+          "Balance Type:",
+          "na",
+          "Period Type:",
+          "duration"
+        ],
+        [
+          "Name:",
+          "dei_DocumentType"
+        ],
+        [
+          "Namespace Prefix:",
+          "dei_"
+        ],
+        [
+          "Data Type:",
+          "dei:submissionTypeItemType"
+        ],
+        [
+          "Balance Type:",
+          "na"
+        ],
+        [
+          "Period Type:",
+          "duration"
+        ]
+      ],
+      "row_count": 6,
+      "col_count": 11,
+      "context": "X - DefinitionFor the EDGAR submission types of Form 8-K: the date of the report, the date of the earliest event reported; for the EDGAR submission types of Form N-1A: the filing date; for all other s",
+      "source": "HTML"
+    },
+    {
+      "table_index": 20,
+      "headers": [
+        "Name:",
+        "dei_DocumentType"
+      ],
+      "rows": [
+        [
+          "Namespace Prefix:",
+          "dei_"
+        ],
+        [
+          "Data Type:",
+          "dei:submissionTypeItemType"
+        ],
+        [
+          "Balance Type:",
+          "na"
+        ],
+        [
+          "Period Type:",
+          "duration"
+        ]
+      ],
+      "row_count": 4,
+      "col_count": 2,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 21,
+      "headers": [
+        "X"
+      ],
+      "rows": [
+        [
+          "- DefinitionAddress Line 1 such as Attn, Building Name, Street Name + ReferencesNo definition available. + Details Name: dei_EntityAddressAddressLine1 Namespace Prefix: dei_ Data Type: xbrli:normalizedStringItemType Balance Type: na Period Type: duration",
+          "Name:",
+          "dei_EntityAddressAddressLine1",
+          "Namespace Prefix:",
+          "dei_",
+          "Data Type:",
+          "xbrli:normalizedStringItemType",
+          "Balance Type:",
+          "na",
+          "Period Type:",
+          "duration"
+        ],
+        [
+          "Name:",
+          "dei_EntityAddressAddressLine1"
+        ],
+        [
+          "Namespace Prefix:",
+          "dei_"
+        ],
+        [
+          "Data Type:",
+          "xbrli:normalizedStringItemType"
+        ],
+        [
+          "Balance Type:",
+          "na"
+        ],
+        [
+          "Period Type:",
+          "duration"
+        ]
+      ],
+      "row_count": 6,
+      "col_count": 11,
+      "context": "X - DefinitionThe type of document being provided (such as 10-K, 10-Q, 485BPOS, etc). The document type is limited to the same value as the supporting SEC submission type, or the word 'Other'. + Refer",
+      "source": "HTML"
+    },
+    {
+      "table_index": 22,
+      "headers": [
+        "Name:",
+        "dei_EntityAddressAddressLine1"
+      ],
+      "rows": [
+        [
+          "Namespace Prefix:",
+          "dei_"
+        ],
+        [
+          "Data Type:",
+          "xbrli:normalizedStringItemType"
+        ],
+        [
+          "Balance Type:",
+          "na"
+        ],
+        [
+          "Period Type:",
+          "duration"
+        ]
+      ],
+      "row_count": 4,
+      "col_count": 2,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 23,
+      "headers": [
+        "X"
+      ],
+      "rows": [
+        [
+          "- DefinitionAddress Line 2 such as Street or Suite number + ReferencesNo definition available. + Details Name: dei_EntityAddressAddressLine2 Namespace Prefix: dei_ Data Type: xbrli:normalizedStringItemType Balance Type: na Period Type: duration",
+          "Name:",
+          "dei_EntityAddressAddressLine2",
+          "Namespace Prefix:",
+          "dei_",
+          "Data Type:",
+          "xbrli:normalizedStringItemType",
+          "Balance Type:",
+          "na",
+          "Period Type:",
+          "duration"
+        ],
+        [
+          "Name:",
+          "dei_EntityAddressAddressLine2"
+        ],
+        [
+          "Namespace Prefix:",
+          "dei_"
+        ],
+        [
+          "Data Type:",
+          "xbrli:normalizedStringItemType"
+        ],
+        [
+          "Balance Type:",
+          "na"
+        ],
+        [
+          "Period Type:",
+          "duration"
+        ]
+      ],
+      "row_count": 6,
+      "col_count": 11,
+      "context": "X - DefinitionAddress Line 1 such as Attn, Building Name, Street Name + ReferencesNo definition available. + Details Name: dei_EntityAddressAddressLine1 Namespace Prefix: dei_ Data Type: xbrli:normali",
+      "source": "HTML"
+    },
+    {
+      "table_index": 24,
+      "headers": [
+        "Name:",
+        "dei_EntityAddressAddressLine2"
+      ],
+      "rows": [
+        [
+          "Namespace Prefix:",
+          "dei_"
+        ],
+        [
+          "Data Type:",
+          "xbrli:normalizedStringItemType"
+        ],
+        [
+          "Balance Type:",
+          "na"
+        ],
+        [
+          "Period Type:",
+          "duration"
+        ]
+      ],
+      "row_count": 4,
+      "col_count": 2,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 25,
+      "headers": [
+        "X"
+      ],
+      "rows": [
+        [
+          "- DefinitionName of the City or Town + ReferencesNo definition available. + Details Name: dei_EntityAddressCityOrTown Namespace Prefix: dei_ Data Type: xbrli:normalizedStringItemType Balance Type: na Period Type: duration",
+          "Name:",
+          "dei_EntityAddressCityOrTown",
+          "Namespace Prefix:",
+          "dei_",
+          "Data Type:",
+          "xbrli:normalizedStringItemType",
+          "Balance Type:",
+          "na",
+          "Period Type:",
+          "duration"
+        ],
+        [
+          "Name:",
+          "dei_EntityAddressCityOrTown"
+        ],
+        [
+          "Namespace Prefix:",
+          "dei_"
+        ],
+        [
+          "Data Type:",
+          "xbrli:normalizedStringItemType"
+        ],
+        [
+          "Balance Type:",
+          "na"
+        ],
+        [
+          "Period Type:",
+          "duration"
+        ]
+      ],
+      "row_count": 6,
+      "col_count": 11,
+      "context": "X - DefinitionAddress Line 2 such as Street or Suite number + ReferencesNo definition available. + Details Name: dei_EntityAddressAddressLine2 Namespace Prefix: dei_ Data Type: xbrli:normalizedStringI",
+      "source": "HTML"
+    },
+    {
+      "table_index": 26,
+      "headers": [
+        "Name:",
+        "dei_EntityAddressCityOrTown"
+      ],
+      "rows": [
+        [
+          "Namespace Prefix:",
+          "dei_"
+        ],
+        [
+          "Data Type:",
+          "xbrli:normalizedStringItemType"
+        ],
+        [
+          "Balance Type:",
+          "na"
+        ],
+        [
+          "Period Type:",
+          "duration"
+        ]
+      ],
+      "row_count": 4,
+      "col_count": 2,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 27,
+      "headers": [
+        "X"
+      ],
+      "rows": [
+        [
+          "- DefinitionCode for the postal or zip code + ReferencesNo definition available. + Details Name: dei_EntityAddressPostalZipCode Namespace Prefix: dei_ Data Type: xbrli:normalizedStringItemType Balance Type: na Period Type: duration",
+          "Name:",
+          "dei_EntityAddressPostalZipCode",
+          "Namespace Prefix:",
+          "dei_",
+          "Data Type:",
+          "xbrli:normalizedStringItemType",
+          "Balance Type:",
+          "na",
+          "Period Type:",
+          "duration"
+        ],
+        [
+          "Name:",
+          "dei_EntityAddressPostalZipCode"
+        ],
+        [
+          "Namespace Prefix:",
+          "dei_"
+        ],
+        [
+          "Data Type:",
+          "xbrli:normalizedStringItemType"
+        ],
+        [
+          "Balance Type:",
+          "na"
+        ],
+        [
+          "Period Type:",
+          "duration"
+        ]
+      ],
+      "row_count": 6,
+      "col_count": 11,
+      "context": "X - DefinitionName of the City or Town + ReferencesNo definition available. + Details Name: dei_EntityAddressCityOrTown Namespace Prefix: dei_ Data Type: xbrli:normalizedStringItemType Balance Type: n",
+      "source": "HTML"
+    },
+    {
+      "table_index": 28,
+      "headers": [
+        "Name:",
+        "dei_EntityAddressPostalZipCode"
+      ],
+      "rows": [
+        [
+          "Namespace Prefix:",
+          "dei_"
+        ],
+        [
+          "Data Type:",
+          "xbrli:normalizedStringItemType"
+        ],
+        [
+          "Balance Type:",
+          "na"
+        ],
+        [
+          "Period Type:",
+          "duration"
+        ]
+      ],
+      "row_count": 4,
+      "col_count": 2,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 29,
+      "headers": [
+        "X"
+      ],
+      "rows": [
+        [
+          "- DefinitionName of the state or province. + ReferencesNo definition available. + Details Name: dei_EntityAddressStateOrProvince Namespace Prefix: dei_ Data Type: dei:stateOrProvinceItemType Balance Type: na Period Type: duration",
+          "Name:",
+          "dei_EntityAddressStateOrProvince",
+          "Namespace Prefix:",
+          "dei_",
+          "Data Type:",
+          "dei:stateOrProvinceItemType",
+          "Balance Type:",
+          "na",
+          "Period Type:",
+          "duration"
+        ],
+        [
+          "Name:",
+          "dei_EntityAddressStateOrProvince"
+        ],
+        [
+          "Namespace Prefix:",
+          "dei_"
+        ],
+        [
+          "Data Type:",
+          "dei:stateOrProvinceItemType"
+        ],
+        [
+          "Balance Type:",
+          "na"
+        ],
+        [
+          "Period Type:",
+          "duration"
+        ]
+      ],
+      "row_count": 6,
+      "col_count": 11,
+      "context": "X - DefinitionCode for the postal or zip code + ReferencesNo definition available. + Details Name: dei_EntityAddressPostalZipCode Namespace Prefix: dei_ Data Type: xbrli:normalizedStringItemType Balan",
+      "source": "HTML"
+    },
+    {
+      "table_index": 30,
+      "headers": [
+        "Name:",
+        "dei_EntityAddressStateOrProvince"
+      ],
+      "rows": [
+        [
+          "Namespace Prefix:",
+          "dei_"
+        ],
+        [
+          "Data Type:",
+          "dei:stateOrProvinceItemType"
+        ],
+        [
+          "Balance Type:",
+          "na"
+        ],
+        [
+          "Period Type:",
+          "duration"
+        ]
+      ],
+      "row_count": 4,
+      "col_count": 2,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 31,
+      "headers": [
+        "X"
+      ],
+      "rows": [
+        [
+          "- DefinitionA unique 10-digit SEC-issued value to identify entities that have filed disclosures with the SEC. It is commonly abbreviated as CIK. + ReferencesReference 1: http://www.xbrl.org/2003/role/presentationRef -Publisher SEC -Name Exchange Act -Number 240 -Section 12 -Subsection b-2 + Details Name: dei_EntityCentralIndexKey Namespace Prefix: dei_ Data Type: dei:centralIndexKeyItemType Balance Type: na Period Type: duration",
+          "Name:",
+          "dei_EntityCentralIndexKey",
+          "Namespace Prefix:",
+          "dei_",
+          "Data Type:",
+          "dei:centralIndexKeyItemType",
+          "Balance Type:",
+          "na",
+          "Period Type:",
+          "duration"
+        ],
+        [
+          "Name:",
+          "dei_EntityCentralIndexKey"
+        ],
+        [
+          "Namespace Prefix:",
+          "dei_"
+        ],
+        [
+          "Data Type:",
+          "dei:centralIndexKeyItemType"
+        ],
+        [
+          "Balance Type:",
+          "na"
+        ],
+        [
+          "Period Type:",
+          "duration"
+        ]
+      ],
+      "row_count": 6,
+      "col_count": 11,
+      "context": "X - DefinitionName of the state or province. + ReferencesNo definition available. + Details Name: dei_EntityAddressStateOrProvince Namespace Prefix: dei_ Data Type: dei:stateOrProvinceItemType Balance",
+      "source": "HTML"
+    },
+    {
+      "table_index": 32,
+      "headers": [
+        "Name:",
+        "dei_EntityCentralIndexKey"
+      ],
+      "rows": [
+        [
+          "Namespace Prefix:",
+          "dei_"
+        ],
+        [
+          "Data Type:",
+          "dei:centralIndexKeyItemType"
+        ],
+        [
+          "Balance Type:",
+          "na"
+        ],
+        [
+          "Period Type:",
+          "duration"
+        ]
+      ],
+      "row_count": 4,
+      "col_count": 2,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 33,
+      "headers": [
+        "X"
+      ],
+      "rows": [
+        [
+          "- DefinitionIndicate if registrant meets the emerging growth company criteria. + ReferencesReference 1: http://www.xbrl.org/2003/role/presentationRef -Publisher SEC -Name Exchange Act -Number 240 -Section 12 -Subsection b-2 + Details Name: dei_EntityEmergingGrowthCompany Namespace Prefix: dei_ Data Type: xbrli:booleanItemType Balance Type: na Period Type: duration",
+          "Name:",
+          "dei_EntityEmergingGrowthCompany",
+          "Namespace Prefix:",
+          "dei_",
+          "Data Type:",
+          "xbrli:booleanItemType",
+          "Balance Type:",
+          "na",
+          "Period Type:",
+          "duration"
+        ],
+        [
+          "Name:",
+          "dei_EntityEmergingGrowthCompany"
+        ],
+        [
+          "Namespace Prefix:",
+          "dei_"
+        ],
+        [
+          "Data Type:",
+          "xbrli:booleanItemType"
+        ],
+        [
+          "Balance Type:",
+          "na"
+        ],
+        [
+          "Period Type:",
+          "duration"
+        ]
+      ],
+      "row_count": 6,
+      "col_count": 11,
+      "context": "X - DefinitionA unique 10-digit SEC-issued value to identify entities that have filed disclosures with the SEC. It is commonly abbreviated as CIK. + ReferencesReference 1: http://www.xbrl.org/2003/rol",
+      "source": "HTML"
+    },
+    {
+      "table_index": 34,
+      "headers": [
+        "Name:",
+        "dei_EntityEmergingGrowthCompany"
+      ],
+      "rows": [
+        [
+          "Namespace Prefix:",
+          "dei_"
+        ],
+        [
+          "Data Type:",
+          "xbrli:booleanItemType"
+        ],
+        [
+          "Balance Type:",
+          "na"
+        ],
+        [
+          "Period Type:",
+          "duration"
+        ]
+      ],
+      "row_count": 4,
+      "col_count": 2,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 35,
+      "headers": [
+        "X"
+      ],
+      "rows": [
+        [
+          "- DefinitionCommission file number. The field allows up to 17 characters. The prefix may contain 1-3 digits, the sequence number may contain 1-8 digits, the optional suffix may contain 1-4 characters, and the fields are separated with a hyphen. + ReferencesNo definition available. + Details Name: dei_EntityFileNumber Namespace Prefix: dei_ Data Type: dei:fileNumberItemType Balance Type: na Period Type: duration",
+          "Name:",
+          "dei_EntityFileNumber",
+          "Namespace Prefix:",
+          "dei_",
+          "Data Type:",
+          "dei:fileNumberItemType",
+          "Balance Type:",
+          "na",
+          "Period Type:",
+          "duration"
+        ],
+        [
+          "Name:",
+          "dei_EntityFileNumber"
+        ],
+        [
+          "Namespace Prefix:",
+          "dei_"
+        ],
+        [
+          "Data Type:",
+          "dei:fileNumberItemType"
+        ],
+        [
+          "Balance Type:",
+          "na"
+        ],
+        [
+          "Period Type:",
+          "duration"
+        ]
+      ],
+      "row_count": 6,
+      "col_count": 11,
+      "context": "X - DefinitionIndicate if registrant meets the emerging growth company criteria. + ReferencesReference 1: http://www.xbrl.org/2003/role/presentationRef -Publisher SEC -Name Exchange Act -Number 240 -S",
+      "source": "HTML"
+    },
+    {
+      "table_index": 36,
+      "headers": [
+        "Name:",
+        "dei_EntityFileNumber"
+      ],
+      "rows": [
+        [
+          "Namespace Prefix:",
+          "dei_"
+        ],
+        [
+          "Data Type:",
+          "dei:fileNumberItemType"
+        ],
+        [
+          "Balance Type:",
+          "na"
+        ],
+        [
+          "Period Type:",
+          "duration"
+        ]
+      ],
+      "row_count": 4,
+      "col_count": 2,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 37,
+      "headers": [
+        "X"
+      ],
+      "rows": [
+        [
+          "- DefinitionTwo-character EDGAR code representing the state or country of incorporation. + ReferencesNo definition available. + Details Name: dei_EntityIncorporationStateCountryCode Namespace Prefix: dei_ Data Type: dei:edgarStateCountryItemType Balance Type: na Period Type: duration",
+          "Name:",
+          "dei_EntityIncorporationStateCountryCode",
+          "Namespace Prefix:",
+          "dei_",
+          "Data Type:",
+          "dei:edgarStateCountryItemType",
+          "Balance Type:",
+          "na",
+          "Period Type:",
+          "duration"
+        ],
+        [
+          "Name:",
+          "dei_EntityIncorporationStateCountryCode"
+        ],
+        [
+          "Namespace Prefix:",
+          "dei_"
+        ],
+        [
+          "Data Type:",
+          "dei:edgarStateCountryItemType"
+        ],
+        [
+          "Balance Type:",
+          "na"
+        ],
+        [
+          "Period Type:",
+          "duration"
+        ]
+      ],
+      "row_count": 6,
+      "col_count": 11,
+      "context": "X - DefinitionCommission file number. The field allows up to 17 characters. The prefix may contain 1-3 digits, the sequence number may contain 1-8 digits, the optional suffix may contain 1-4 character",
+      "source": "HTML"
+    },
+    {
+      "table_index": 38,
+      "headers": [
+        "Name:",
+        "dei_EntityIncorporationStateCountryCode"
+      ],
+      "rows": [
+        [
+          "Namespace Prefix:",
+          "dei_"
+        ],
+        [
+          "Data Type:",
+          "dei:edgarStateCountryItemType"
+        ],
+        [
+          "Balance Type:",
+          "na"
+        ],
+        [
+          "Period Type:",
+          "duration"
+        ]
+      ],
+      "row_count": 4,
+      "col_count": 2,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 39,
+      "headers": [
+        "X"
+      ],
+      "rows": [
+        [
+          "- DefinitionThe exact name of the entity filing the report as specified in its charter, which is required by forms filed with the SEC. + ReferencesReference 1: http://www.xbrl.org/2003/role/presentationRef -Publisher SEC -Name Exchange Act -Number 240 -Section 12 -Subsection b-2 + Details Name: dei_EntityRegistrantName Namespace Prefix: dei_ Data Type: xbrli:normalizedStringItemType Balance Type: na Period Type: duration",
+          "Name:",
+          "dei_EntityRegistrantName",
+          "Namespace Prefix:",
+          "dei_",
+          "Data Type:",
+          "xbrli:normalizedStringItemType",
+          "Balance Type:",
+          "na",
+          "Period Type:",
+          "duration"
+        ],
+        [
+          "Name:",
+          "dei_EntityRegistrantName"
+        ],
+        [
+          "Namespace Prefix:",
+          "dei_"
+        ],
+        [
+          "Data Type:",
+          "xbrli:normalizedStringItemType"
+        ],
+        [
+          "Balance Type:",
+          "na"
+        ],
+        [
+          "Period Type:",
+          "duration"
+        ]
+      ],
+      "row_count": 6,
+      "col_count": 11,
+      "context": "X - DefinitionTwo-character EDGAR code representing the state or country of incorporation. + ReferencesNo definition available. + Details Name: dei_EntityIncorporationStateCountryCode Namespace Prefix",
+      "source": "HTML"
+    },
+    {
+      "table_index": 40,
+      "headers": [
+        "Name:",
+        "dei_EntityRegistrantName"
+      ],
+      "rows": [
+        [
+          "Namespace Prefix:",
+          "dei_"
+        ],
+        [
+          "Data Type:",
+          "xbrli:normalizedStringItemType"
+        ],
+        [
+          "Balance Type:",
+          "na"
+        ],
+        [
+          "Period Type:",
+          "duration"
+        ]
+      ],
+      "row_count": 4,
+      "col_count": 2,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 41,
+      "headers": [
+        "X"
+      ],
+      "rows": [
+        [
+          "- DefinitionThe Tax Identification Number (TIN), also known as an Employer Identification Number (EIN), is a unique 9-digit value assigned by the IRS. + ReferencesReference 1: http://www.xbrl.org/2003/role/presentationRef -Publisher SEC -Name Exchange Act -Number 240 -Section 12 -Subsection b-2 + Details Name: dei_EntityTaxIdentificationNumber Namespace Prefix: dei_ Data Type: dei:employerIdItemType Balance Type: na Period Type: duration",
+          "Name:",
+          "dei_EntityTaxIdentificationNumber",
+          "Namespace Prefix:",
+          "dei_",
+          "Data Type:",
+          "dei:employerIdItemType",
+          "Balance Type:",
+          "na",
+          "Period Type:",
+          "duration"
+        ],
+        [
+          "Name:",
+          "dei_EntityTaxIdentificationNumber"
+        ],
+        [
+          "Namespace Prefix:",
+          "dei_"
+        ],
+        [
+          "Data Type:",
+          "dei:employerIdItemType"
+        ],
+        [
+          "Balance Type:",
+          "na"
+        ],
+        [
+          "Period Type:",
+          "duration"
+        ]
+      ],
+      "row_count": 6,
+      "col_count": 11,
+      "context": "X - DefinitionThe exact name of the entity filing the report as specified in its charter, which is required by forms filed with the SEC. + ReferencesReference 1: http://www.xbrl.org/2003/role/presenta",
+      "source": "HTML"
+    },
+    {
+      "table_index": 42,
+      "headers": [
+        "Name:",
+        "dei_EntityTaxIdentificationNumber"
+      ],
+      "rows": [
+        [
+          "Namespace Prefix:",
+          "dei_"
+        ],
+        [
+          "Data Type:",
+          "dei:employerIdItemType"
+        ],
+        [
+          "Balance Type:",
+          "na"
+        ],
+        [
+          "Period Type:",
+          "duration"
+        ]
+      ],
+      "row_count": 4,
+      "col_count": 2,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 43,
+      "headers": [
+        "X"
+      ],
+      "rows": [
+        [
+          "- DefinitionLocal phone number for entity. + ReferencesNo definition available. + Details Name: dei_LocalPhoneNumber Namespace Prefix: dei_ Data Type: xbrli:normalizedStringItemType Balance Type: na Period Type: duration",
+          "Name:",
+          "dei_LocalPhoneNumber",
+          "Namespace Prefix:",
+          "dei_",
+          "Data Type:",
+          "xbrli:normalizedStringItemType",
+          "Balance Type:",
+          "na",
+          "Period Type:",
+          "duration"
+        ],
+        [
+          "Name:",
+          "dei_LocalPhoneNumber"
+        ],
+        [
+          "Namespace Prefix:",
+          "dei_"
+        ],
+        [
+          "Data Type:",
+          "xbrli:normalizedStringItemType"
+        ],
+        [
+          "Balance Type:",
+          "na"
+        ],
+        [
+          "Period Type:",
+          "duration"
+        ]
+      ],
+      "row_count": 6,
+      "col_count": 11,
+      "context": "X - DefinitionThe Tax Identification Number (TIN), also known as an Employer Identification Number (EIN), is a unique 9-digit value assigned by the IRS. + ReferencesReference 1: http://www.xbrl.org/20",
+      "source": "HTML"
+    },
+    {
+      "table_index": 44,
+      "headers": [
+        "Name:",
+        "dei_LocalPhoneNumber"
+      ],
+      "rows": [
+        [
+          "Namespace Prefix:",
+          "dei_"
+        ],
+        [
+          "Data Type:",
+          "xbrli:normalizedStringItemType"
+        ],
+        [
+          "Balance Type:",
+          "na"
+        ],
+        [
+          "Period Type:",
+          "duration"
+        ]
+      ],
+      "row_count": 4,
+      "col_count": 2,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 45,
+      "headers": [
+        "X"
+      ],
+      "rows": [
+        [
+          "- DefinitionBoolean flag that is true when the Form 8-K filing is intended to satisfy the filing obligation of the registrant as pre-commencement communications pursuant to Rule 13e-4(c) under the Exchange Act. + ReferencesReference 1: http://www.xbrl.org/2003/role/presentationRef -Publisher SEC -Name Exchange Act -Number 240 -Section 13e -Subsection 4c + Details Name: dei_PreCommencementIssuerTenderOffer Namespace Prefix: dei_ Data Type: xbrli:booleanItemType Balance Type: na Period Type: duration",
+          "Name:",
+          "dei_PreCommencementIssuerTenderOffer",
+          "Namespace Prefix:",
+          "dei_",
+          "Data Type:",
+          "xbrli:booleanItemType",
+          "Balance Type:",
+          "na",
+          "Period Type:",
+          "duration"
+        ],
+        [
+          "Name:",
+          "dei_PreCommencementIssuerTenderOffer"
+        ],
+        [
+          "Namespace Prefix:",
+          "dei_"
+        ],
+        [
+          "Data Type:",
+          "xbrli:booleanItemType"
+        ],
+        [
+          "Balance Type:",
+          "na"
+        ],
+        [
+          "Period Type:",
+          "duration"
+        ]
+      ],
+      "row_count": 6,
+      "col_count": 11,
+      "context": "X - DefinitionLocal phone number for entity. + ReferencesNo definition available. + Details Name: dei_LocalPhoneNumber Namespace Prefix: dei_ Data Type: xbrli:normalizedStringItemType Balance Type: na",
+      "source": "HTML"
+    },
+    {
+      "table_index": 46,
+      "headers": [
+        "Name:",
+        "dei_PreCommencementIssuerTenderOffer"
+      ],
+      "rows": [
+        [
+          "Namespace Prefix:",
+          "dei_"
+        ],
+        [
+          "Data Type:",
+          "xbrli:booleanItemType"
+        ],
+        [
+          "Balance Type:",
+          "na"
+        ],
+        [
+          "Period Type:",
+          "duration"
+        ]
+      ],
+      "row_count": 4,
+      "col_count": 2,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 47,
+      "headers": [
+        "X"
+      ],
+      "rows": [
+        [
+          "- DefinitionBoolean flag that is true when the Form 8-K filing is intended to satisfy the filing obligation of the registrant as pre-commencement communications pursuant to Rule 14d-2(b) under the Exchange Act. + ReferencesReference 1: http://www.xbrl.org/2003/role/presentationRef -Publisher SEC -Name Exchange Act -Number 240 -Section 14d -Subsection 2b + Details Name: dei_PreCommencementTenderOffer Namespace Prefix: dei_ Data Type: xbrli:booleanItemType Balance Type: na Period Type: duration",
+          "Name:",
+          "dei_PreCommencementTenderOffer",
+          "Namespace Prefix:",
+          "dei_",
+          "Data Type:",
+          "xbrli:booleanItemType",
+          "Balance Type:",
+          "na",
+          "Period Type:",
+          "duration"
+        ],
+        [
+          "Name:",
+          "dei_PreCommencementTenderOffer"
+        ],
+        [
+          "Namespace Prefix:",
+          "dei_"
+        ],
+        [
+          "Data Type:",
+          "xbrli:booleanItemType"
+        ],
+        [
+          "Balance Type:",
+          "na"
+        ],
+        [
+          "Period Type:",
+          "duration"
+        ]
+      ],
+      "row_count": 6,
+      "col_count": 11,
+      "context": "X - DefinitionBoolean flag that is true when the Form 8-K filing is intended to satisfy the filing obligation of the registrant as pre-commencement communications pursuant to Rule 13e-4(c) under the E",
+      "source": "HTML"
+    },
+    {
+      "table_index": 48,
+      "headers": [
+        "Name:",
+        "dei_PreCommencementTenderOffer"
+      ],
+      "rows": [
+        [
+          "Namespace Prefix:",
+          "dei_"
+        ],
+        [
+          "Data Type:",
+          "xbrli:booleanItemType"
+        ],
+        [
+          "Balance Type:",
+          "na"
+        ],
+        [
+          "Period Type:",
+          "duration"
+        ]
+      ],
+      "row_count": 4,
+      "col_count": 2,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 49,
+      "headers": [
+        "X"
+      ],
+      "rows": [
+        [
+          "- DefinitionTitle of a 12(b) registered security. + ReferencesReference 1: http://www.xbrl.org/2003/role/presentationRef -Publisher SEC -Name Exchange Act -Number 240 -Section 12 -Subsection b + Details Name: dei_Security12bTitle Namespace Prefix: dei_ Data Type: dei:securityTitleItemType Balance Type: na Period Type: duration",
+          "Name:",
+          "dei_Security12bTitle",
+          "Namespace Prefix:",
+          "dei_",
+          "Data Type:",
+          "dei:securityTitleItemType",
+          "Balance Type:",
+          "na",
+          "Period Type:",
+          "duration"
+        ],
+        [
+          "Name:",
+          "dei_Security12bTitle"
+        ],
+        [
+          "Namespace Prefix:",
+          "dei_"
+        ],
+        [
+          "Data Type:",
+          "dei:securityTitleItemType"
+        ],
+        [
+          "Balance Type:",
+          "na"
+        ],
+        [
+          "Period Type:",
+          "duration"
+        ]
+      ],
+      "row_count": 6,
+      "col_count": 11,
+      "context": "X - DefinitionBoolean flag that is true when the Form 8-K filing is intended to satisfy the filing obligation of the registrant as pre-commencement communications pursuant to Rule 14d-2(b) under the E",
+      "source": "HTML"
+    },
+    {
+      "table_index": 50,
+      "headers": [
+        "Name:",
+        "dei_Security12bTitle"
+      ],
+      "rows": [
+        [
+          "Namespace Prefix:",
+          "dei_"
+        ],
+        [
+          "Data Type:",
+          "dei:securityTitleItemType"
+        ],
+        [
+          "Balance Type:",
+          "na"
+        ],
+        [
+          "Period Type:",
+          "duration"
+        ]
+      ],
+      "row_count": 4,
+      "col_count": 2,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 51,
+      "headers": [
+        "X"
+      ],
+      "rows": [
+        [
+          "- DefinitionName of the Exchange on which a security is registered. + ReferencesReference 1: http://www.xbrl.org/2003/role/presentationRef -Publisher SEC -Name Exchange Act -Number 240 -Section 12 -Subsection d1-1 + Details Name: dei_SecurityExchangeName Namespace Prefix: dei_ Data Type: dei:edgarExchangeCodeItemType Balance Type: na Period Type: duration",
+          "Name:",
+          "dei_SecurityExchangeName",
+          "Namespace Prefix:",
+          "dei_",
+          "Data Type:",
+          "dei:edgarExchangeCodeItemType",
+          "Balance Type:",
+          "na",
+          "Period Type:",
+          "duration"
+        ],
+        [
+          "Name:",
+          "dei_SecurityExchangeName"
+        ],
+        [
+          "Namespace Prefix:",
+          "dei_"
+        ],
+        [
+          "Data Type:",
+          "dei:edgarExchangeCodeItemType"
+        ],
+        [
+          "Balance Type:",
+          "na"
+        ],
+        [
+          "Period Type:",
+          "duration"
+        ]
+      ],
+      "row_count": 6,
+      "col_count": 11,
+      "context": "X - DefinitionTitle of a 12(b) registered security. + ReferencesReference 1: http://www.xbrl.org/2003/role/presentationRef -Publisher SEC -Name Exchange Act -Number 240 -Section 12 -Subsection b + Det",
+      "source": "HTML"
+    },
+    {
+      "table_index": 52,
+      "headers": [
+        "Name:",
+        "dei_SecurityExchangeName"
+      ],
+      "rows": [
+        [
+          "Namespace Prefix:",
+          "dei_"
+        ],
+        [
+          "Data Type:",
+          "dei:edgarExchangeCodeItemType"
+        ],
+        [
+          "Balance Type:",
+          "na"
+        ],
+        [
+          "Period Type:",
+          "duration"
+        ]
+      ],
+      "row_count": 4,
+      "col_count": 2,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 53,
+      "headers": [
+        "X"
+      ],
+      "rows": [
+        [
+          "- DefinitionBoolean flag that is true when the Form 8-K filing is intended to satisfy the filing obligation of the registrant as soliciting material pursuant to Rule 14a-12 under the Exchange Act. + ReferencesReference 1: http://www.xbrl.org/2003/role/presentationRef -Publisher SEC -Name Exchange Act -Number 240 -Section 14a -Subsection 12 + Details Name: dei_SolicitingMaterial Namespace Prefix: dei_ Data Type: xbrli:booleanItemType Balance Type: na Period Type: duration",
+          "Name:",
+          "dei_SolicitingMaterial",
+          "Namespace Prefix:",
+          "dei_",
+          "Data Type:",
+          "xbrli:booleanItemType",
+          "Balance Type:",
+          "na",
+          "Period Type:",
+          "duration"
+        ],
+        [
+          "Name:",
+          "dei_SolicitingMaterial"
+        ],
+        [
+          "Namespace Prefix:",
+          "dei_"
+        ],
+        [
+          "Data Type:",
+          "xbrli:booleanItemType"
+        ],
+        [
+          "Balance Type:",
+          "na"
+        ],
+        [
+          "Period Type:",
+          "duration"
+        ]
+      ],
+      "row_count": 6,
+      "col_count": 11,
+      "context": "X - DefinitionName of the Exchange on which a security is registered. + ReferencesReference 1: http://www.xbrl.org/2003/role/presentationRef -Publisher SEC -Name Exchange Act -Number 240 -Section 12 -",
+      "source": "HTML"
+    },
+    {
+      "table_index": 54,
+      "headers": [
+        "Name:",
+        "dei_SolicitingMaterial"
+      ],
+      "rows": [
+        [
+          "Namespace Prefix:",
+          "dei_"
+        ],
+        [
+          "Data Type:",
+          "xbrli:booleanItemType"
+        ],
+        [
+          "Balance Type:",
+          "na"
+        ],
+        [
+          "Period Type:",
+          "duration"
+        ]
+      ],
+      "row_count": 4,
+      "col_count": 2,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 55,
+      "headers": [
+        "X"
+      ],
+      "rows": [
+        [
+          "- DefinitionTrading symbol of an instrument as listed on an exchange. + ReferencesNo definition available. + Details Name: dei_TradingSymbol Namespace Prefix: dei_ Data Type: dei:tradingSymbolItemType Balance Type: na Period Type: duration",
+          "Name:",
+          "dei_TradingSymbol",
+          "Namespace Prefix:",
+          "dei_",
+          "Data Type:",
+          "dei:tradingSymbolItemType",
+          "Balance Type:",
+          "na",
+          "Period Type:",
+          "duration"
+        ],
+        [
+          "Name:",
+          "dei_TradingSymbol"
+        ],
+        [
+          "Namespace Prefix:",
+          "dei_"
+        ],
+        [
+          "Data Type:",
+          "dei:tradingSymbolItemType"
+        ],
+        [
+          "Balance Type:",
+          "na"
+        ],
+        [
+          "Period Type:",
+          "duration"
+        ]
+      ],
+      "row_count": 6,
+      "col_count": 11,
+      "context": "X - DefinitionBoolean flag that is true when the Form 8-K filing is intended to satisfy the filing obligation of the registrant as soliciting material pursuant to Rule 14a-12 under the Exchange Act. +",
+      "source": "HTML"
+    },
+    {
+      "table_index": 56,
+      "headers": [
+        "Name:",
+        "dei_TradingSymbol"
+      ],
+      "rows": [
+        [
+          "Namespace Prefix:",
+          "dei_"
+        ],
+        [
+          "Data Type:",
+          "dei:tradingSymbolItemType"
+        ],
+        [
+          "Balance Type:",
+          "na"
+        ],
+        [
+          "Period Type:",
+          "duration"
+        ]
+      ],
+      "row_count": 4,
+      "col_count": 2,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 57,
+      "headers": [
+        "X"
+      ],
+      "rows": [
+        [
+          "- DefinitionBoolean flag that is true when the Form 8-K filing is intended to satisfy the filing obligation of the registrant as written communications pursuant to Rule 425 under the Securities Act. + ReferencesReference 1: http://www.xbrl.org/2003/role/presentationRef -Publisher SEC -Name Securities Act -Number 230 -Section 425 + Details Name: dei_WrittenCommunications Namespace Prefix: dei_ Data Type: xbrli:booleanItemType Balance Type: na Period Type: duration",
+          "Name:",
+          "dei_WrittenCommunications",
+          "Namespace Prefix:",
+          "dei_",
+          "Data Type:",
+          "xbrli:booleanItemType",
+          "Balance Type:",
+          "na",
+          "Period Type:",
+          "duration"
+        ],
+        [
+          "Name:",
+          "dei_WrittenCommunications"
+        ],
+        [
+          "Namespace Prefix:",
+          "dei_"
+        ],
+        [
+          "Data Type:",
+          "xbrli:booleanItemType"
+        ],
+        [
+          "Balance Type:",
+          "na"
+        ],
+        [
+          "Period Type:",
+          "duration"
+        ]
+      ],
+      "row_count": 6,
+      "col_count": 11,
+      "context": "X - DefinitionTrading symbol of an instrument as listed on an exchange. + ReferencesNo definition available. + Details Name: dei_TradingSymbol Namespace Prefix: dei_ Data Type: dei:tradingSymbolItemTy",
+      "source": "HTML"
+    },
+    {
+      "table_index": 58,
+      "headers": [
+        "Name:",
+        "dei_WrittenCommunications"
+      ],
+      "rows": [
+        [
+          "Namespace Prefix:",
+          "dei_"
+        ],
+        [
+          "Data Type:",
+          "xbrli:booleanItemType"
+        ],
+        [
+          "Balance Type:",
+          "na"
+        ],
+        [
+          "Period Type:",
+          "duration"
+        ]
+      ],
+      "row_count": 4,
+      "col_count": 2,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 59,
+      "headers": [
+        "X"
+      ],
+      "rows": [
+        [
+          "- Details Name: us-gaap_StatementClassOfStockAxis=us-gaap_CommonStockMember Namespace Prefix: Data Type: na Balance Type: Period Type:",
+          "Name:",
+          "us-gaap_StatementClassOfStockAxis=us-gaap_CommonStockMember",
+          "Namespace Prefix:",
+          "",
+          "Data Type:",
+          "na",
+          "Balance Type:",
+          "",
+          "Period Type:",
+          ""
+        ],
+        [
+          "Name:",
+          "us-gaap_StatementClassOfStockAxis=us-gaap_CommonStockMember"
+        ],
+        [
+          "Namespace Prefix:",
+          ""
+        ],
+        [
+          "Data Type:",
+          "na"
+        ],
+        [
+          "Balance Type:",
+          ""
+        ],
+        [
+          "Period Type:",
+          ""
+        ]
+      ],
+      "row_count": 6,
+      "col_count": 11,
+      "context": "X - DefinitionBoolean flag that is true when the Form 8-K filing is intended to satisfy the filing obligation of the registrant as written communications pursuant to Rule 425 under the Securities Act.",
+      "source": "HTML"
+    },
+    {
+      "table_index": 60,
+      "headers": [
+        "Name:",
+        "us-gaap_StatementClassOfStockAxis=us-gaap_CommonStockMember"
+      ],
+      "rows": [
+        [
+          "Namespace Prefix:",
+          ""
+        ],
+        [
+          "Data Type:",
+          "na"
+        ],
+        [
+          "Balance Type:",
+          ""
+        ],
+        [
+          "Period Type:",
+          ""
+        ]
+      ],
+      "row_count": 4,
+      "col_count": 2,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 61,
+      "headers": [
+        "X"
+      ],
+      "rows": [
+        [
+          "- Details Name: us-gaap_StatementClassOfStockAxis=CAT_Sec5.3DebenturesDueSeptember152035Member Namespace Prefix: Data Type: na Balance Type: Period Type:",
+          "Name:",
+          "us-gaap_StatementClassOfStockAxis=CAT_Sec5.3DebenturesDueSeptember152035Member",
+          "Namespace Prefix:",
+          "",
+          "Data Type:",
+          "na",
+          "Balance Type:",
+          "",
+          "Period Type:",
+          ""
+        ],
+        [
+          "Name:",
+          "us-gaap_StatementClassOfStockAxis=CAT_Sec5.3DebenturesDueSeptember152035Member"
+        ],
+        [
+          "Namespace Prefix:",
+          ""
+        ],
+        [
+          "Data Type:",
+          "na"
+        ],
+        [
+          "Balance Type:",
+          ""
+        ],
+        [
+          "Period Type:",
+          ""
+        ]
+      ],
+      "row_count": 6,
+      "col_count": 11,
+      "context": "X - Details Name: us-gaap_StatementClassOfStockAxis=us-gaap_CommonStockMember Namespace Prefix: Data Type: na Balance Type: Period Type:",
+      "source": "HTML"
+    },
+    {
+      "table_index": 62,
+      "headers": [
+        "Name:",
+        "us-gaap_StatementClassOfStockAxis=CAT_Sec5.3DebenturesDueSeptember152035Member"
+      ],
+      "rows": [
+        [
+          "Namespace Prefix:",
+          ""
+        ],
+        [
+          "Data Type:",
+          "na"
+        ],
+        [
+          "Balance Type:",
+          ""
+        ],
+        [
+          "Period Type:",
+          ""
+        ]
+      ],
+      "row_count": 4,
+      "col_count": 2,
+      "context": "",
+      "source": "HTML"
+    }
+  ],
+  "extracted_at": "2026-02-03T22:22:46.985134+00:00"
+}

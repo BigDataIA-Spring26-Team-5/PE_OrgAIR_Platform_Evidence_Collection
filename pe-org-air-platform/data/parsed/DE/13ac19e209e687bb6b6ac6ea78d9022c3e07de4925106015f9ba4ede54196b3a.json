@@ -1,0 +1,13 @@
+{
+  "document_id": "13ac19e209e687bb6b6ac6ea78d9022c3e07de4925106015f9ba4ede54196b3a",
+  "ticker": "DE",
+  "filing_type": "8-K",
+  "filing_date": "2024-01-01T00:00:00+00:00",
+  "content_hash": "13ac19e209e687bb6b6ac6ea78d9022c3e07de4925106015f9ba4ede54196b3a",
+  "word_count": 9868,
+  "table_count": 5,
+  "sections": {},
+  "source_path": "data/raw/sec/sec-edgar-filings/DE/8-K/0001558370-24-015982/full-submission.txt",
+  "accession": "0001558370-24-015982",
+  "parsed_at": "2026-02-03T22:31:07.536585+00:00"
+}
