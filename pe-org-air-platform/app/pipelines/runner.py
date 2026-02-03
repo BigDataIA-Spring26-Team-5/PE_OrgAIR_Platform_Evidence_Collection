@@ -1,91 +1,308 @@
-import asyncio
-import argparse
-import json
+# from __future__ import annotations
+
+# import os
+# from datetime import datetime, timezone
+# from pathlib import Path
+# from typing import List, Optional
+
+# from app.pipelines.sec_edgar import SECEdgarPipeline
+# from app.pipelines.document_parser import DocumentParser
+# from app.pipelines.chunking import SemanticChunker
+# from app.pipelines.exporters import export_sample_json
+# from app.services.s3_storage import S3Storage
+# from app.services.snowflake import SnowflakeService
+# from app.pipelines.exporters import (
+#     export_sample_json,
+#     export_parsed_document_json,
+#     export_chunks_json,
+# )
+
+
+
+# def _build_s3_key(local_path: Path, ticker: str, filing_type: str) -> str:
+#     """
+#     Deterministic key aligned to download layout:
+#       sec/{ticker}/{filing_type}/{accession}/full-submission.txt
+#     """
+#     accession = local_path.parent.name
+#     return f"sec/{ticker}/{filing_type}/{accession}/full-submission.txt"
+
+# def _build_parsed_s3_key(ticker: str, document_id: str) -> str:
+#     return f"processed/parsed/{ticker}/{document_id}.json"
+
+
+# def _build_chunks_s3_key(ticker: str, document_id: str) -> str:
+#     return f"processed/chunks/{ticker}/{document_id}.json"
+
+
+# def run_pipeline_1_for_company(
+#     company_id: str,
+#     ticker: str,
+#     filing_types: Optional[List[str]] = None,
+#     limit: int = 10,
+#     after: str = "2021-01-01",
+#     export_samples: bool = True,
+#     samples_dir: Path = Path("data/samples"),
+#     max_samples: int = 3,
+# ) -> dict:
+#     """
+#     SEC -> S3 raw -> parse -> dedupe -> chunk -> Snowflake (documents + chunks) -> export sample JSONs
+#     """
+#     company_name = os.getenv("SEC_COMPANY_NAME", "PE-OrgAIR-Platform")
+#     email = os.getenv("SEC_EMAIL")
+#     if not email:
+#         raise ValueError("SEC_EMAIL not set in .env")
+
+#     db = SnowflakeService()
+#     s3 = S3Storage()
+#     sec = SECEdgarPipeline(company_name=company_name, email=email)
+#     parser = DocumentParser()
+#     chunker = SemanticChunker()
+
+#     stats = {"downloaded": 0, "processed": 0, "deduped": 0, "failed": 0, "chunks": 0, "samples_written": 0}
+
+#     try:
+#         filings = sec.download_filings(ticker=ticker, filing_types=filing_types, limit=limit, after=after)
+#         stats["downloaded"] = len(filings)
+
+#         for filing_path in filings:
+#             try:
+#                 # Upload raw to S3
+#                 # filing_type from path is accurate here
+#                 filing_type_from_path = filing_path.parts[-3]
+#                 s3_key = _build_s3_key(filing_path, ticker, filing_type_from_path)
+#                 s3.upload_file(filing_path, s3_key)
+
+#                 # Parse
+#                 doc = parser.parse_filing(filing_path, ticker)
+
+#                 # Dedupe by content hash
+#                 if db.document_exists_by_hash(doc.content_hash):
+#                     stats["deduped"] += 1
+#                     # still record status if you want; skipping insert is ok
+#                     continue
+
+#                 # Chunk
+#                 chunks = chunker.chunk_document(doc)
+
+#                 # Insert document
+#                 doc_id = db.insert_document(
+#                     company_id=company_id,
+#                     ticker=ticker,
+#                     filing_type=doc.filing_type,
+#                     filing_date=doc.filing_date,
+#                     local_path=str(filing_path),
+#                     s3_key=s3_key,
+#                     content_hash=doc.content_hash,
+#                     word_count=doc.word_count,
+#                     chunk_count=len(chunks),
+#                     status="chunked",
+#                     processed_at=datetime.now(timezone.utc),
+#                 )
+
+#                 # Insert chunks
+#                 inserted = db.insert_chunks(chunks)
+#                 stats["chunks"] += inserted
+#                 stats["processed"] += 1
+
+#                 # Export sample JSON (first N successful)
+#                 if export_samples and stats["samples_written"] < max_samples:
+#                     export_sample_json(
+#                         out_dir=samples_dir,
+#                         document_id=doc_id,
+#                         doc=doc,
+#                         s3_key=s3_key,
+#                         source_url=None,
+#                         chunks=chunks,
+#                     )
+#                     stats["samples_written"] += 1
+
+#             except Exception:
+#                 stats["failed"] += 1
+#                 # best effort: mark document failed if hash known; otherwise skip
+#                 continue
+
+#         return stats
+
+#     finally:
+#         db.close()
+
+from __future__ import annotations
+
+import os
+from datetime import datetime, timezone
 from pathlib import Path
+from typing import List, Optional
 
-from app.pipelines.sec_edgar import (
-    step1_initialize_pipeline,
-    step2_add_downloader,
-    step3_configure_rate_limiting,
-    step4_download_filings,
+from app.pipelines.sec_edgar import SECEdgarPipeline
+from app.pipelines.document_parser import DocumentParser
+from app.pipelines.chunking import SemanticChunker
+from app.pipelines.exporters import (
+    export_sample_json,
+    export_parsed_document_json,
+    export_chunks_json,
 )
-from app.pipelines.document_parser import step5_parse_documents
-from app.pipelines.registry import step6_deduplicate_documents
-from app.pipelines.chunking import step7_chunk_text
+from app.services.s3_storage import S3Storage
+from app.services.snowflake import SnowflakeService
 
 
-def save_outputs(state, out_dir: str = "data/processed"):
-    out = Path(out_dir)
-    docs_dir = out / "documents"
-    chunks_dir = out / "chunks"
-    docs_dir.mkdir(parents=True, exist_ok=True)
-    chunks_dir.mkdir(parents=True, exist_ok=True)
-
-    # write one json per filing, plus one jsonl per filing
-    for f in state.chunked_filings:
-        ticker = f["ticker"]
-        filing_type = f["filing_type"]
-        acc = f["accession_number"]
-        content_hash = f["content_hash"]
-
-        doc_path = docs_dir / ticker / filing_type
-        doc_path.mkdir(parents=True, exist_ok=True)
-        (doc_path / f"{content_hash}.json").write_text(json.dumps({
-            "ticker": ticker,
-            "filing_type": filing_type,
-            "accession_number": acc,
-            "content_hash": content_hash,
-            "parsed_text": f.get("parsed_text", ""),
-            "parsed_tables": f.get("parsed_tables", []),
-        }, indent=2), encoding="utf-8")
-
-        chunk_path = chunks_dir / ticker / filing_type
-        chunk_path.mkdir(parents=True, exist_ok=True)
-        with (chunk_path / f"{content_hash}.jsonl").open("w", encoding="utf-8") as out_f:
-            for i, c in enumerate(f.get("chunks", [])):
-                out_f.write(json.dumps({
-                    "chunk_index": i,
-                    "content_hash": content_hash,
-                    "text": c
-                }) + "\n")
+def _build_raw_s3_key(local_path: Path, ticker: str, filing_type: str) -> str:
+    accession = local_path.parent.name
+    return f"raw/sec/{ticker}/{filing_type}/{accession}/full-submission.txt"
 
 
-async def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--ticker", required=True, help="e.g. AAPL, MSFT")
-    ap.add_argument("--filings", nargs="+", default=["10-K", "10-Q"])
-    ap.add_argument("--after", default="2023-01-01")
-    ap.add_argument("--limit", type=int, default=1)
-    ap.add_argument("--request_delay", type=float, default=0.1)
-    ap.add_argument("--chunk_size", type=int, default=750)
-    ap.add_argument("--chunk_overlap", type=int, default=50)
-    args = ap.parse_args()
-
-    # Step 1–3 (company_name/email auto from .env, with defaults)
-    state = step1_initialize_pipeline(download_dir="data/raw/sec")
-    state = step2_add_downloader(state)
-    state = step3_configure_rate_limiting(state, request_delay=args.request_delay)
-
-    # Step 4–7
-    state = await step4_download_filings(
-        state,
-        tickers=[args.ticker],
-        filing_types=args.filings,
-        after_date=args.after,
-        limit=args.limit,
-    )
-    state = await step5_parse_documents(state)
-    state = step6_deduplicate_documents(state)
-    state = await step7_chunk_text(state, chunk_size=args.chunk_size, chunk_overlap=args.chunk_overlap)
-
-    save_outputs(state, out_dir="data/processed")
-
-    print("\nDone. Outputs:")
-    print(" - data/raw/sec/ (downloads)")
-    print(" - data/processed/documents/ (parsed)")
-    print(" - data/processed/chunks/ (chunks)")
-    print(" - data/processed/registry/document_registry.txt (dedupe registry)")
+def _build_parsed_s3_key(ticker: str, document_id: str) -> str:
+    return f"processed/parsed/{ticker}/{document_id}.json"
 
 
-if __name__ == "__main__":
-    asyncio.run(main())
+def _build_chunks_s3_key(ticker: str, document_id: str) -> str:
+    return f"processed/chunks/{ticker}/{document_id}.json"
+
+
+def run_pipeline_1_for_company(
+    company_id: str,
+    ticker: str,
+    filing_types: Optional[List[str]] = None,
+    limit: int = 10,
+    after: str = "2021-01-01",
+    export_samples: bool = True,
+    samples_dir: Path = Path("data/samples"),
+    max_samples: int = 3,
+) -> dict:
+    """
+    Pipeline 1:
+    SEC → RAW (local + S3)
+        → PARSE + DEDUPE
+        → PARSED JSON (local + S3)
+        → CHUNK
+        → CHUNKS JSON (local + S3)
+        → Snowflake (documents + document_chunks)
+    """
+
+    company_name = os.getenv("SEC_COMPANY_NAME", "PE-OrgAIR-Platform")
+    email = os.getenv("SEC_EMAIL")
+    if not email:
+        raise ValueError("SEC_EMAIL not set in .env")
+
+    base_data_dir = Path("data")
+
+    db = SnowflakeService()
+    s3 = S3Storage()
+    sec = SECEdgarPipeline(company_name=company_name, email=email)
+    parser = DocumentParser()
+    chunker = SemanticChunker()
+
+    stats = {
+        "downloaded": 0,
+        "processed": 0,
+        "deduped": 0,
+        "failed": 0,
+        "chunks": 0,
+        "samples_written": 0,
+    }
+
+    try:
+        filings = sec.download_filings(
+            ticker=ticker,
+            filing_types=filing_types,
+            limit=limit,
+            after=after,
+        )
+        stats["downloaded"] = len(filings)
+
+        for filing_path in filings:
+            try:
+                # --------------------------------------------------
+                # RAW → S3
+                # --------------------------------------------------
+                filing_type = filing_path.parts[-3]
+                raw_s3_key = _build_raw_s3_key(filing_path, ticker, filing_type)
+                s3.upload_file(filing_path, raw_s3_key)
+
+                # --------------------------------------------------
+                # PARSE
+                # --------------------------------------------------
+                doc = parser.parse_filing(filing_path, ticker)
+                document_id = doc.content_hash  # stable ID
+
+                # --------------------------------------------------
+                # DEDUPE
+                # --------------------------------------------------
+                if db.document_exists_by_hash(document_id):
+                    stats["deduped"] += 1
+                    continue
+
+                # --------------------------------------------------
+                # EXPORT PARSED → local + S3
+                # --------------------------------------------------
+                parsed_local_path = export_parsed_document_json(
+                    base_dir=base_data_dir,
+                    document_id=document_id,
+                    doc=doc,
+                    raw_s3_key=raw_s3_key,
+                )
+
+                parsed_s3_key = _build_parsed_s3_key(ticker, document_id)
+                s3.upload_file(parsed_local_path, parsed_s3_key)
+
+                # --------------------------------------------------
+                # CHUNK
+                # --------------------------------------------------
+                chunks = chunker.chunk_document(doc)
+
+                # --------------------------------------------------
+                # EXPORT CHUNKS → local + S3
+                # --------------------------------------------------
+                chunks_local_path = export_chunks_json(
+                    base_dir=base_data_dir,
+                    document_id=document_id,
+                    ticker=ticker,
+                    chunks=chunks,
+                )
+
+                chunks_s3_key = _build_chunks_s3_key(ticker, document_id)
+                s3.upload_file(chunks_local_path, chunks_s3_key)
+
+                # --------------------------------------------------
+                # SNOWFLAKE INSERTS
+                # --------------------------------------------------
+                db.insert_document(
+                    company_id=company_id,
+                    ticker=ticker,
+                    filing_type=doc.filing_type,
+                    filing_date=doc.filing_date,
+                    local_path=str(filing_path),
+                    s3_key=raw_s3_key,
+                    content_hash=document_id,
+                    word_count=doc.word_count,
+                    chunk_count=len(chunks),
+                    status="chunked",
+                    processed_at=datetime.now(timezone.utc),
+                )
+
+                inserted = db.insert_chunks(chunks)
+                stats["chunks"] += inserted
+                stats["processed"] += 1
+
+                # --------------------------------------------------
+                # OPTIONAL SAMPLE EXPORT (debug / grading)
+                # --------------------------------------------------
+                if export_samples and stats["samples_written"] < max_samples:
+                    export_sample_json(
+                        out_dir=samples_dir,
+                        document_id=document_id,
+                        doc=doc,
+                        s3_key=raw_s3_key,
+                        source_url=None,
+                        chunks=chunks,
+                    )
+                    stats["samples_written"] += 1
+
+            except Exception:
+                stats["failed"] += 1
+                continue
+
+        return stats
+
+    finally:
+        db.close()
