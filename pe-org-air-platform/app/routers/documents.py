@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from typing import Optional
 
 from app.services.snowflake import SnowflakeService
-from app.pipelines.runner import run_pipeline_1_for_company
 
 router = APIRouter(prefix="/api/v1/documents", tags=["documents"])
 
@@ -18,51 +17,33 @@ class DocumentCollectRequest(BaseModel):
     limit: int = 10
 
 
-
 class DocumentCollectResponse(BaseModel):
     status: str
     message: str
 
 
 @router.post("/collect", response_model=DocumentCollectResponse)
-async def collect_documents(req: DocumentCollectRequest, background_tasks: BackgroundTasks):
+async def collect_documents(req: DocumentCollectRequest):
     """
-    Trigger SEC document collection (Pipeline 1) as background task.
+    DEPRECATED: Use the new SEC Pipeline endpoints instead.
+    
+    New endpoints:
+    - POST /api/v1/sec/download
+    - GET /api/v1/sec/parse
+    - GET /api/v1/sec/deduplicate
+    - POST /api/v1/sec/chunk
+    - GET /api/v1/sec/extract-items
+    - GET /api/v1/sec/stats
     """
-    if not req.ticker:
-        raise HTTPException(status_code=400, detail="ticker is required")
-
-    background_tasks.add_task(
-        run_pipeline_1_for_company,
-        company_id=req.company_id,
-        ticker=req.ticker.upper(),
-        filing_types=req.filing_types,
-        limit=req.limit,
-        after=req.after,
-        export_samples=True,
-    )
-
     return DocumentCollectResponse(
-        status="queued",
-        message=f"Document collection queued for {req.ticker.upper()}",
+        status="deprecated",
+        message="This endpoint is deprecated. Please use the new SEC Pipeline: POST /api/v1/sec/download",
     )
 
-def list_companies(self) -> list[dict]:
-    sql = """
-        SELECT id, ticker
-        FROM companies
-        WHERE is_deleted = FALSE
-          AND ticker IS NOT NULL
-    """
-    cur = self.conn.cursor(snowflake.connector.DictCursor)
-    try:
-        cur.execute(sql)
-        return cur.fetchall()
-    finally:
-        cur.close()
-        
+
 @router.get("")
 async def list_documents(ticker: Optional[str] = Query(default=None)):
+    """List all documents from Snowflake, optionally filtered by ticker."""
     db = SnowflakeService()
     try:
         return db.list_documents(ticker=ticker.upper() if ticker else None)
@@ -72,6 +53,7 @@ async def list_documents(ticker: Optional[str] = Query(default=None)):
 
 @router.get("/{doc_id}")
 async def get_document(doc_id: str):
+    """Get a single document by ID."""
     db = SnowflakeService()
     try:
         doc = db.get_document(doc_id)
@@ -84,6 +66,7 @@ async def get_document(doc_id: str):
 
 @router.get("/{doc_id}/chunks")
 async def get_document_chunks(doc_id: str):
+    """Get all chunks for a document."""
     db = SnowflakeService()
     try:
         return db.get_document_chunks(doc_id)
