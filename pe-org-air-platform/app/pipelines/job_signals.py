@@ -199,27 +199,66 @@ async def step2_fetch_job_postings(
     return state
 
 
+def _has_keyword(text: str, keyword: str) -> bool:
+    """
+    Check if keyword exists in text with word boundary awareness.
+    Handles short keywords like 'ai', 'ml' that could match parts of words.
+    """
+    import re
+
+    # For very short keywords (2-3 chars), use word boundary matching
+    if len(keyword) <= 3:
+        # Match as whole word or with common separators
+        pattern = r'(?:^|[\s,\-_/\(\)])' + re.escape(keyword) + r'(?:$|[\s,\-_/\(\)])'
+        return bool(re.search(pattern, text, re.IGNORECASE))
+    else:
+        # For longer keywords, simple substring match is fine
+        return keyword in text
+
+
 def step3_classify_ai_jobs(state: Pipeline2State) -> Pipeline2State:
-    """Classify job postings as AI-related using AI_KEYWORDS."""
+    """
+    Classify job postings as AI-related using AI_KEYWORDS.
+
+    Classification logic:
+    - If description is available: require 2+ AI keywords
+    - If title-only (no description): require 1+ AI keyword (more lenient)
+    """
 
     for posting in state.job_postings:
-        text = f"{posting.get('title', '')} {posting.get('description', '')}".lower()
+        title = posting.get('title', '')
+        description = posting.get('description', '') or ''
+
+        # Check if we have a real description
+        has_description = description and description.lower() not in ('none', 'nan', '')
+
+        # Combine title and description for searching
+        text = f"{title} {description}".lower()
+        title_lower = title.lower()
 
         # Find matching AI keywords
         ai_keywords_found = []
         for keyword in AI_KEYWORDS:
-            if keyword in text:
+            if _has_keyword(text, keyword):
                 ai_keywords_found.append(keyword)
 
         # Find matching tech stack keywords
         techstack_found = []
         for keyword in AI_TECHSTACK_KEYWORDS:
-            if keyword in text:
+            if _has_keyword(text, keyword):
                 techstack_found.append(keyword)
 
         posting["ai_keywords_found"] = ai_keywords_found
         posting["techstack_keywords_found"] = techstack_found
-        posting["is_ai_role"] = len(ai_keywords_found) >= 2  # At least 2 keywords
+
+        # Determine if AI role based on keyword count
+        # Lower threshold for title-only jobs (LinkedIn often doesn't return descriptions)
+        if has_description:
+            # With description: require 2 keywords for confidence
+            posting["is_ai_role"] = len(ai_keywords_found) >= 2
+        else:
+            # Title-only: require 1 keyword (title keywords are more reliable)
+            posting["is_ai_role"] = len(ai_keywords_found) >= 1
 
         # Calculate AI score (0-100)
         posting["ai_score"] = min(100.0, len(ai_keywords_found) * 15.0)
