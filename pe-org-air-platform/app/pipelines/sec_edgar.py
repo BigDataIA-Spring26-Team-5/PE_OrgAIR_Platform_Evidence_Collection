@@ -1,114 +1,11 @@
-# from __future__ import annotations
-
-# from pathlib import Path
-# from typing import List, Optional
-# import asyncio
-# import os
-
-# from sec_edgar_downloader import Downloader
-
-# from app.pipelines.pipeline_state import PipelineState
-
-
-# FILING_TYPES = ["10-K", "10-Q", "8-K", "DEF 14A"]
-
-
-# def step1_initialize_pipeline(
-#     *,
-#     company_name: Optional[str] = None,
-#     email_address: Optional[str] = None,
-#     download_dir: str = "data/raw/sec"
-# ) -> PipelineState:
-#     """
-#     If company_name/email aren't passed, try environment variables.
-#     This makes it feel like you only need ticker to run.
-#     """
-#     company_name = company_name or os.getenv("SEC_DOWNLOADER_COMPANY_NAME") or "cs2-student"
-#     email_address = email_address or os.getenv("SEC_DOWNLOADER_EMAIL") or "student@example.com"
-
-#     state = PipelineState(
-#         company_name=company_name,
-#         email_address=email_address,
-#         download_dir=Path(download_dir),
-#     )
-#     state.download_dir.mkdir(parents=True, exist_ok=True)
-#     print(f"✓ Pipeline initialized (requester={state.company_name}, email={state.email_address})")
-#     return state
-
-
-# def step2_add_downloader(state: PipelineState) -> PipelineState:
-#     state.downloader = Downloader(
-#         company_name=state.company_name,
-#         email_address=state.email_address,
-#         download_folder=str(state.download_dir)
-#     )
-#     print("✓ SEC Downloader initialized")
-#     return state
-
-
-# def step3_configure_rate_limiting(state: PipelineState, request_delay: float = 0.1) -> PipelineState:
-#     state.request_delay = request_delay
-#     print(f"✓ Rate limiting set to {request_delay}s between requests")
-#     return state
-
-
-# async def step4_download_filings(
-#     state: PipelineState,
-#     *,
-#     tickers: List[str],
-#     filing_types: Optional[List[str]] = None,
-#     after_date: Optional[str] = None,
-#     limit: int = 2
-# ) -> PipelineState:
-#     """
-#     Downloads filings for tickers and collects paths to full-submission.txt.
-#     """
-#     if not state.downloader:
-#         raise ValueError("Downloader not initialized. Run step2_add_downloader first.")
-
-#     filing_types = filing_types or FILING_TYPES
-#     state.downloaded_filings = []
-
-#     for ticker in tickers:
-#         ticker = ticker.upper()
-#         state.summary["attempted_downloads"] += len(filing_types) * limit
-
-#         for filing_type in filing_types:
-#             await asyncio.sleep(state.request_delay)
-
-#             try:
-#                 state.downloader.get(filing_type, ticker, after=after_date, limit=limit)
-
-#                 # sec-edgar-downloader folder:
-#                 # <download_dir>/sec-edgar-filings/<TICKER>/<FILING_TYPE>/<accession>/full-submission.txt
-#                 filing_dir = state.download_dir / "sec-edgar-filings" / ticker / filing_type
-#                 if filing_dir.exists():
-#                     for submission in filing_dir.glob("**/full-submission.txt"):
-#                         accession = submission.parent.name
-#                         state.downloaded_filings.append({
-#                             "ticker": ticker,
-#                             "filing_type": filing_type,
-#                             "accession_number": accession,
-#                             "path": str(submission)
-#                         })
-
-#             except Exception as e:
-#                 state.summary["details"].append({
-#                     "ticker": ticker,
-#                     "filing_type": filing_type,
-#                     "status": "download_failed",
-#                     "error": str(e),
-#                 })
-
-#     print(f"✓ Downloaded {len(state.downloaded_filings)} filings")
-#     return state
-
-
 from __future__ import annotations
 
 import logging
+import re
+import time
+import requests
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 from sec_edgar_downloader import Downloader
 
@@ -119,8 +16,16 @@ class SECEdgarPipeline:
     """
     Pipeline for downloading SEC filings using sec-edgar-downloader.
 
+    Downloads:
+    - full-submission.txt (main HTML filing)
+    - Any PDF/Excel exhibits attached to the filing
+
     Downloads are stored under:
-      {download_dir}/sec-edgar-filings/{ticker}/{filing_type}/.../full-submission.txt
+      {download_dir}/sec-edgar-filings/{ticker}/{filing_type}/{accession}/
+        ├── full-submission.txt
+        └── exhibits/
+            ├── *.pdf
+            └── *.xlsx
     """
 
     SUPPORTED_FILING_TYPES = ["10-K", "10-Q", "8-K", "DEF 14A"]
@@ -134,6 +39,12 @@ class SECEdgarPipeline:
         self.download_dir = download_dir
         self.download_dir.mkdir(parents=True, exist_ok=True)
         self.dl = Downloader(company_name, email, self.download_dir)
+        self.company_name = company_name
+        self.email = email
+        self.headers = {
+            "User-Agent": f"{company_name} ({email})",
+            "Accept-Encoding": "gzip, deflate",
+        }
 
     def download_filings(
         self,
@@ -174,6 +85,9 @@ class SECEdgarPipeline:
                         downloaded.append(filing_path)
                         logger.info("Downloaded: %s", filing_path)
 
+                        # Download PDF/Excel exhibits
+                        self._download_exhibits(filing_path, ticker)
+
             except Exception as e:
                 logger.exception(
                     "Error downloading %s for %s: %s",
@@ -184,3 +98,92 @@ class SECEdgarPipeline:
 
         return downloaded
 
+    def _download_exhibits(self, submission_path: Path, ticker: str) -> List[Path]:
+        """
+        Download PDF and Excel exhibits from a filing.
+        
+        Parses the full-submission.txt to find exhibit filenames and downloads them.
+        """
+        downloaded_exhibits: List[Path] = []
+        
+        try:
+            content = submission_path.read_text(encoding="utf-8", errors="ignore")
+            
+            # Extract CIK from the submission
+            cik = self._extract_cik(content)
+            if not cik:
+                logger.warning("Could not extract CIK from %s", submission_path)
+                return downloaded_exhibits
+            
+            # Get accession number from folder name
+            accession = submission_path.parent.name
+            accession_clean = accession.replace("-", "")
+            
+            # Build base URL
+            base_url = f"https://www.sec.gov/Archives/edgar/data/{cik}/{accession_clean}/"
+            
+            # Find all filenames in the submission (PDFs, Excel, HTM)
+            # Pattern matches <FILENAME>something.ext
+            filename_pattern = r'<FILENAME>([^\n<]+)'
+            matches = re.findall(filename_pattern, content)
+            
+            # Filter for PDFs and Excel files
+            exhibit_files = [
+                f.strip() for f in matches 
+                if f.strip().lower().endswith(('.pdf', '.xlsx', '.xls'))
+            ]
+            
+            if not exhibit_files:
+                logger.info("No PDF/Excel exhibits found in %s", submission_path)
+                return downloaded_exhibits
+            
+            # Create exhibits directory
+            exhibits_dir = submission_path.parent / "exhibits"
+            exhibits_dir.mkdir(parents=True, exist_ok=True)
+            
+            for filename in exhibit_files:
+                local_path = exhibits_dir / filename
+                
+                # Skip if already downloaded
+                if local_path.exists():
+                    downloaded_exhibits.append(local_path)
+                    continue
+                
+                try:
+                    url = base_url + filename
+                    logger.info("Downloading exhibit: %s", url)
+                    
+                    response = requests.get(url, headers=self.headers, timeout=60)
+                    
+                    if response.status_code == 200:
+                        local_path.write_bytes(response.content)
+                        downloaded_exhibits.append(local_path)
+                        logger.info("Saved exhibit: %s", local_path)
+                    else:
+                        logger.warning("Failed to download %s: HTTP %d", url, response.status_code)
+                    
+                    # Rate limiting (SEC requires 10 requests/sec max)
+                    time.sleep(0.15)
+                    
+                except Exception as e:
+                    logger.warning("Error downloading exhibit %s: %s", filename, str(e))
+            
+        except Exception as e:
+            logger.warning("Error processing exhibits for %s: %s", submission_path, str(e))
+        
+        return downloaded_exhibits
+
+    def _extract_cik(self, content: str) -> Optional[str]:
+        """Extract CIK (Central Index Key) from submission content."""
+        patterns = [
+            r'CENTRAL INDEX KEY:\s*(\d+)',
+            r'<CIK>(\d+)',
+            r'"cik":\s*"?(\d+)"?',
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, content, re.IGNORECASE)
+            if match:
+                return match.group(1)
+        
+        return None
