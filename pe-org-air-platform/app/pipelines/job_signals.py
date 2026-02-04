@@ -59,9 +59,11 @@ async def step2_fetch_job_postings(
     # Try to import jobspy
     try:
         from jobspy import scrape_jobs
-    except ImportError:
-        print("  [error] python-jobspy not installed. Run: pip install python-jobspy")
-        return state
+    except ImportError as e:
+        error_msg = "python-jobspy not installed. Run: pip install python-jobspy"
+        print(f"  [error] {error_msg}")
+        state.add_error("job_fetch", "import", error_msg)
+        raise ImportError(error_msg) from e
 
     for company in state.companies:
         company_id = company.get("id", "")
