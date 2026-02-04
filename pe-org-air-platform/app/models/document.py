@@ -628,3 +628,40 @@ class EvidenceCollectionReport(BaseModel):
     summary: SummaryStatistics
     documents_by_company: List[CompanyDocumentStats]
     status_breakdown: Dict[str, int]
+
+
+# ============================================================
+# CHUNKING MODELS
+# ============================================================
+
+class ChunkByTickerResponse(BaseModel):
+    """Response for chunking by ticker"""
+    ticker: str
+    total_documents: int
+    chunked: int
+    skipped: int
+    failed: int
+    total_chunks: int
+    chunk_size: int
+    chunk_overlap: int
+
+
+class ChunkAllResponse(BaseModel):
+    """Response for chunking all companies"""
+    total_documents_chunked: int
+    total_chunks_created: int
+    chunk_size: int
+    chunk_overlap: int
+    by_company: List[dict]
+
+
+class DocumentChunkResponse(BaseModel):
+    """Single chunk response"""
+    id: str
+    document_id: str
+    chunk_index: int
+    content: str
+    section: Optional[str]
+    start_char: int
+    end_char: int
+    word_count: int
