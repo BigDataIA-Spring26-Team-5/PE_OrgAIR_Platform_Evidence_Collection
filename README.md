@@ -26,14 +26,27 @@ cd pe-org-air-platform
 # 2. Copy environment template and configure
 cp .env.example .env
 # Edit .env with your credentials (Snowflake, AWS, Redis)
+```
 
-# 3. create a virtual envirornment
+### Using Poetry (Recommended)
+
+Poetry handles virtual environment creation and dependency management automatically.
+
+```bash
+# Install Poetry (if not already installed)
 pip install poetry
+
+# Install all dependencies (creates venv automatically)
+poetry install
+
+# Activate the virtual environment
 poetry env activate
 
-# 4. Install the requirements
-pip install -r requirements.txt
+# Copy and paste the output in your command line, It should be something like:
+& "C:\Users\...\pe-org-air-platform\.venv\Scripts\activate.ps1"
 
+# Install additional packages which are not available through poetry (eg. python-jobspy)
+pip install -r requirements.txt
 ```
 
 ---
