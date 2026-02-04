@@ -146,6 +146,7 @@ class StoredSignalSummary(BaseModel):
     """Summary of stored signals for a company."""
     company_id: str
     company_name: str
+    ticker: str = ""
     collected_at: str
     total_jobs: int = 0
     ai_jobs: int = 0
@@ -155,3 +156,37 @@ class StoredSignalSummary(BaseModel):
     patent_portfolio_score: Optional[float] = None
     techstack_score: Optional[float] = None
     techstack_keywords: List[str] = Field(default_factory=list)
+
+
+# ============================================
+# Signal Scores (Snowflake persistence)
+# ============================================
+
+class SignalScoresResponse(BaseModel):
+    """
+    Response model for signal scores stored in Snowflake.
+
+    Scores:
+    - hiring_score: Job market/hiring signal (0-100)
+    - innovation_score: Patent/innovation signal (0-100)
+    - tech_stack_score: Tech stack signal (0-100)
+    - leadership_score: Leadership signal (0-100) - optional, blank for now
+    - composite_score: Weighted average of available scores
+    """
+    company_id: str
+    company_name: str
+    ticker: str
+    hiring_score: Optional[float] = Field(None, ge=0, le=100, description="Job market/hiring score")
+    innovation_score: Optional[float] = Field(None, ge=0, le=100, description="Patent/innovation score")
+    tech_stack_score: Optional[float] = Field(None, ge=0, le=100, description="Tech stack score")
+    leadership_score: Optional[float] = Field(None, ge=0, le=100, description="Leadership score (blank for now)")
+    composite_score: Optional[float] = Field(None, ge=0, le=100, description="Composite score")
+    total_jobs: int = 0
+    ai_jobs: int = 0
+    total_patents: int = 0
+    ai_patents: int = 0
+    techstack_keywords: List[str] = Field(default_factory=list)
+    s3_jobs_key: Optional[str] = None
+    s3_patents_key: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
