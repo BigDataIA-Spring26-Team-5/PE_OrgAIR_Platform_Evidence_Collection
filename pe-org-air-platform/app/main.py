@@ -10,6 +10,7 @@ from app.routers.health import router as health_router
 from app.routers.assessments import router as assessments_router
 from app.routers.dimensionScores import router as dimension_scores_router
 from app.routers.documents import router as documents_router
+from app.routers.signals import router as signals_router  # NEW: Signals router
 
 
 load_dotenv()
@@ -51,6 +52,7 @@ app.include_router(companies_router)
 app.include_router(industries_router)  # NEW: Separate industries router
 app.include_router(assessments_router)
 app.include_router(dimension_scores_router)
+app.include_router(signals_router)  # NEW: Signals router for job postings, patents, tech stacks
 
 
 # STARTUP & SHUTDOWN EVENTS
