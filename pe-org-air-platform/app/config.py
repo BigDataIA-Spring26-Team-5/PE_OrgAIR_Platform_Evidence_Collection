@@ -83,7 +83,7 @@ class Settings(BaseSettings):
     
     # Job Signals Pipeline Constants
     JOBSPY_REQUEST_DELAY: float = Field(default=6.0, ge=1.0, le=30.0)
-    JOBSPY_DEFAULT_SITES: List[str] = Field(default=["linkedin"])
+    JOBSPY_DEFAULT_SITES: List[str] = Field(default=["linkedin", "indeed", "glassdoor"])
     JOBSPY_RESULTS_WANTED: int = Field(default=100, ge=10, le=1000)
     JOBSPY_HOURS_OLD: int = Field(default=72, ge=1, le=720)
     JOBSPY_AI_SCORE_MULTIPLIER: float = Field(default=15.0, ge=5.0, le=50.0)
