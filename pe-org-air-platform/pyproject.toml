@@ -3,10 +3,9 @@ name = "pe-org-air-platform"
 version = "0.1.0"
 description = ""
 authors = [
-    {name = "bhavyalikhitha7",email = "bukka.b@northeastern.edu"}
+    {name = "aqeel",email = "ryan.aq@northeastern.edu"}
 ]
-readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.11,<4.0"
 dependencies = [
     "fastapi (>=0.128.0,<0.129.0)",
     "uvicorn[standard] (>=0.40.0,<0.41.0)",
@@ -25,11 +24,12 @@ dependencies = [
     "beautifulsoup4 (>=4.14.3,<5.0.0)",
     "lxml (>=6.0.2,<7.0.0)",
     "pdfplumber (>=0.11.9,<0.12.0)",
-    "pymupdf (>=1.26.7,<2.0.0)"
+    "pymupdf (>=1.26.7,<2.0.0)",
+    "python-jobspy (>=1.1.0,<2.0.0)"
 ]
 
 [tool.poetry]
-packages = [{include = "pe_org_air_platform", from = "src"}]
+package-mode = false
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
