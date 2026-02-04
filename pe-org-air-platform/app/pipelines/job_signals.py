@@ -2,79 +2,17 @@ from __future__ import annotations
 
 import asyncio
 import json
-import math
+import re
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
-from typing import Any, List, Optional
+from typing import List, Optional
 
 from app.config import settings
 from app.models.job_signals import JobPosting
 from app.pipelines.keywords import AI_KEYWORDS, AI_TECHSTACK_KEYWORDS, TOP_AI_TOOLS
 from app.pipelines.pipeline2_state import Pipeline2State
-
-
-def _clean_nan(value: Any) -> Any:
-    """Convert NaN values to None for Pydantic compatibility."""
-    if value is None:
-        return None
-    try:
-        if isinstance(value, float) and math.isnan(value):
-            return None
-    except (TypeError, ValueError):
-        pass
-    if hasattr(value, 'isnull') and value.isnull():
-        return None
-    if str(value) in ('nan', 'NaN', 'NaT'):
-        return None
-    return value
-
-
-def _normalize_company_name(name: str) -> str:
-    """Normalize company name for comparison."""
-    if not name:
-        return ""
-    name = name.lower().strip()
-    # Remove common suffixes
-    for suffix in [", inc.", ", inc", " inc.", " inc", ", llc", " llc",
-                   ", ltd", " ltd", " corporation", " corp.", " corp",
-                   " technologies", " technology", " software", " systems"]:
-        if name.endswith(suffix):
-            name = name[:-len(suffix)]
-    return name.strip()
-
-
-def _company_name_matches(job_company: str, target_company: str) -> bool:
-    """
-    Check if job's company name matches target company.
-
-    Uses normalized comparison to handle variations like:
-    - "Microsoft" vs "Microsoft Corporation"
-    - "Google" vs "Google LLC"
-    """
-    if not job_company or not target_company:
-        return False
-
-    job_norm = _normalize_company_name(job_company)
-    target_norm = _normalize_company_name(target_company)
-
-    # Empty after normalization
-    if not job_norm or not target_norm:
-        return False
-
-    # Exact match
-    if job_norm == target_norm:
-        return True
-
-    # Target is contained in job company name (e.g., "Microsoft" in "Microsoft Corporation")
-    if target_norm in job_norm:
-        return True
-
-    # Job company is contained in target (e.g., "Google" in "Google LLC")
-    if job_norm in target_norm:
-        return True
-
-    return False
+from app.pipelines.utils import clean_nan, company_name_matches, safe_filename
 
 
 def step1_init_job_collection(state: Pipeline2State) -> Pipeline2State:
@@ -157,12 +95,12 @@ async def step2_fetch_job_postings(
 
                 for _, row in jobs_df.iterrows():
                     # Get the ACTUAL company name from the job posting
-                    job_company = str(row.get("company", "")) if _clean_nan(row.get("company")) else ""
+                    job_company = str(row.get("company", "")) if clean_nan(row.get("company")) else ""
                     source = str(row.get("site", "unknown"))
 
                     # Post-filter: verify the job's company matches our target
                     # This filters out jobs that just mention "Microsoft Office" etc.
-                    if not _company_name_matches(job_company, company_name):
+                    if not company_name_matches(job_company, company_name):
                         filtered_count += 1
                         continue
 
@@ -171,10 +109,10 @@ async def step2_fetch_job_postings(
                         company_name=job_company,  # Use actual company name from job
                         title=str(row.get("title", "")),
                         description=str(row.get("description", "")),
-                        location=str(row.get("location", "")) if _clean_nan(row.get("location")) else None,
-                        posted_date=_clean_nan(row.get("date_posted")),
+                        location=str(row.get("location", "")) if clean_nan(row.get("location")) else None,
+                        posted_date=clean_nan(row.get("date_posted")),
                         source=source,
-                        url=str(row.get("job_url", "")) if _clean_nan(row.get("job_url")) else None,
+                        url=str(row.get("job_url", "")) if clean_nan(row.get("job_url")) else None,
                     )
                     postings.append(posting)
 
@@ -382,7 +320,7 @@ def step5_save_to_json(state: Pipeline2State) -> Pipeline2State:
     for company_id, jobs in company_jobs.items():
         # Get company name for filename
         company_name = jobs[0].get("company_name", company_id) if jobs else company_id
-        safe_name = "".join(c if c.isalnum() else "_" for c in company_name)
+        safe_name = safe_filename(company_name)
 
         company_file = output_dir / f"{safe_name}_{timestamp}.json"
         company_data = {
@@ -446,7 +384,7 @@ def step5_store_to_s3_and_snowflake(state: Pipeline2State) -> Pipeline2State:
                 continue
 
             company_name = jobs[0].get("company_name", company_id)
-            safe_name = "".join(c if c.isalnum() else "_" for c in company_name)
+            safe_name = safe_filename(company_name)
 
             # -----------------------------------------
             # S3: Upload raw job postings

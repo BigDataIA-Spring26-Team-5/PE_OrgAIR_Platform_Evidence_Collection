@@ -12,19 +12,19 @@ from __future__ import annotations
 
 import asyncio
 import json
-import math
 import os
 import re
 from collections import defaultdict
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
 import httpx
 from dotenv import load_dotenv
 
 from app.pipelines.pipeline2_state import Pipeline2State
 from app.pipelines.keywords import PATENT_AI_KEYWORDS, AI_KEYWORDS
+from app.pipelines.utils import clean_nan, safe_filename
 from app.models.patent_signals import Patent
 
 # Load environment variables from .env file
@@ -35,20 +35,6 @@ load_dotenv()
 PATENTSVIEW_API_URL = os.getenv("PATENTSVIEW_API_URL", "https://search.patentsview.org/api/v1/patent/")
 PATENTSVIEW_REQUEST_DELAY = 1.5  # Rate limiting (45 req/min = 1.33s minimum)
 PATENTSVIEW_API_KEY = os.getenv("PATENTSVIEW_API_KEY")
-
-
-def _clean_nan(value: Any) -> Any:
-    """Convert NaN values to None for Pydantic compatibility."""
-    if value is None:
-        return None
-    try:
-        if isinstance(value, float) and math.isnan(value):
-            return None
-    except (TypeError, ValueError):
-        pass
-    if str(value) in ('nan', 'NaN', 'NaT', ''):
-        return None
-    return value
 
 
 def step1_init_patent_collection(state: Pipeline2State) -> Pipeline2State:
@@ -171,7 +157,7 @@ async def step2_fetch_patents(
                     cpc_codes = [c.get("cpc_group_id", "") for c in cpcs if c.get("cpc_group_id")]
 
                     # Parse date
-                    patent_date_str = _clean_nan(patent_data.get("patent_date"))
+                    patent_date_str = clean_nan(patent_data.get("patent_date"))
                     patent_date = None
                     if patent_date_str:
                         try:
@@ -329,7 +315,7 @@ def step5_save_patent_results(state: Pipeline2State) -> Pipeline2State:
     for company_id, patents in company_patents.items():
         # Get company name for filename
         company_name = patents[0].get("company_name", company_id) if patents else company_id
-        safe_name = "".join(c if c.isalnum() else "_" for c in company_name)
+        safe_name = safe_filename(company_name)
 
         company_file = output_dir / f"{safe_name}_patents_{timestamp}.json"
         company_data = {
