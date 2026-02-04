@@ -14,6 +14,7 @@ import asyncio
 import json
 import math
 import os
+import re
 from collections import defaultdict
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
@@ -215,13 +216,20 @@ def step3_classify_ai_patents(state: Pipeline2State) -> Pipeline2State:
     # Combine patent-specific and general AI keywords
     all_ai_keywords = PATENT_AI_KEYWORDS | AI_KEYWORDS
 
-    for patent in state.patents:
-        text = f"{patent.get('title', '')} {patent.get('abstract', '')}".lower()
+    # Pre-compile regex patterns for word boundary matching
+    # This prevents false positives like "ai" matching "aisle" or "rag" matching "storage"
+    keyword_patterns = {
+        keyword: re.compile(r'\b' + re.escape(keyword) + r'\b', re.IGNORECASE)
+        for keyword in all_ai_keywords
+    }
 
-        # Find matching AI keywords
+    for patent in state.patents:
+        text = f"{patent.get('title', '')} {patent.get('abstract', '')}"
+
+        # Find matching AI keywords using word boundary matching
         ai_keywords_found = []
-        for keyword in all_ai_keywords:
-            if keyword in text:
+        for keyword, pattern in keyword_patterns.items():
+            if pattern.search(text):
                 ai_keywords_found.append(keyword)
 
         patent["ai_keywords_found"] = ai_keywords_found
