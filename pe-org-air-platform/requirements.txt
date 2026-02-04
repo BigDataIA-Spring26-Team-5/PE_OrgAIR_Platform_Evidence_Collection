@@ -7,8 +7,9 @@ python-multipart>=0.0.6
 starlette>=0.35.0
 streamlit>=1.30.0
 pytest
-pip install sec-edgar-downloader
+sec-edgar-downloader
 pdfplumber>=0.9.0
+beautifulsoup4>=4.12.0
 # ============================================
 # Pydantic & Settings
 # ============================================
