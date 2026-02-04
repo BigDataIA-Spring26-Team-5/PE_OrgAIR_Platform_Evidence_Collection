@@ -10,7 +10,7 @@ from typing import Any, List, Optional
 
 from app.config import settings
 from app.models.job_signals import JobPosting
-from app.pipelines.keywords import AI_KEYWORDS, AI_TECHSTACK_KEYWORDS
+from app.pipelines.keywords import AI_KEYWORDS, AI_TECHSTACK_KEYWORDS, TOP_AI_TOOLS
 from app.pipelines.pipeline2_state import Pipeline2State
 
 
@@ -303,6 +303,58 @@ def step4_score_job_market(state: Pipeline2State) -> Pipeline2State:
     return state
 
 
+def step4b_score_techstack(state: Pipeline2State) -> Pipeline2State:
+    """
+    Calculate techstack score for each company based on AI tools presence.
+
+    Process:
+    1. Aggregate all unique techstack keywords from ALL jobs (not just AI jobs)
+    2. Score based on presence of specific AI tools (TOP_AI_TOOLS)
+
+    Scoring algorithm:
+    - Base: (AI tools found / Total AI tools) * 50
+    - Volume bonus: min(30, total_techstack_keywords * 1)
+    - Top tools bonus: 5 points per TOP_AI_TOOLS keyword (max 20)
+    """
+
+    company_jobs = defaultdict(list)
+    for posting in state.job_postings:
+        company_jobs[posting["company_id"]].append(posting)
+
+    for company_id, jobs in company_jobs.items():
+        if not jobs:
+            state.techstack_scores[company_id] = 0.0
+            state.company_techstacks[company_id] = []
+            continue
+
+        # Aggregate ALL unique techstack keywords from all jobs
+        all_techstack_keywords = set()
+        for job in jobs:
+            all_techstack_keywords.update(job.get("techstack_keywords_found", []))
+
+        # Store unique techstack for this company
+        state.company_techstacks[company_id] = sorted(list(all_techstack_keywords))
+
+        # Find AI-specific tools (intersection with TOP_AI_TOOLS)
+        ai_tools_found = all_techstack_keywords & TOP_AI_TOOLS
+        total_ai_tools = len(TOP_AI_TOOLS)
+
+        # Base score: ratio of AI tools found (0-50 points)
+        base_score = (len(ai_tools_found) / total_ai_tools * 50) if total_ai_tools > 0 else 0
+
+        # Volume bonus: reward having more techstack keywords (0-30 points)
+        volume_bonus = min(30, len(all_techstack_keywords) * 1)
+
+        # Top tools bonus: extra points for specific high-value AI tools (0-20 points)
+        top_tools_bonus = min(20, len(ai_tools_found) * 5)
+
+        final_score = min(100.0, base_score + volume_bonus + top_tools_bonus)
+        state.techstack_scores[company_id] = round(final_score, 2)
+
+    print(f"Step 4b: Scored techstack for {len(state.techstack_scores)} companies")
+    return state
+
+
 def step5_save_to_json(state: Pipeline2State) -> Pipeline2State:
     """Save results to local JSON files (legacy/debug mode)."""
 
@@ -339,6 +391,8 @@ def step5_save_to_json(state: Pipeline2State) -> Pipeline2State:
             "total_jobs": len(jobs),
             "ai_jobs": sum(1 for j in jobs if j.get("is_ai_role")),
             "job_market_score": state.job_market_scores.get(company_id, 0),
+            "techstack_score": state.techstack_scores.get(company_id, 0),
+            "techstack_keywords": state.company_techstacks.get(company_id, []),
             "jobs": jobs
         }
         with open(company_file, "w", encoding="utf-8") as f:
@@ -349,6 +403,8 @@ def step5_save_to_json(state: Pipeline2State) -> Pipeline2State:
     summary_data = {
         **state.summary,
         "job_market_scores": state.job_market_scores,
+        "techstack_scores": state.techstack_scores,
+        "company_techstacks": state.company_techstacks,
         "companies": [c.get("name", c.get("id")) for c in state.companies]
     }
     with open(summary_file, "w", encoding="utf-8") as f:
@@ -425,6 +481,11 @@ def step5_store_to_s3_and_snowflake(state: Pipeline2State) -> Pipeline2State:
             # Build summary text
             summary = f"Found {ai_count} AI roles out of {total_jobs} total jobs"
 
+            # Get techstack data for this company
+            techstack_keywords = state.company_techstacks.get(company_id, [])
+            techstack_score = state.techstack_scores.get(company_id, 0.0)
+            ai_tools_found = list(set(techstack_keywords) & TOP_AI_TOOLS)
+
             # Build raw_payload with detailed metrics
             raw_payload = {
                 "collection_date": timestamp,
@@ -438,6 +499,11 @@ def step5_store_to_s3_and_snowflake(state: Pipeline2State) -> Pipeline2State:
                 },
                 "top_ai_keywords": list(all_keywords)[:settings.JOBSPY_TOP_KEYWORDS_LIMIT],
                 "sources": list(set(j.get("source", "unknown") for j in jobs)),
+                "techstack": {
+                    "score": techstack_score,
+                    "all_keywords": techstack_keywords,
+                    "ai_tools_found": ai_tools_found,
+                },
             }
 
             # Determine primary source
@@ -486,6 +552,7 @@ async def run_job_signals(
     state = await step2_fetch_job_postings(state)
     state = step3_classify_ai_jobs(state)
     state = step4_score_job_market(state)
+    state = step4b_score_techstack(state)
 
     if use_cloud_storage:
         state = step5_store_to_s3_and_snowflake(state)

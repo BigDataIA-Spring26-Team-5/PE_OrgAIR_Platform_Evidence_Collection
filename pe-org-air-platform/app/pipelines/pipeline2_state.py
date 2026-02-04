@@ -30,6 +30,10 @@ class Pipeline2State:
     # Scores (company_id -> score)
     job_market_scores: Dict[str, float] = field(default_factory=dict)
     patent_scores: Dict[str, float] = field(default_factory=dict)
+    techstack_scores: Dict[str, float] = field(default_factory=dict)
+
+    # Techstack data (company_id -> list of unique keywords)
+    company_techstacks: Dict[str, List[str]] = field(default_factory=dict)
 
     # Summary tracking
     summary: Dict[str, Any] = field(default_factory=lambda: {
