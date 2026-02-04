@@ -248,72 +248,125 @@ AI_KEYWORDS = frozenset([
     "gpu clusters",
 ])
 
-# Tech stack keywords for digital presence scoring
+# Tech stack keywords for AI presence scoring
 AI_TECHSTACK_KEYWORDS = frozenset([
-    # Cloud AI platforms
+    # Cloud AI / ML platforms
     "aws sagemaker",
     "azure ml",
+    "azure machine learning",
     "google vertex ai",
+    "aws bedrock",
+    "azure openai",
+    "google ai platform",
     "databricks",
+    "databricks ml",
     "snowflake",
+    "snowflake cortex",
     "bigquery",
     "redshift",
 
-    # ML infrastructure
+    # ML / data infrastructure
     "kubernetes",
+    "k8s",
     "docker",
+    "containerization",
     "mlflow",
     "kubeflow",
     "airflow",
+    "apache airflow",
     "prefect",
     "dagster",
+    "argo workflows",
+    "argo",
 
-    # Data tools
+    # Data processing & streaming
     "spark",
+    "apache spark",
     "pyspark",
     "hadoop",
     "kafka",
+    "apache kafka",
     "flink",
+    "apache flink",
+    "beam",
+    "apache beam",
     "dbt",
     "fivetran",
     "airbyte",
 
-    # Programming languages
+    # Programming languages (AI-heavy usage)
     "python",
     "r programming",
+    "r language",
     "julia",
     "scala",
 
-    # Databases
+    # Databases & storage
     "postgresql",
+    "mysql",
     "mongodb",
     "elasticsearch",
+    "opensearch",
     "redis",
     "neo4j",
+    "cassandra",
+    "dynamodb",
+    "bigtable",
+
+    # Vector databases / semantic search
+    "vector database",
+    "vector db",
     "pinecone",
     "weaviate",
     "milvus",
+    "qdrant",
+    "chroma",
+    "faiss",
 
-    # Visualization
+    # Model serving & inference
+    "model serving",
+    "model inference",
+    "torchserve",
+    "tensorflow serving",
+    "triton inference server",
+    "bentoml",
+    "seldon",
+    "kserve",
+
+    # Visualization / BI
     "tableau",
     "power bi",
     "looker",
+    "superset",
     "metabase",
 
-    # Version control / MLOps
+    # Version control / MLOps tooling
     "git",
     "github",
     "gitlab",
+    "bitbucket",
     "dvc",
     "wandb",
+    "weights and biases",
     "neptune",
+    "clearml",
 
-    # AI-specific infra
+    # Experimentation & monitoring
+    "experiment tracking",
+    "model monitoring",
+    "data drift",
+    "concept drift",
+
+    # AI-specific compute & distributed systems
+    "gpu",
     "gpu cluster",
     "nvidia",
     "cuda",
+    "cudnn",
     "ray",
     "dask",
+    "horovod",
+    "distributed training",
 ])
 
 # Leadership background keywords for DEF 14A parsing
