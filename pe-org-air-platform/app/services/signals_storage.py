@@ -5,7 +5,7 @@ app/services/signals_storage.py
 Handles local storage and retrieval of collected signals data.
 Storage structure:
     data/signals/
-        {company_name}/
+        {company_id}/
             summary.json          - Overall summary with scores
             job_postings.json     - All job postings
             patents.json          - All patents
@@ -19,8 +19,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from app.pipelines.utils import safe_filename
-
 
 class SignalsStorage:
     """Service for storing and retrieving signals data from local filesystem."""
@@ -30,13 +28,13 @@ class SignalsStorage:
     def __init__(self):
         self.BASE_DIR.mkdir(parents=True, exist_ok=True)
 
-    def _get_company_dir(self, company_name: str) -> Path:
+    def _get_company_dir(self, company_id: str) -> Path:
         """Get the directory path for a company's signals data."""
-        safe_name = safe_filename(company_name)
-        return self.BASE_DIR / safe_name
+        return self.BASE_DIR / company_id
 
     def save_signals(
         self,
+        company_id: str,
         company_name: str,
         job_postings: List[Dict[str, Any]],
         patents: List[Dict[str, Any]],
@@ -48,10 +46,14 @@ class SignalsStorage:
         """
         Save all collected signals for a company.
 
+        Args:
+            company_id: UUID of the company from Snowflake
+            company_name: Company name for display and search purposes
+
         Returns:
             Path to the company's signals directory
         """
-        company_dir = self._get_company_dir(company_name)
+        company_dir = self._get_company_dir(company_id)
         company_dir.mkdir(parents=True, exist_ok=True)
 
         timestamp = datetime.now(timezone.utc).isoformat()
@@ -64,6 +66,7 @@ class SignalsStorage:
 
         # Save summary
         summary = {
+            "company_id": company_id,
             "company_name": company_name,
             "collected_at": timestamp,
             "total_jobs": total_jobs,
@@ -79,6 +82,7 @@ class SignalsStorage:
 
         # Save job postings
         self._save_json(company_dir / "job_postings.json", {
+            "company_id": company_id,
             "company_name": company_name,
             "collected_at": timestamp,
             "total_count": total_jobs,
@@ -89,6 +93,7 @@ class SignalsStorage:
 
         # Save patents
         self._save_json(company_dir / "patents.json", {
+            "company_id": company_id,
             "company_name": company_name,
             "collected_at": timestamp,
             "total_count": total_patents,
@@ -99,6 +104,7 @@ class SignalsStorage:
 
         # Save techstack
         self._save_json(company_dir / "techstack.json", {
+            "company_id": company_id,
             "company_name": company_name,
             "collected_at": timestamp,
             "techstack_score": techstack_score,
@@ -107,19 +113,19 @@ class SignalsStorage:
 
         return str(company_dir)
 
-    def get_summary(self, company_name: str) -> Optional[Dict[str, Any]]:
+    def get_summary(self, company_id: str) -> Optional[Dict[str, Any]]:
         """Get the summary for a company's signals."""
-        company_dir = self._get_company_dir(company_name)
+        company_dir = self._get_company_dir(company_id)
         return self._load_json(company_dir / "summary.json")
 
     def get_job_postings(
         self,
-        company_name: str,
+        company_id: str,
         limit: int = 100,
         offset: int = 0,
     ) -> Optional[Dict[str, Any]]:
         """Get job postings for a company with pagination."""
-        company_dir = self._get_company_dir(company_name)
+        company_dir = self._get_company_dir(company_id)
         data = self._load_json(company_dir / "job_postings.json")
 
         if data is None:
@@ -130,6 +136,7 @@ class SignalsStorage:
         paginated = all_postings[offset:offset + limit]
 
         return {
+            "company_id": data.get("company_id"),
             "company_name": data.get("company_name"),
             "collected_at": data.get("collected_at"),
             "total_count": data.get("total_count", len(all_postings)),
@@ -140,12 +147,12 @@ class SignalsStorage:
 
     def get_patents(
         self,
-        company_name: str,
+        company_id: str,
         limit: int = 100,
         offset: int = 0,
     ) -> Optional[Dict[str, Any]]:
         """Get patents for a company with pagination."""
-        company_dir = self._get_company_dir(company_name)
+        company_dir = self._get_company_dir(company_id)
         data = self._load_json(company_dir / "patents.json")
 
         if data is None:
@@ -156,6 +163,7 @@ class SignalsStorage:
         paginated = all_patents[offset:offset + limit]
 
         return {
+            "company_id": data.get("company_id"),
             "company_name": data.get("company_name"),
             "collected_at": data.get("collected_at"),
             "total_count": data.get("total_count", len(all_patents)),
@@ -164,9 +172,9 @@ class SignalsStorage:
             "patents": paginated,
         }
 
-    def get_techstack(self, company_name: str) -> Optional[Dict[str, Any]]:
+    def get_techstack(self, company_id: str) -> Optional[Dict[str, Any]]:
         """Get tech stack data for a company."""
-        company_dir = self._get_company_dir(company_name)
+        company_dir = self._get_company_dir(company_id)
         return self._load_json(company_dir / "techstack.json")
 
     def list_companies(self) -> List[Dict[str, Any]]:
@@ -179,15 +187,18 @@ class SignalsStorage:
             if company_dir.is_dir():
                 summary = self._load_json(company_dir / "summary.json")
                 if summary:
+                    # Ensure company_id is present (use directory name as fallback)
+                    if "company_id" not in summary:
+                        summary["company_id"] = company_dir.name
                     companies.append(summary)
 
         # Sort by collection date (most recent first)
         companies.sort(key=lambda x: x.get("collected_at", ""), reverse=True)
         return companies
 
-    def company_exists(self, company_name: str) -> bool:
+    def company_exists(self, company_id: str) -> bool:
         """Check if signals data exists for a company."""
-        company_dir = self._get_company_dir(company_name)
+        company_dir = self._get_company_dir(company_id)
         return (company_dir / "summary.json").exists()
 
     def _save_json(self, path: Path, data: Dict[str, Any]) -> None:

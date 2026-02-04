@@ -3,11 +3,12 @@ Signals Router - Job Postings, Patents, and Tech Stack Data
 app/routers/signals.py
 
 Provides API endpoints for collecting and retrieving AI-related signals for companies.
-- POST /collect: Triggers data collection and stores results locally
+- POST /collect: Triggers data collection for a company (by company_id from Snowflake)
 - GET endpoints: Retrieve previously collected data from local storage
 """
 
 from typing import List, Optional
+from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 
@@ -29,11 +30,12 @@ from app.pipelines.patent_signals import run_patent_signals
 from app.pipelines.keywords import TOP_AI_TOOLS
 from app.pipelines.utils import Company
 from app.services.signals_storage import SignalsStorage
+from app.repositories.company_repository import CompanyRepository
 
 router = APIRouter(prefix="/api/v1/signals", tags=["signals"])
 
 
-def _create_state(company_name: str, output_dir: str) -> Pipeline2State:
+def _create_state(company_id: str, company_name: str, output_dir: str) -> Pipeline2State:
     """Create a pipeline state for a single company."""
     return Pipeline2State(
         companies=[Company.from_name(company_name, 0).to_dict()],
@@ -42,6 +44,7 @@ def _create_state(company_name: str, output_dir: str) -> Pipeline2State:
 
 
 async def _collect_signals_task(
+    company_id: str,
     company_name: str,
     collect_jobs: bool,
     collect_patents: bool,
@@ -49,6 +52,10 @@ async def _collect_signals_task(
 ) -> None:
     """
     Background task to collect all signals for a company and store locally.
+
+    Args:
+        company_id: UUID of the company from Snowflake
+        company_name: Company name for search/scraping
     """
     storage = SignalsStorage()
 
@@ -62,7 +69,7 @@ async def _collect_signals_task(
     # Collect job postings and tech stack
     if collect_jobs:
         try:
-            job_state = _create_state(company_name, "data/signals/jobs")
+            job_state = _create_state(company_id, company_name, "data/signals/jobs")
             job_state = await run_job_signals(job_state, use_cloud_storage=False)
 
             job_postings = job_state.job_postings
@@ -70,21 +77,22 @@ async def _collect_signals_task(
             techstack_score = job_state.techstack_scores.get("company-0")
             techstack_keywords = job_state.company_techstacks.get("company-0", [])
         except Exception as e:
-            print(f"[signals] Job collection failed for {company_name}: {e}")
+            print(f"[signals] Job collection failed for {company_name} ({company_id}): {e}")
 
     # Collect patents
     if collect_patents:
         try:
-            patent_state = _create_state(company_name, "data/signals/patents")
+            patent_state = _create_state(company_id, company_name, "data/signals/patents")
             patent_state = await run_patent_signals(patent_state, years_back=patents_years_back)
 
             patents = patent_state.patents
             patent_score = patent_state.patent_scores.get("company-0")
         except Exception as e:
-            print(f"[signals] Patent collection failed for {company_name}: {e}")
+            print(f"[signals] Patent collection failed for {company_name} ({company_id}): {e}")
 
     # Save all collected data
     storage.save_signals(
+        company_id=company_id,
         company_name=company_name,
         job_postings=job_postings,
         patents=patents,
@@ -94,7 +102,7 @@ async def _collect_signals_task(
         techstack_keywords=techstack_keywords,
     )
 
-    print(f"[signals] Collection complete for {company_name}: {len(job_postings)} jobs, {len(patents)} patents")
+    print(f"[signals] Collection complete for {company_name} ({company_id}): {len(job_postings)} jobs, {len(patents)} patents")
 
 
 # ============================================
@@ -109,6 +117,8 @@ async def collect_signals(
     """
     Trigger signal collection (job postings, patents, tech stack) for a company.
 
+    Requires a valid company_id from the Snowflake database.
+
     This endpoint queues a background task to:
     1. Scrape job postings from LinkedIn, Indeed, Glassdoor
     2. Fetch patents from PatentsView API
@@ -117,13 +127,22 @@ async def collect_signals(
 
     Use GET endpoints to retrieve the collected data.
     """
-    if not req.company_name or not req.company_name.strip():
-        raise HTTPException(status_code=400, detail="company_name is required")
+    # Look up company from Snowflake
+    company_repo = CompanyRepository()
+    company = company_repo.get_by_id(req.company_id)
 
-    company_name = req.company_name.strip()
+    if company is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Company with ID '{req.company_id}' not found in database"
+        )
+
+    company_id = str(req.company_id)
+    company_name = company["name"]
 
     background_tasks.add_task(
         _collect_signals_task,
+        company_id=company_id,
         company_name=company_name,
         collect_jobs=req.collect_jobs,
         collect_patents=req.collect_patents,
@@ -133,6 +152,7 @@ async def collect_signals(
     return SignalCollectResponse(
         status="queued",
         message=f"Signal collection queued for {company_name}",
+        company_id=req.company_id,
         company_name=company_name,
     )
 
@@ -160,7 +180,7 @@ async def list_signal_companies():
 
 @router.get("/job_postings", response_model=JobPostingsResponse)
 async def get_job_postings(
-    company_name: str = Query(..., description="Company name to retrieve job postings for"),
+    company_id: UUID = Query(..., description="Company ID to retrieve job postings for"),
     limit: int = Query(100, ge=1, le=500, description="Maximum number of job postings to return"),
     offset: int = Query(0, ge=0, description="Offset for pagination"),
 ):
@@ -171,12 +191,12 @@ async def get_job_postings(
     Use POST /collect to trigger fresh data collection.
     """
     storage = SignalsStorage()
-    data = storage.get_job_postings(company_name, limit=limit, offset=offset)
+    data = storage.get_job_postings(str(company_id), limit=limit, offset=offset)
 
     if data is None:
         raise HTTPException(
             status_code=404,
-            detail=f"No job data found for '{company_name}'. Use POST /collect to fetch data first."
+            detail=f"No job data found for company '{company_id}'. Use POST /collect to fetch data first."
         )
 
     # Convert to response models
@@ -188,7 +208,7 @@ async def get_job_postings(
             continue
 
     return JobPostingsResponse(
-        company_id="company-0",
+        company_id=data.get("company_id", str(company_id)),
         company_name=data.get("company_name"),
         total_count=data.get("total_count", 0),
         ai_count=data.get("ai_count", 0),
@@ -204,7 +224,7 @@ async def get_job_postings(
 
 @router.get("/patents", response_model=PatentsResponse)
 async def get_patents(
-    company_name: str = Query(..., description="Company name to retrieve patents for"),
+    company_id: UUID = Query(..., description="Company ID to retrieve patents for"),
     limit: int = Query(100, ge=1, le=500, description="Maximum number of patents to return"),
     offset: int = Query(0, ge=0, description="Offset for pagination"),
 ):
@@ -215,12 +235,12 @@ async def get_patents(
     Use POST /collect to trigger fresh data collection.
     """
     storage = SignalsStorage()
-    data = storage.get_patents(company_name, limit=limit, offset=offset)
+    data = storage.get_patents(str(company_id), limit=limit, offset=offset)
 
     if data is None:
         raise HTTPException(
             status_code=404,
-            detail=f"No patent data found for '{company_name}'. Use POST /collect to fetch data first."
+            detail=f"No patent data found for company '{company_id}'. Use POST /collect to fetch data first."
         )
 
     # Convert to response models
@@ -232,7 +252,7 @@ async def get_patents(
             continue
 
     return PatentsResponse(
-        company_id="company-0",
+        company_id=data.get("company_id", str(company_id)),
         company_name=data.get("company_name"),
         total_count=data.get("total_count", 0),
         ai_count=data.get("ai_count", 0),
@@ -247,7 +267,7 @@ async def get_patents(
 
 @router.get("/tech_stacks", response_model=TechStacksResponse)
 async def get_tech_stacks(
-    company_name: str = Query(..., description="Company name to retrieve tech stack for"),
+    company_id: UUID = Query(..., description="Company ID to retrieve tech stack for"),
 ):
     """
     Retrieve stored tech stack data for a company.
@@ -256,21 +276,22 @@ async def get_tech_stacks(
     Use POST /collect to trigger fresh data collection.
     """
     storage = SignalsStorage()
-    data = storage.get_techstack(company_name)
+    data = storage.get_techstack(str(company_id))
 
     if data is None:
         raise HTTPException(
             status_code=404,
-            detail=f"No tech stack data found for '{company_name}'. Use POST /collect to fetch data first."
+            detail=f"No tech stack data found for company '{company_id}'. Use POST /collect to fetch data first."
         )
 
     keywords = data.get("techstack_keywords", [])
     ai_tools = [k for k in keywords if k in TOP_AI_TOOLS]
     techstack_score = data.get("techstack_score", 0)
+    company_name = data.get("company_name", "")
 
     techstack = TechStackResponse(
-        company_id="company-0",
-        company_name=data.get("company_name", company_name),
+        company_id=data.get("company_id", str(company_id)),
+        company_name=company_name,
         techstack_keywords=keywords,
         ai_tools_found=ai_tools,
         techstack_score=techstack_score,
@@ -279,8 +300,8 @@ async def get_tech_stacks(
     )
 
     return TechStacksResponse(
-        company_id="company-0",
-        company_name=data.get("company_name", company_name),
+        company_id=data.get("company_id", str(company_id)),
+        company_name=company_name,
         techstack_score=techstack_score,
         techstacks=[techstack],
     )
@@ -292,7 +313,7 @@ async def get_tech_stacks(
 
 @router.get("/all", response_model=AllSignalsResponse)
 async def get_all_signals(
-    company_name: str = Query(..., description="Company name to retrieve all signals for"),
+    company_id: UUID = Query(..., description="Company ID to retrieve all signals for"),
     jobs_limit: int = Query(50, ge=1, le=200, description="Maximum number of job postings to return"),
     patents_limit: int = Query(50, ge=1, le=200, description="Maximum number of patents to return"),
 ):
@@ -303,17 +324,20 @@ async def get_all_signals(
     Use POST /collect to trigger fresh data collection.
     """
     storage = SignalsStorage()
+    company_id_str = str(company_id)
 
     # Check if company has any data
-    summary = storage.get_summary(company_name)
+    summary = storage.get_summary(company_id_str)
     if summary is None:
         raise HTTPException(
             status_code=404,
-            detail=f"No signal data found for '{company_name}'. Use POST /collect to fetch data first."
+            detail=f"No signal data found for company '{company_id}'. Use POST /collect to fetch data first."
         )
 
+    company_name = summary.get("company_name", "")
+
     # Get job postings
-    job_data = storage.get_job_postings(company_name, limit=jobs_limit, offset=0)
+    job_data = storage.get_job_postings(company_id_str, limit=jobs_limit, offset=0)
     job_responses = []
     if job_data:
         for job in job_data.get("job_postings", []):
@@ -323,7 +347,7 @@ async def get_all_signals(
                 continue
 
     # Get patents
-    patent_data = storage.get_patents(company_name, limit=patents_limit, offset=0)
+    patent_data = storage.get_patents(company_id_str, limit=patents_limit, offset=0)
     patent_responses = []
     if patent_data:
         for patent in patent_data.get("patents", []):
@@ -333,7 +357,7 @@ async def get_all_signals(
                 continue
 
     # Get tech stack
-    techstack_data = storage.get_techstack(company_name)
+    techstack_data = storage.get_techstack(company_id_str)
     techstacks = []
     if techstack_data:
         keywords = techstack_data.get("techstack_keywords", [])
@@ -341,7 +365,7 @@ async def get_all_signals(
         techstack_score = techstack_data.get("techstack_score", 0)
 
         techstacks.append(TechStackResponse(
-            company_id="company-0",
+            company_id=company_id_str,
             company_name=company_name,
             techstack_keywords=keywords,
             ai_tools_found=ai_tools,
@@ -351,7 +375,7 @@ async def get_all_signals(
         ))
 
     return AllSignalsResponse(
-        company_id="company-0",
+        company_id=company_id_str,
         company_name=company_name,
         job_market_score=summary.get("job_market_score"),
         patent_portfolio_score=summary.get("patent_portfolio_score"),

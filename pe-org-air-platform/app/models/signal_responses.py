@@ -7,6 +7,7 @@ Pydantic models for API responses from signals endpoints.
 
 from datetime import datetime
 from typing import List, Optional, Dict, Any
+from uuid import UUID
 from pydantic import BaseModel, Field
 
 
@@ -126,7 +127,7 @@ class AllSignalsResponse(BaseModel):
 
 class SignalCollectRequest(BaseModel):
     """Request model for signal collection endpoint."""
-    company_name: str = Field(..., description="Company name to collect signals for")
+    company_id: UUID = Field(..., description="Company ID from Snowflake database")
     collect_jobs: bool = Field(default=True, description="Collect job postings")
     collect_patents: bool = Field(default=True, description="Collect patents")
     patents_years_back: int = Field(default=5, ge=1, le=20, description="Years back to search for patents")
@@ -136,12 +137,14 @@ class SignalCollectResponse(BaseModel):
     """Response model for signal collection endpoint."""
     status: str = Field(..., description="Collection status: queued, completed, or failed")
     message: str = Field(..., description="Status message")
+    company_id: Optional[UUID] = None
     company_name: Optional[str] = None
     data_path: Optional[str] = None
 
 
 class StoredSignalSummary(BaseModel):
     """Summary of stored signals for a company."""
+    company_id: str
     company_name: str
     collected_at: str
     total_jobs: int = 0
