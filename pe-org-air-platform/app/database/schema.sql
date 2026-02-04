@@ -275,3 +275,53 @@ BEGIN
     RETURN 'SUCCESS: Dimension score updated';
 END;
 $$;
+
+-- =============================================================================
+-- SIGNAL SCORE SCHEMA
+-- Stores company signal scores with upsert strategy:
+-- - If ticker exists: replace the row
+-- - If ticker is new: insert new row
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS SIGNAL_SCORES (
+    -- Primary identifiers
+    ticker VARCHAR(20) NOT NULL,               -- Upsert key (PRIMARY KEY)
+    company_id VARCHAR(36) NOT NULL,           -- UUID from companies table
+    company_name VARCHAR(255) NOT NULL,
+
+    -- Signal Scores (0-100 scale)
+    hiring_score FLOAT,                        -- Job market/hiring signal
+    innovation_score FLOAT,                    -- Patent/innovation signal
+    tech_stack_score FLOAT,                    -- Tech stack signal
+    leadership_score FLOAT,                    -- Leadership signal (NULL for now)
+    composite_score FLOAT,                     -- Weighted average of available scores
+
+    -- Metrics
+    total_jobs INTEGER DEFAULT 0,
+    ai_jobs INTEGER DEFAULT 0,
+    total_patents INTEGER DEFAULT 0,
+    ai_patents INTEGER DEFAULT 0,
+
+    -- Tech stack keywords (stored as JSON array)
+    techstack_keywords VARIANT,
+
+    -- S3 references
+    s3_jobs_key VARCHAR(500),
+    s3_patents_key VARCHAR(500),
+
+    -- Timestamps
+    created_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
+    updated_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
+
+    -- Primary key constraint
+    PRIMARY KEY (ticker)
+);
+
+COMMENT ON TABLE SIGNAL_SCORES IS 'Company signal scores from job market, patents, and tech stack analysis. Upsert by ticker.';
+COMMENT ON COLUMN SIGNAL_SCORES.ticker IS 'Company ticker symbol (upsert key)';
+COMMENT ON COLUMN SIGNAL_SCORES.hiring_score IS 'Job market/hiring signal score (0-100)';
+COMMENT ON COLUMN SIGNAL_SCORES.innovation_score IS 'Patent/innovation signal score (0-100)';
+COMMENT ON COLUMN SIGNAL_SCORES.tech_stack_score IS 'Tech stack signal score (0-100)';
+COMMENT ON COLUMN SIGNAL_SCORES.leadership_score IS 'Leadership signal score (0-100) - currently unused';
+COMMENT ON COLUMN SIGNAL_SCORES.composite_score IS 'Average of available scores';
+
