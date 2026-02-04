@@ -1,0 +1,783 @@
+[
+  {
+    "id": "79e7a169-d531-4ef6-b730-772f80ee69f1",
+    "company_id": "company-0",
+    "company_name": "JPMorgan Chase",
+    "patent_id": "12430124",
+    "patent_number": "12430124",
+    "title": "System and method for reducing context length in processing codebase using large language model",
+    "abstract": "A method and system for reducing context length in processing a codebase using large language model (LLM) are disclosed. The method includes receiving the codebase including multiple files for processing, generating, via the LLM, summaries based on the multiple files, and subsequently organizing the summaries based on a structure of the codebase. The method further includes determining a downstream task, determining whether the downstream task requires a summary of a code or the code itself, and transmitting the summary or the code to the downstream task for executing the downstream task.",
+    "patent_date": "2025-09-30 00:00:00",
+    "patent_type": "utility",
+    "assignees": [
+      "JPMORGAN CHASE BANK, N.A."
+    ],
+    "inventors": [
+      "",
+      "",
+      "",
+      ""
+    ],
+    "cpc_codes": [
+      "G06F8/70",
+      "G06F8/73"
+    ],
+    "ai_keywords_found": [
+      "large language model",
+      "llm"
+    ],
+    "is_ai_patent": true,
+    "ai_score": 40.0
+  },
+  {
+    "id": "58e788c2-c4cc-460b-bdd0-96d9720d1f84",
+    "company_id": "company-0",
+    "company_name": "JPMorgan Chase",
+    "patent_id": "12411016",
+    "patent_number": "12411016",
+    "title": "Systems and methods for providing location-based travel objective notifications",
+    "abstract": "In some aspects, the techniques described herein relate to a method including: receiving, by a collaboration service, location data of a user, wherein the location data includes a timestamp; verifying, by the collaboration service and based on a digital itinerary associated with the user, a location of the user; processing data from a data profile associated with the user as input data to a machine learning model; receiving, by the collaboration service and as output of the machine learning model, a plurality of predicted travel objective classifications; determining, by the collaboration service, a plurality of travel objectives, wherein each of the plurality of travel objectives is associated with one of the plurality of predicted travel objective classifications; determining, by the collaboration service, a travel objective within a predefined proximity of the location of the user; and displaying the travel objective to the user via a planning interface.",
+    "patent_date": "2025-09-09 00:00:00",
+    "patent_type": "utility",
+    "assignees": [
+      "JPMORGAN CHASE BANK, N.A."
+    ],
+    "inventors": [
+      "",
+      ""
+    ],
+    "cpc_codes": [
+      "G01C21/343",
+      "G06N3/0895",
+      "G01C21/28",
+      "G01C21/3676",
+      "G06N3/088",
+      "G06N5/01",
+      "G06N20/20",
+      "G01C21/3438"
+    ],
+    "ai_keywords_found": [
+      "machine learning"
+    ],
+    "is_ai_patent": true,
+    "ai_score": 20.0
+  },
+  {
+    "id": "0f2fda72-143c-4671-a1bf-8a65919fb89f",
+    "company_id": "company-0",
+    "company_name": "JPMorgan Chase",
+    "patent_id": "12411921",
+    "patent_number": "12411921",
+    "title": "System and method for detecting login fraud based on a machine learning model",
+    "abstract": "Various methods, apparatuses/systems, and media for detecting login fraud based on a machine learning model are disclosed. A processor creates a machine learning model configured to be trained to generate a score based on user's biometrics data and a pattern of activity logs data of the user; trains the machine learning model with the user biometrics data and the pattern of activity logs data in real-time; receives user credentials data from the user for login attempt into a system; compares the received user credentials data with the biometrics data and the pattern of activity logs data of the user stored on a database and the machine learning model; and generates the score, in response to comparing, by utilizing the trained machine learning model. The score is a value that the processor compares with a predetermined threshold value to determine in real-time whether the login attempt is fraudulent.",
+    "patent_date": "2025-09-09 00:00:00",
+    "patent_type": "utility",
+    "assignees": [
+      "JPMORGAN CHASE BANK, N.A."
+    ],
+    "inventors": [
+      "",
+      "",
+      "",
+      ""
+    ],
+    "cpc_codes": [
+      "G06F21/32",
+      "G06F21/316"
+    ],
+    "ai_keywords_found": [
+      "machine learning"
+    ],
+    "is_ai_patent": true,
+    "ai_score": 20.0
+  },
+  {
+    "id": "ed21e685-6b0d-43d7-901c-0602c4ff2b44",
+    "company_id": "company-0",
+    "company_name": "JPMorgan Chase",
+    "patent_id": "12413418",
+    "patent_number": "12413418",
+    "title": "Method and system for secure aggregation protocol for protecting privacy of individual data sets",
+    "abstract": "A method for providing a secure aggregation protocol that facilitates federated learning of machine learning models while protecting privacy of individual data sets associated with participants is provided. The method includes: a setup phase by which public key\u2014secret key pairs are used to verify signatures and facilitate secure transmissions of encrypted messages that include datasets to be aggregated; and an aggregation phase by which a random oracle/hash function is used to facilitate the aggregation of newly submitted datasets into the preexisting aggregated dataset.",
+    "patent_date": "2025-09-09 00:00:00",
+    "patent_type": "utility",
+    "assignees": [
+      "JPMORGAN CHASE BANK, N.A."
+    ],
+    "inventors": [
+      "",
+      "",
+      ""
+    ],
+    "cpc_codes": [
+      "H04L9/3247",
+      "H04L9/0825",
+      "H04L9/0841",
+      "H04L9/085",
+      "H04L9/3236"
+    ],
+    "ai_keywords_found": [
+      "machine learning"
+    ],
+    "is_ai_patent": true,
+    "ai_score": 20.0
+  },
+  {
+    "id": "7d19df82-2914-4d00-9164-69357fe8cc4f",
+    "company_id": "company-0",
+    "company_name": "JPMorgan Chase",
+    "patent_id": "12406143",
+    "patent_number": "12406143",
+    "title": "Systems and methods for identifying and removing bias from communications",
+    "abstract": "Systems and methods for identifying and removing bias from communications are disclosed. In one embodiment, a method for identifying bias may include: (1) receiving, by a bias identification computer program executed by an electronic device and from a user electronic device, text comprising a plurality of passages; (2) converting, by the bias identification computer program, each of the plurality of passages into a vector; (3) determining, by the bias identification computer program, that a custom entity in a bias category is present in one of the plurality of vectors or in a preceding or subsequent vector using a trained bias identification machine learning engine; and (4) returning, by the bias identification computer program and to the user electronic device, an indication that the one of the plurality of vectors is biased.",
+    "patent_date": "2025-09-02 00:00:00",
+    "patent_type": "utility",
+    "assignees": [
+      "JPMORGAN CHASE BANK, N.A."
+    ],
+    "inventors": [
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      ""
+    ],
+    "cpc_codes": [
+      "G06F40/30",
+      "G06F40/279"
+    ],
+    "ai_keywords_found": [
+      "machine learning"
+    ],
+    "is_ai_patent": true,
+    "ai_score": 20.0
+  },
+  {
+    "id": "34d6639c-06fa-47c9-b1cc-e05942b88aa1",
+    "company_id": "company-0",
+    "company_name": "JPMorgan Chase",
+    "patent_id": "12406252",
+    "patent_number": "12406252",
+    "title": "Systems and methods for integrated digital wallet payments",
+    "abstract": "Systems and methods for integrated digital wallet payments are disclosed. Embodiments may store and manage the lifecycle of assets in a digital wallet and may provide artificial intelligence and/or machine learning based recommendations to provide the optimal frictionless and rewarding consumer authentication and payment experience. Embodiments may leverage blockchain technology that provides a single consumer solution with decentralized wallet ownership and a data-driven network orchestration for optimal payments. Embodiments securely store the payment instruments and may provide personal usage recommendations for the optimal outcome based on, for example, consumer preferences.",
+    "patent_date": "2025-09-02 00:00:00",
+    "patent_type": "utility",
+    "assignees": [
+      "JPMORGAN CHASE BANK, N.A."
+    ],
+    "inventors": [
+      "",
+      ""
+    ],
+    "cpc_codes": [
+      "G06Q20/36",
+      "G06Q20/3674",
+      "G06N20/00",
+      "G06Q20/065",
+      "G06Q20/102",
+      "G06Q20/227",
+      "G06Q20/363",
+      "G06Q20/401",
+      "G06Q20/4014",
+      "G06Q20/40145",
+      "G06Q2220/00"
+    ],
+    "ai_keywords_found": [
+      "machine learning",
+      "artificial intelligence"
+    ],
+    "is_ai_patent": true,
+    "ai_score": 40.0
+  },
+  {
+    "id": "4fbcc58a-847f-4085-82b3-44c9ec12d3f0",
+    "company_id": "company-0",
+    "company_name": "JPMorgan Chase",
+    "patent_id": "12399691",
+    "patent_number": "12399691",
+    "title": "Method and system for automatic workflow generation by large language models",
+    "abstract": "A method for using a large language model to generate executable code for workflow execution in a manner that integrates user feedback and adjusts the workflow as needed while preserving data privacy is provided. The method includes: receiving first information that relates to a workflow context, second information that relates to at least one application programming interface (API), and third information that relates to a code generation request; using the received information to generate a lecture, and transmitting the lecture to a language model; receiving a user query that relates to performing a task, and transmitting the query to the language model; receiving a workflow that is automatically generated by the language model based on the lecture and the query; and executing the workflow in order to generate an output that is responsive to the query.",
+    "patent_date": "2025-08-26 00:00:00",
+    "patent_type": "utility",
+    "assignees": [
+      "JPMORGAN CHASE BANK, N.A."
+    ],
+    "inventors": [
+      "",
+      "",
+      "",
+      "",
+      "",
+      ""
+    ],
+    "cpc_codes": [
+      "G06F8/35",
+      "G06F9/5038",
+      "G06F9/54",
+      "G06N3/0475",
+      "G06Q40/06"
+    ],
+    "ai_keywords_found": [
+      "large language model",
+      "large language models"
+    ],
+    "is_ai_patent": true,
+    "ai_score": 40.0
+  },
+  {
+    "id": "75b35016-08d5-47a2-8192-0ffecafa3eee",
+    "company_id": "company-0",
+    "company_name": "JPMorgan Chase",
+    "patent_id": "12400243",
+    "patent_number": "12400243",
+    "title": "Method and system for delivering real-time personalization across a distributed, modular network architecture",
+    "abstract": "According to an embodiment of the present invention, an automated computer implemented method and system for providing targeted content in real-time comprises a web and application server that identifies one or more user interactions from a user on a website hosted by an entity; a processor that receives the one or more user interactions and converts the one or more user interactions into one or more real-time attributes; and an engine that identifies customized content for the user from a remote processor, adjusts the customized content based on the one or more real-time attributes, and generates an output comprising the customized content for display on the website for the user in real-time.",
+    "patent_date": "2025-08-26 00:00:00",
+    "patent_type": "utility",
+    "assignees": [
+      "JPMORGAN CHASE BANK, N.A."
+    ],
+    "inventors": [
+      "",
+      "",
+      "",
+      "",
+      ""
+    ],
+    "cpc_codes": [
+      "G06Q30/0271",
+      "G06Q30/0255",
+      "H04L67/01",
+      "H04L67/02",
+      "H04L67/535",
+      "H04L67/561",
+      "H04L67/562",
+      "H04L67/565",
+      "H04L67/306"
+    ],
+    "ai_keywords_found": [
+      "personalization"
+    ],
+    "is_ai_patent": true,
+    "ai_score": 20.0
+  },
+  {
+    "id": "ec551a05-be3e-46e7-a79d-8c6f5fb483a3",
+    "company_id": "company-0",
+    "company_name": "JPMorgan Chase",
+    "patent_id": "12400430",
+    "patent_number": "12400430",
+    "title": "Systems and methods for noise agnostic federated learning",
+    "abstract": "Systems and methods for noise agnostic federated learning are disclosed. A method may include a client computer program executed by an electronic device in a federated learning computer network comprising a plurality of clients: receiving, from a federated learning computer program, a data format having desirable noise characteristics; transforming a client data set comprising variable noise characteristics to the data format using a client generative adversarial network (GAN); generating client weights for the transformed client data set, wherein the client weights indicate features of the client data set; communicating the client weights to the federated learning computer program; receiving, from the federated learning computer program, adjusted weights, wherein the adjusted weights are based on the client weights and a plurality client weights received from the clients in the federated learning computer network; and updating the client weights for a client machine learning model using the adjusted weights.",
+    "patent_date": "2025-08-26 00:00:00",
+    "patent_type": "utility",
+    "assignees": [
+      "JPMORGAN CHASE BANK, N.A."
+    ],
+    "inventors": [
+      "",
+      "",
+      "",
+      "",
+      ""
+    ],
+    "cpc_codes": [
+      "G06V10/772",
+      "G06V10/774",
+      "G06V10/82"
+    ],
+    "ai_keywords_found": [
+      "gan",
+      "machine learning",
+      "generative adversarial network"
+    ],
+    "is_ai_patent": true,
+    "ai_score": 60.0
+  },
+  {
+    "id": "3fed89fa-335d-4276-b5bf-ab88eb399f17",
+    "company_id": "company-0",
+    "company_name": "JPMorgan Chase",
+    "patent_id": "12393619",
+    "patent_number": "12393619",
+    "title": "Systems and methods for generating a targeted document set for input to a generative model",
+    "abstract": "In some aspects, the techniques described herein relate to a method including: receiving, at a query platform, a query and a document identifier; determining, based on the document identifier, a document-type parameter; generating, based on metadata related to the document-type parameter, an optimized query; generating a query vector embedding from the optimized query; executing a lexical search on a document pool, wherein the lexical search is based on the optimized query, and wherein the lexical search returns a first document set; executing a contextual search on a vector database, wherein the contextual search is based on the query vector embedding and returns a second document set; and generating a targeted document set from the first document set and the second document set.",
+    "patent_date": "2025-08-19 00:00:00",
+    "patent_type": "utility",
+    "assignees": [
+      "JPMORGAN CHASE BANK, N.A."
+    ],
+    "inventors": [
+      "",
+      "",
+      "",
+      "",
+      "",
+      ""
+    ],
+    "cpc_codes": [
+      "G06F16/3329",
+      "G06F16/3347",
+      "G06F40/284"
+    ],
+    "ai_keywords_found": [
+      "embedding",
+      "vector database"
+    ],
+    "is_ai_patent": true,
+    "ai_score": 40.0
+  },
+  {
+    "id": "f6f37e5f-61a0-47bb-baea-e2c782914d61",
+    "company_id": "company-0",
+    "company_name": "JPMorgan Chase",
+    "patent_id": "12393854",
+    "patent_number": "12393854",
+    "title": "System and method for implementing an application prediction engine",
+    "abstract": "An embodiment of the present invention is directed to dynamic caches that handle a large request load using limited resources. An embodiment of the present invention is directed to exploring forecasting request loads to provide an optimal cache based of historical data. For example, the prediction engine may first forecast the most likely requests for the next day. Then, the timing of those requests may be forecasted. Optimization may be performed on the forecasted request load to provide an appropriate cache based on user priority and/or content size of the payload.",
+    "patent_date": "2025-08-19 00:00:00",
+    "patent_type": "utility",
+    "assignees": [
+      "JPMORGAN CHASE BANK, N.A."
+    ],
+    "inventors": [
+      "",
+      "",
+      "",
+      ""
+    ],
+    "cpc_codes": [
+      "G06F16/9574",
+      "G06N7/01",
+      "G06F16/24552",
+      "G06F16/90335",
+      "G06N20/00",
+      "H04L67/5682",
+      "H04L67/62",
+      "H04L67/306"
+    ],
+    "ai_keywords_found": [
+      "forecasting"
+    ],
+    "is_ai_patent": true,
+    "ai_score": 20.0
+  },
+  {
+    "id": "5029aafa-d0c9-445e-bc7f-1494fe1c6b6d",
+    "company_id": "company-0",
+    "company_name": "JPMorgan Chase",
+    "patent_id": "12386979",
+    "patent_number": "12386979",
+    "title": "Systems and methods for federated model validation and data verification",
+    "abstract": "Systems and methods for federated model validation and data verification are disclosed. A method may include: (1) receiving, by a local computer program executed by client system, a federated machine learning model from a federated model server; (2) testing, by the local computer program and using a policy service, the federated machine learning model for vulnerabilities to attacks; (3) accepting, by the local computer program, the federated machine learning model in response to the federated machine learning model passing the testing; (4) training, by the local computer program, the federated machine learning model using input data comprising local data and outputting training parameters; (5) identifying, by the local computer program using the policy service, accidental leakage and/or contamination by comparing the training parameters to the input data; and (6) providing, by the local computer program, the training parameters to the federated model server.",
+    "patent_date": "2025-08-12 00:00:00",
+    "patent_type": "utility",
+    "assignees": [
+      "JPMORGAN CHASE BANK, N.A."
+    ],
+    "inventors": [
+      "",
+      "",
+      "",
+      "",
+      ""
+    ],
+    "cpc_codes": [
+      "G06F21/577",
+      "G06N3/0464",
+      "G06N3/098",
+      "G06N20/00",
+      "G06F2221/033"
+    ],
+    "ai_keywords_found": [
+      "machine learning"
+    ],
+    "is_ai_patent": true,
+    "ai_score": 20.0
+  },
+  {
+    "id": "c8459259-01fe-49c6-a41e-5a476212b8a9",
+    "company_id": "company-0",
+    "company_name": "JPMorgan Chase",
+    "patent_id": "12373592",
+    "patent_number": "12373592",
+    "title": "Systems and methods for auto discovery of sensitive data in applications or databases using metadata via machine learning techniques",
+    "abstract": "A method for auto discovery of sensitive data may include: (1) receiving, at data enrichment computer program in a metadata processing pipeline, raw metadata from a plurality of different data sources; (2) enriching, by the data enrichment computer program, the raw metadata; (3) converting, by the data enrichment computer program, the raw metadata and the enhanced raw metadata into a sentence structure; (4) predicting, by a category prediction computer program in the metadata processing pipeline, a predicted category for the sentence structure; (5) identifying, by a sensitive data mapping computer program, a sensitive data category that is mapped to the predicted category based on a policy mapping rule; (6) determining, by the sensitive data mapping computer program, a risk classification rating for the predicted category; and (7) tagging, by the sensitive data mapping computer program, the data source associated with the metadata based on the risk classification rating.",
+    "patent_date": "2025-07-29 00:00:00",
+    "patent_type": "utility",
+    "assignees": [
+      "JPMORGAN CHASE BANK, N.A."
+    ],
+    "inventors": [
+      "",
+      "",
+      "",
+      ""
+    ],
+    "cpc_codes": [
+      "G06F21/6218",
+      "G06F16/35",
+      "G06F16/383",
+      "G06F40/151"
+    ],
+    "ai_keywords_found": [
+      "machine learning"
+    ],
+    "is_ai_patent": true,
+    "ai_score": 20.0
+  },
+  {
+    "id": "b56e1c2a-dd6c-420b-ab62-e0b4061ae933",
+    "company_id": "company-0",
+    "company_name": "JPMorgan Chase",
+    "patent_id": "12373623",
+    "patent_number": "12373623",
+    "title": "Systems and methods for identifying and remediating architecture risk",
+    "abstract": "Systems and methods for identifying and remediating architecture risk are disclosed. In one aspect, a method includes generating a first chaos graph pattern and a second chaos graph pattern; training a machine learning model to recognize the first chaos graph pattern and the second chaos graph pattern; identifying an architecture graph pattern of an evaluated architecture; including the architecture graph pattern in an architecture testing graph; recognizing by the machine learning model that a shape of the architecture graph pattern is similar to a shape of the first chaos graph pattern and that the shape of the architecture graph pattern is similar to a shape of the second chaos graph pattern; and predicting a remedial reconfiguration, wherein the remedial reconfiguration includes a reconfiguration of a design of the evaluated architecture.",
+    "patent_date": "2025-07-29 00:00:00",
+    "patent_type": "utility",
+    "assignees": [
+      "JPMORGAN CHASE BANK, N.A."
+    ],
+    "inventors": [
+      "",
+      ""
+    ],
+    "cpc_codes": [
+      "G06F30/333",
+      "G06F18/214",
+      "G06F30/337",
+      "G06F30/398",
+      "G06N3/042",
+      "G06N20/00",
+      "G06N3/02"
+    ],
+    "ai_keywords_found": [
+      "machine learning"
+    ],
+    "is_ai_patent": true,
+    "ai_score": 20.0
+  },
+  {
+    "id": "f88d6114-5a7b-40bb-8b92-3dacbea8250b",
+    "company_id": "company-0",
+    "company_name": "JPMorgan Chase",
+    "patent_id": "12373669",
+    "patent_number": "12373669",
+    "title": "Method and system for using deep video prediction for economic forecasting",
+    "abstract": "A method for forecasting a change in a market is provided. The method includes: using historical market data to generate a plurality of first images that correspond to a predetermined time sequence; generating, based on the plurality of first images, second images that correspond to a future time point with respect to the predetermined time sequence; and determining a prediction of future market data based on the second images. The generation of the second images and the prediction of the future market data are implemented by applying a convolutional neural network (CNN) algorithm that implements a stochastic latent residual video prediction (SRVP) technique with respect to a group of financial assets.",
+    "patent_date": "2025-07-29 00:00:00",
+    "patent_type": "utility",
+    "assignees": [
+      "JPMORGAN CHASE BANK, N.A."
+    ],
+    "inventors": [
+      "",
+      "",
+      ""
+    ],
+    "cpc_codes": [
+      "G06N3/045",
+      "G06Q30/0201",
+      "G06N3/044",
+      "G06N3/0442",
+      "G06N3/0455",
+      "G06N3/0464",
+      "G06N3/047",
+      "G06N3/0475",
+      "G06N3/08",
+      "G06N3/09",
+      "G06Q30/0202",
+      "G06Q40/04",
+      "G06N3/048"
+    ],
+    "ai_keywords_found": [
+      "neural network",
+      "cnn",
+      "forecasting",
+      "convolutional neural network"
+    ],
+    "is_ai_patent": true,
+    "ai_score": 80.0
+  },
+  {
+    "id": "ec151d1e-0a13-4c78-8bdf-de62d49e2b55",
+    "company_id": "company-0",
+    "company_name": "JPMorgan Chase",
+    "patent_id": "12373794",
+    "patent_number": "12373794",
+    "title": "Method and system for resume data extraction",
+    "abstract": "Systems and methods for extracting information from a resume of an applicant are provided. The method includes: receiving a resume that relates to an applicant; extracting information that relates to applicant attributes from the resume; comparing the extracted information with a predetermined list of job-specific skills and with a predetermined list of characteristics that relate to soft skills; using the extracted information to determine applicant achievements; and determining at least one skill that corresponds to the applicant. The method may be implemented by using a deep learning technique and/or a natural language processing technique.",
+    "patent_date": "2025-07-29 00:00:00",
+    "patent_type": "utility",
+    "assignees": [
+      "JPMORGAN CHASE BANK, N.A."
+    ],
+    "inventors": [
+      "",
+      "",
+      "",
+      "",
+      ""
+    ],
+    "cpc_codes": [
+      "G06N20/00",
+      "G06Q10/1053",
+      "G06N3/045",
+      "G06N3/09",
+      "G06N5/01",
+      "G06N5/02"
+    ],
+    "ai_keywords_found": [
+      "deep learning",
+      "natural language processing"
+    ],
+    "is_ai_patent": true,
+    "ai_score": 40.0
+  },
+  {
+    "id": "80513c88-78d9-4932-a8a1-052ccbec5af5",
+    "company_id": "company-0",
+    "company_name": "JPMorgan Chase",
+    "patent_id": "12353591",
+    "patent_number": "12353591",
+    "title": "Secure aggregation of information using federated learning",
+    "abstract": "A method for learning a shared machine learning model while preserving privacy of individual participants is provided. The method includes: receiving, from each of a group of users, an encrypted user input; when a number of user inputs is greater than or equal to a threshold, transmitting, to each user, a list of the group of users; receiving, from each user, a message indicating a mutual agreement regarding a shared secret among the group; and when a number of received messages indicating the mutual agreement is greater than or equal to the threshold, determining information about the shared machine learning model by combining the received encrypted user inputs. The shared machine learning model facilitates a secure multi-party computation of a function that generates an updated version of the shared machine learning model.",
+    "patent_date": "2025-07-08 00:00:00",
+    "patent_type": "utility",
+    "assignees": [
+      "JPMORGAN CHASE BANK, N.A."
+    ],
+    "inventors": [
+      "",
+      "",
+      ""
+    ],
+    "cpc_codes": [
+      "G06F21/6245",
+      "G06F21/121",
+      "G06F21/6254",
+      "H04L9/0841",
+      "H04L9/3013",
+      "H04L9/3247",
+      "H04L9/3263",
+      "H04L2209/42",
+      "H04L2209/46",
+      "H04L2209/56"
+    ],
+    "ai_keywords_found": [
+      "machine learning"
+    ],
+    "is_ai_patent": true,
+    "ai_score": 20.0
+  },
+  {
+    "id": "72044fd3-bb20-4280-a230-7f34a14b2fee",
+    "company_id": "company-0",
+    "company_name": "JPMorgan Chase",
+    "patent_id": "12353834",
+    "patent_number": "12353834",
+    "title": "Systems and methods for generalized structured data discovery utilizing contextual metadata disambiguation via machine learning techniques",
+    "abstract": "Systems and methods for generalized structured data discovery utilizing contextual metadata disambiguation via machine learning are disclosed. A method may include receiving physical application metadata for an attribute, a database object, or a database; receiving reference data including tokens and their associated abbreviations and acronyms; parsing the physical application metadata into application tokens including known application tokens and unknown application tokens; identifying unknown application tokens by comparing the parsed application tokens to a corpus; performing probabilistic parsing on the unknown application tokens using the reference data resulting in token phrases; identifying monosemous tokens in the token phrases using a look-up dictionary; replacing the monosemous tokens with their expansions from the look-up dictionary; and outputting a mapping of the physical application metadata to enhanced physical application metadata that includes an expression for the physical application metadata comprising the expansions for monosemous tokens in a supported language.",
+    "patent_date": "2025-07-08 00:00:00",
+    "patent_type": "utility",
+    "assignees": [
+      "JPMORGAN CHASE BANK, N.A."
+    ],
+    "inventors": [
+      "",
+      "",
+      "",
+      ""
+    ],
+    "cpc_codes": [
+      "G06F16/3344",
+      "G06F40/30",
+      "G06F16/24573",
+      "G06F40/205",
+      "G06F40/253",
+      "G06N20/00"
+    ],
+    "ai_keywords_found": [
+      "machine learning"
+    ],
+    "is_ai_patent": true,
+    "ai_score": 20.0
+  },
+  {
+    "id": "c8a8e471-a1e3-4ebd-8880-ab60446eea2e",
+    "company_id": "company-0",
+    "company_name": "JPMorgan Chase",
+    "patent_id": "12355713",
+    "patent_number": "12355713",
+    "title": "Method and system for automated message generation",
+    "abstract": "A method for automating a process of generating messages that are responsive to client inquiries by using an AI algorithm that implements a machine learning technique to ensure accuracy and timeliness in the responses is provided. The method includes: receiving a first message that includes an inquiry that relates to an account associated with a user; applying an AI algorithm for analyzing the first message in order to extract information that relates to the inquiry; determining, based on a result of the analysis, whether generating a response to the inquiry requires human intervention; when human intervention is not required, retrieving information that is responsive to the inquiry from a memory; generating a second message that includes the information that is responsive to the inquiry; and transmitting the second message to the user.",
+    "patent_date": "2025-07-08 00:00:00",
+    "patent_type": "utility",
+    "assignees": [
+      "JPMORGAN CHASE BANK, N.A."
+    ],
+    "inventors": [
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      ""
+    ],
+    "cpc_codes": [
+      "H04L51/07",
+      "G06N3/08"
+    ],
+    "ai_keywords_found": [
+      "machine learning",
+      "ai"
+    ],
+    "is_ai_patent": true,
+    "ai_score": 40.0
+  },
+  {
+    "id": "62149d39-cf38-4629-b052-4e3a9267cff3",
+    "company_id": "company-0",
+    "company_name": "JPMorgan Chase",
+    "patent_id": "12346317",
+    "patent_number": "12346317",
+    "title": "Systems and methods for providing a semantic query framework",
+    "abstract": "In some aspects, the techniques described herein relate to a method including: receiving, from a query interface, a natural language query; encoding the natural language query into tokens; embedding the tokens into a natural language query vector, wherein the natural language query vector represents a semantic meaning of the natural language query; formatting an index query of an index datastore, wherein the index query includes the natural language query vector as a lookup parameter of the index query; receiving, as a response to the index query, a document set; passing the document set and the natural language query to a machine learning model; receiving a response to the natural language query from the machine learning model, wherein the response is based on the document set; and providing the response to the natural language query to the query interface for consumption.",
+    "patent_date": "2025-07-01 00:00:00",
+    "patent_type": "utility",
+    "assignees": [
+      "JPMORGAN CHASE BANK, N.A."
+    ],
+    "inventors": [
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      ""
+    ],
+    "cpc_codes": [
+      "G06F16/243",
+      "G06F16/2237",
+      "G06F16/3347"
+    ],
+    "ai_keywords_found": [
+      "machine learning",
+      "embedding"
+    ],
+    "is_ai_patent": true,
+    "ai_score": 40.0
+  },
+  {
+    "id": "7d023cfb-9d54-4d8d-9654-f5cfc80655da",
+    "company_id": "company-0",
+    "company_name": "JPMorgan Chase",
+    "patent_id": "12333400",
+    "patent_number": "12333400",
+    "title": "Systems and methods for federated learning using distributed messaging with entitlements for anonymous computation and secure delivery of model",
+    "abstract": "A method may include an aggregator node in a distributed computer network: generating an aggregator node public/private key pair; communicating the aggregator node public key to participant nodes; receiving, from each participant node, a message comprising a local machine learning (ML) model encrypted with a participant node private key and the aggregator node public key, and a participant node public key encrypted with the aggregator node public key; decrypting the local ML models and the participant node public keys using the aggregator node public key; decrypting the local ML models using the participant node public keys; generating an aggregated ML model based on the local ML models; encrypting, with each participant node public key, the aggregated ML model; and communicating the encrypted ML models to all participant nodes. Each participant node decrypts one of the encrypted ML models and modifies its local ML model with the aggregated ML model.",
+    "patent_date": "2025-06-17 00:00:00",
+    "patent_type": "utility",
+    "assignees": [
+      "JPMORGAN CHASE BANK, N.A."
+    ],
+    "inventors": [
+      "",
+      "",
+      "",
+      ""
+    ],
+    "cpc_codes": [
+      "G06N20/20",
+      "H04L9/006",
+      "G06F21/602",
+      "H04L9/0825",
+      "H04L9/0827",
+      "H04L9/3239",
+      "H04L9/50",
+      "H04L63/04"
+    ],
+    "ai_keywords_found": [
+      "machine learning",
+      "ml"
+    ],
+    "is_ai_patent": true,
+    "ai_score": 40.0
+  },
+  {
+    "id": "014b6070-e385-4183-a5f6-7daee9b7c0ce",
+    "company_id": "company-0",
+    "company_name": "JPMorgan Chase",
+    "patent_id": "12326883",
+    "patent_number": "12326883",
+    "title": "Systems and methods for detecting miscategorized text-based objects",
+    "abstract": "In some aspects, the techniques described herein relate to a method including: receiving, as input to a binary search process, a subject vector embedding and a class vector embedding, wherein the subject vector embedding is generated from a plurality of subject text strings and wherein the class vector embedding is generated from a class text string; generating a similarity score; determining that the similarity score is below a threshold value; splitting the plurality of subject text strings into a first new plurality of subject text strings and a second new plurality of subject text strings; receiving a new subject vector embedding, wherein the new subject vector embedding is generated from the first new plurality of subject text strings; and calling the binary search process recursively using the new subject vector embedding and the class vector embedding as input to the binary search process.",
+    "patent_date": "2025-06-10 00:00:00",
+    "patent_type": "utility",
+    "assignees": [
+      "JPMORGAN CHASE BANK, N.A."
+    ],
+    "inventors": [
+      "",
+      "",
+      "",
+      "",
+      "",
+      ""
+    ],
+    "cpc_codes": [
+      "G06F16/313",
+      "G06F16/35"
+    ],
+    "ai_keywords_found": [
+      "embedding"
+    ],
+    "is_ai_patent": true,
+    "ai_score": 20.0
+  },
+  {
+    "id": "c6a8517f-a2ea-4e8d-adcf-26c2471500fc",
+    "company_id": "company-0",
+    "company_name": "JPMorgan Chase",
+    "patent_id": "12321715",
+    "patent_number": "12321715",
+    "title": "Method and system for verification of random numbers",
+    "abstract": "A system and a method for verifying a randomness of an intended random number is provided. The method includes: accessing the intended random number; converting the intended random number into a bitmap image; analyzing the bitmap image with reference to a predetermined model; and using a result of the analyzing to determine whether the intended random number is a true random number or a pseudorandom number. The analysis of the bitmap image may be performed by using a machine learning image classification technique with respect to a model that is trained by using white noise images.",
+    "patent_date": "2025-06-03 00:00:00",
+    "patent_type": "utility",
+    "assignees": [
+      "JPMORGAN CHASE BANK, N.A."
+    ],
+    "inventors": [
+      "",
+      "",
+      ""
+    ],
+    "cpc_codes": [
+      "G06F7/58",
+      "G06N20/00"
+    ],
+    "ai_keywords_found": [
+      "machine learning",
+      "image classification"
+    ],
+    "is_ai_patent": true,
+    "ai_score": 40.0
+  }
+]

@@ -1,0 +1,47 @@
+{
+  "companies_processed": 0,
+  "job_postings_collected": 188,
+  "ai_jobs_found": 0,
+  "patents_collected": 0,
+  "ai_patents_found": 0,
+  "errors": [],
+  "started_at": "2026-02-04T22:29:44.165679+00:00",
+  "completed_at": null,
+  "job_market_scores": {
+    "company-0": 53.72
+  },
+  "techstack_scores": {
+    "company-0": 57.75
+  },
+  "company_techstacks": {
+    "company-0": [
+      "airflow",
+      "apache spark",
+      "bitbucket",
+      "cassandra",
+      "containerization",
+      "databricks",
+      "distributed training",
+      "docker",
+      "git",
+      "hadoop",
+      "kafka",
+      "kubeflow",
+      "kubernetes",
+      "model monitoring",
+      "model serving",
+      "postgresql",
+      "pyspark",
+      "python",
+      "ray",
+      "scala",
+      "snowflake",
+      "spark",
+      "tableau",
+      "vector database"
+    ]
+  },
+  "companies": [
+    "JPMorgan Chase"
+  ]
+}

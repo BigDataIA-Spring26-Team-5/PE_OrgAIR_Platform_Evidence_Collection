@@ -1,0 +1,11 @@
+{
+  "patents_collected": 100,
+  "ai_patents_found": 23,
+  "patent_scores": {
+    "company-0": 69.2
+  },
+  "companies": [
+    "JPMorgan Chase"
+  ],
+  "errors": []
+}
