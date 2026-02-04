@@ -1,20 +1,17 @@
-"""
-Job Signals Pipeline - python-jobspy Integration
-app/pipelines/job_signals.py
-
-Scrapes job postings using python-jobspy and classifies AI-related roles.
-Stores raw data in S3 and aggregated signals in Snowflake.
-"""
-
 from __future__ import annotations
 
 import asyncio
 import json
 import math
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 from typing import Any, List, Optional
+
+from app.config import settings
+from app.models.job_signals import JobPosting
+from app.pipelines.keywords import AI_KEYWORDS, AI_TECHSTACK_KEYWORDS
+from app.pipelines.pipeline2_state import Pipeline2State
 
 
 def _clean_nan(value: Any) -> Any:
@@ -26,19 +23,11 @@ def _clean_nan(value: Any) -> Any:
             return None
     except (TypeError, ValueError):
         pass
-    # Handle pandas NaT (Not a Time)
     if hasattr(value, 'isnull') and value.isnull():
         return None
     if str(value) in ('nan', 'NaN', 'NaT'):
         return None
     return value
-
-from app.pipelines.pipeline2_state import Pipeline2State
-from app.pipelines.keywords import AI_KEYWORDS, AI_TECHSTACK_KEYWORDS
-from app.models.job_signals import JobPosting
-
-# Rate limiting delay for JobSpy (seconds)
-JOBSPY_REQUEST_DELAY = 6.0
 
 
 def _normalize_company_name(name: str) -> str:
@@ -104,8 +93,8 @@ async def step2_fetch_job_postings(
     state: Pipeline2State,
     *,
     sites: Optional[List[str]] = None,
-    results_wanted: int = 100,
-    hours_old: int = 72,  # 3 days - more recent = more relevant
+    results_wanted: Optional[int] = None,
+    hours_old: Optional[int] = None,
 ) -> Pipeline2State:
     """
     Fetch job postings for each company using python-jobspy.
@@ -117,13 +106,17 @@ async def step2_fetch_job_postings(
 
     Args:
         state: Pipeline state
-        sites: Job sites to scrape (default: linkedin only - more reliable company data)
-        results_wanted: Max results to fetch (before filtering)
-        hours_old: Max age of job postings in hours
+        sites: Job sites to scrape (default: from config)
+        results_wanted: Max results to fetch (before filtering, default: from config)
+        hours_old: Max age of job postings in hours (default: from config)
     """
-    # Default to LinkedIn only - it has better company name data
+    # Use config defaults if not provided
     if sites is None:
-        sites = ["linkedin"]
+        sites = settings.JOBSPY_DEFAULT_SITES
+    if results_wanted is None:
+        results_wanted = settings.JOBSPY_RESULTS_WANTED
+    if hours_old is None:
+        hours_old = settings.JOBSPY_HOURS_OLD
 
     # Try to import jobspy
     try:
@@ -140,7 +133,7 @@ async def step2_fetch_job_postings(
             continue
 
         # Rate limiting
-        await asyncio.sleep(max(state.request_delay, JOBSPY_REQUEST_DELAY))
+        await asyncio.sleep(max(state.request_delay, settings.JOBSPY_REQUEST_DELAY))
 
         try:
             print(f"  Scraping jobs for: {company_name}...")
@@ -254,14 +247,14 @@ def step3_classify_ai_jobs(state: Pipeline2State) -> Pipeline2State:
         # Determine if AI role based on keyword count
         # Lower threshold for title-only jobs (LinkedIn often doesn't return descriptions)
         if has_description:
-            # With description: require 2 keywords for confidence
-            posting["is_ai_role"] = len(ai_keywords_found) >= 2
+            # With description: require JOBSPY_AI_KEYWORDS_THRESHOLD_WITH_DESC keywords for confidence
+            posting["is_ai_role"] = len(ai_keywords_found) >= settings.JOBSPY_AI_KEYWORDS_THRESHOLD_WITH_DESC
         else:
-            # Title-only: require 1 keyword (title keywords are more reliable)
-            posting["is_ai_role"] = len(ai_keywords_found) >= 1
+            # Title-only: require JOBSPY_AI_KEYWORDS_THRESHOLD_NO_DESC keyword (title keywords are more reliable)
+            posting["is_ai_role"] = len(ai_keywords_found) >= settings.JOBSPY_AI_KEYWORDS_THRESHOLD_NO_DESC
 
-        # Calculate AI score (0-100)
-        posting["ai_score"] = min(100.0, len(ai_keywords_found) * 15.0)
+        # Calculate AI score (0-JOBSPY_MAX_SCORE)
+        posting["ai_score"] = min(settings.JOBSPY_MAX_SCORE, len(ai_keywords_found) * settings.JOBSPY_AI_SCORE_MULTIPLIER)
 
     ai_count = sum(1 for p in state.job_postings if p.get("is_ai_role"))
     print(f"Step 3: Classified {ai_count} AI-related jobs out of {len(state.job_postings)}")
@@ -273,9 +266,9 @@ def step4_score_job_market(state: Pipeline2State) -> Pipeline2State:
     Calculate job market score for each company.
 
     Scoring algorithm:
-    - Base: (AI jobs / Total jobs) * 50
-    - Volume bonus: min(30, AI_job_count * 3)
-    - Keyword diversity: (unique AI keywords / 10) * 20
+    - Base: (AI jobs / Total jobs) * JOBSPY_RATIO_SCORE_WEIGHT
+    - Volume bonus: min(JOBSPY_VOLUME_BONUS_MAX, AI_job_count * JOBSPY_VOLUME_BONUS_MULTIPLIER)
+    - Keyword diversity: (unique AI keywords / JOBSPY_DIVERSITY_DENOMINATOR) * JOBSPY_DIVERSITY_SCORE_MULTIPLIER
     """
 
     company_jobs = defaultdict(list)
@@ -291,19 +284,19 @@ def step4_score_job_market(state: Pipeline2State) -> Pipeline2State:
         total_jobs = len(jobs)
         ai_count = len(ai_jobs)
 
-        # Ratio component (0-50 points)
-        ratio_score = (ai_count / total_jobs * 50) if total_jobs > 0 else 0
+        # Ratio component (0-JOBSPY_RATIO_SCORE_WEIGHT points)
+        ratio_score = (ai_count / total_jobs * settings.JOBSPY_RATIO_SCORE_WEIGHT) if total_jobs > 0 else 0
 
-        # Volume bonus (0-30 points)
-        volume_bonus = min(30, ai_count * 3)
+        # Volume bonus (0-JOBSPY_VOLUME_BONUS_MAX points)
+        volume_bonus = min(settings.JOBSPY_VOLUME_BONUS_MAX, ai_count * settings.JOBSPY_VOLUME_BONUS_MULTIPLIER)
 
-        # Keyword diversity (0-20 points)
+        # Keyword diversity (0-JOBSPY_DIVERSITY_SCORE_MAX points)
         all_keywords = set()
         for job in ai_jobs:
             all_keywords.update(job.get("ai_keywords_found", []))
-        diversity_score = min(20, len(all_keywords) * 2)
+        diversity_score = min(settings.JOBSPY_DIVERSITY_SCORE_MAX, len(all_keywords) * settings.JOBSPY_DIVERSITY_SCORE_MULTIPLIER)
 
-        final_score = min(100.0, ratio_score + volume_bonus + diversity_score)
+        final_score = min(settings.JOBSPY_MAX_SCORE, ratio_score + volume_bonus + diversity_score)
         state.job_market_scores[company_id] = round(final_score, 2)
 
     print(f"Step 4: Scored job market for {len(state.job_market_scores)} companies")
@@ -422,12 +415,12 @@ def step5_store_to_s3_and_snowflake(state: Pipeline2State) -> Pipeline2State:
             ai_count = len(ai_jobs)
 
             # Calculate score breakdown for raw_payload
-            ratio_score = (ai_count / total_jobs * 50) if total_jobs > 0 else 0
-            volume_bonus = min(30, ai_count * 3)
+            ratio_score = (ai_count / total_jobs * settings.JOBSPY_RATIO_SCORE_WEIGHT) if total_jobs > 0 else 0
+            volume_bonus = min(settings.JOBSPY_VOLUME_BONUS_MAX, ai_count * settings.JOBSPY_VOLUME_BONUS_MULTIPLIER)
             all_keywords = set()
             for job in ai_jobs:
                 all_keywords.update(job.get("ai_keywords_found", []))
-            diversity_score = min(20, len(all_keywords) * 2)
+            diversity_score = min(settings.JOBSPY_DIVERSITY_SCORE_MAX, len(all_keywords) * settings.JOBSPY_DIVERSITY_SCORE_MULTIPLIER)
 
             # Build summary text
             summary = f"Found {ai_count} AI roles out of {total_jobs} total jobs"
@@ -443,7 +436,7 @@ def step5_store_to_s3_and_snowflake(state: Pipeline2State) -> Pipeline2State:
                     "volume_bonus": round(volume_bonus, 2),
                     "diversity_score": round(diversity_score, 2),
                 },
-                "top_ai_keywords": list(all_keywords)[:20],
+                "top_ai_keywords": list(all_keywords)[:settings.JOBSPY_TOP_KEYWORDS_LIMIT],
                 "sources": list(set(j.get("source", "unknown") for j in jobs)),
             }
 
