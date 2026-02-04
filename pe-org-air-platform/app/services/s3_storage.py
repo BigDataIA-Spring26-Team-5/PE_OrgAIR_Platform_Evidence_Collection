@@ -176,6 +176,144 @@
 #             return False
 
 
+# import boto3
+# import hashlib
+# import logging
+# from typing import Optional, Tuple
+# from botocore.exceptions import ClientError
+# from app.config import settings
+
+# logger = logging.getLogger(__name__)
+
+# class S3StorageService:
+#     def __init__(self):
+#         self.s3_client = boto3.client(
+#             's3',
+#             aws_access_key_id=settings.AWS_ACCESS_KEY_ID.get_secret_value(),
+#             aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY.get_secret_value(),
+#             region_name=settings.AWS_REGION
+#         )
+#         self.bucket_name = settings.S3_BUCKET
+#         logger.info(f"S3 Storage initialized with bucket: {self.bucket_name}")
+
+#     def _generate_s3_key(self, ticker: str, filing_type: str, filing_date: str, filename: str, accession_number: str = "") -> str:
+#         """
+#         Generate S3 key path: sec/raw/{ticker}/{filing_type}/{filing_date}_{accession}.html
+        
+#         Structure:
+#         sec/
+#         └── raw/
+#             └── {ticker}/
+#                 └── {filing_type}/
+#                     └── {filing_date}_{accession_number}.html
+#         """
+#         # Clean filing type: "10-K" -> "10-K", "DEF 14A" -> "DEF14A"
+#         clean_filing_type = filing_type.replace(" ", "")
+        
+#         # Build filename with date and accession number
+#         if accession_number:
+#             clean_accession = accession_number.replace("-", "")
+#             doc_filename = f"{filing_date}_{clean_accession}.html"
+#         else:
+#             # Fallback to original filename
+#             doc_filename = f"{filing_date}_{filename}"
+        
+#         return f"sec/raw/{ticker}/{clean_filing_type}/{doc_filename}"
+
+#     def _calculate_hash(self, content: bytes) -> str:
+#         """Calculate SHA256 hash of content"""
+#         return hashlib.sha256(content).hexdigest()
+
+#     def upload_filing(
+#         self,
+#         ticker: str,
+#         filing_type: str,
+#         filing_date: str,
+#         filename: str,
+#         content: bytes,
+#         content_type: str = "text/html",
+#         accession_number: str = ""
+#     ) -> Tuple[str, str]:
+#         """
+#         Upload a filing to S3.
+        
+#         S3 Path: sec/raw/{ticker}/{filing_type}/{filing_date}_{accession}.html
+        
+#         Returns: (s3_key, content_hash)
+#         """
+#         s3_key = self._generate_s3_key(ticker, filing_type, filing_date, filename, accession_number)
+#         content_hash = self._calculate_hash(content)
+        
+#         logger.info(f"  📤 Uploading to S3: {s3_key}")
+        
+#         try:
+#             self.s3_client.put_object(
+#                 Bucket=self.bucket_name,
+#                 Key=s3_key,
+#                 Body=content,
+#                 ContentType=content_type,
+#                 Metadata={
+#                     'ticker': ticker,
+#                     'filing_type': filing_type,
+#                     'filing_date': filing_date,
+#                     'content_hash': content_hash
+#                 }
+#             )
+#             logger.info(f"  ✅ Upload successful: {s3_key}")
+#             return s3_key, content_hash
+#         except ClientError as e:
+#             logger.error(f"  ❌ S3 upload failed: {e}")
+#             raise
+
+#     def check_exists(self, s3_key: str) -> bool:
+#         """Check if a file exists in S3"""
+#         try:
+#             self.s3_client.head_object(Bucket=self.bucket_name, Key=s3_key)
+#             return True
+#         except ClientError:
+#             return False
+
+#     def get_file(self, s3_key: str) -> Optional[bytes]:
+#         """Download a file from S3"""
+#         try:
+#             response = self.s3_client.get_object(Bucket=self.bucket_name, Key=s3_key)
+#             return response['Body'].read()
+#         except ClientError as e:
+#             logger.error(f"Failed to get file from S3: {e}")
+#             return None
+
+#     def delete_file(self, s3_key: str) -> bool:
+#         """Delete a file from S3"""
+#         try:
+#             self.s3_client.delete_object(Bucket=self.bucket_name, Key=s3_key)
+#             return True
+#         except ClientError as e:
+#             logger.error(f"Failed to delete file from S3: {e}")
+#             return False
+
+#     def list_files(self, prefix: str) -> list:
+#         """List files in S3 with given prefix"""
+#         try:
+#             response = self.s3_client.list_objects_v2(
+#                 Bucket=self.bucket_name,
+#                 Prefix=prefix
+#             )
+#             return [obj['Key'] for obj in response.get('Contents', [])]
+#         except ClientError as e:
+#             logger.error(f"Failed to list S3 files: {e}")
+#             return []
+
+
+# # Singleton instance
+# _s3_service: Optional[S3StorageService] = None
+
+# def get_s3_service() -> S3StorageService:
+#     global _s3_service
+#     if _s3_service is None:
+#         _s3_service = S3StorageService()
+#     return _s3_service
+
+
 import boto3
 import hashlib
 import logging
@@ -198,24 +336,24 @@ class S3StorageService:
 
     def _generate_s3_key(self, ticker: str, filing_type: str, filing_date: str, filename: str, accession_number: str = "") -> str:
         """
-        Generate S3 key path: sec/raw/{ticker}/{filing_type}/{filing_date}_{accession}.html
+        Generate S3 key path.
         
-        Structure:
-        sec/
-        └── raw/
-            └── {ticker}/
-                └── {filing_type}/
-                    └── {filing_date}_{accession_number}.html
+        For raw files: sec/raw/{ticker}/{filing_type}/{filing_date}_{accession}.html
+        For parsed files: sec/parsed/{ticker}/{filing_type}/{filing_date}_{filename}
         """
-        # Clean filing type: "10-K" -> "10-K", "DEF 14A" -> "DEF14A"
+        # Check if this is for parsed content
+        if filing_type.startswith("parsed/"):
+            # sec/parsed/{ticker}/{filing_type}/{filing_date}_{filename}
+            actual_filing_type = filing_type.replace("parsed/", "")
+            return f"sec/parsed/{ticker}/{actual_filing_type}/{filing_date}_{filename}"
+        
+        # Raw files: sec/raw/{ticker}/{filing_type}/{filing_date}_{accession}.html
         clean_filing_type = filing_type.replace(" ", "")
         
-        # Build filename with date and accession number
         if accession_number:
             clean_accession = accession_number.replace("-", "")
             doc_filename = f"{filing_date}_{clean_accession}.html"
         else:
-            # Fallback to original filename
             doc_filename = f"{filing_date}_{filename}"
         
         return f"sec/raw/{ticker}/{clean_filing_type}/{doc_filename}"
