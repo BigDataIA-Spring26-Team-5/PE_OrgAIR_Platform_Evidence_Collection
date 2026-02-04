@@ -81,6 +81,23 @@ class Settings(BaseSettings):
     HITL_SCORE_CHANGE_THRESHOLD: float = Field(default=15.0, ge=5, le=30)
     HITL_EBITDA_PROJECTION_THRESHOLD: float = Field(default=10.0, ge=5, le=25)
     
+    # Job Signals Pipeline Constants
+    JOBSPY_REQUEST_DELAY: float = Field(default=6.0, ge=1.0, le=30.0)
+    JOBSPY_DEFAULT_SITES: List[str] = Field(default=["linkedin"])
+    JOBSPY_RESULTS_WANTED: int = Field(default=100, ge=10, le=1000)
+    JOBSPY_HOURS_OLD: int = Field(default=72, ge=1, le=720)
+    JOBSPY_AI_SCORE_MULTIPLIER: float = Field(default=15.0, ge=5.0, le=50.0)
+    JOBSPY_RATIO_SCORE_WEIGHT: float = Field(default=50.0, ge=10.0, le=100.0)
+    JOBSPY_VOLUME_BONUS_MAX: float = Field(default=30.0, ge=10.0, le=50.0)
+    JOBSPY_VOLUME_BONUS_MULTIPLIER: float = Field(default=3.0, ge=1.0, le=10.0)
+    JOBSPY_DIVERSITY_SCORE_MAX: float = Field(default=20.0, ge=10.0, le=50.0)
+    JOBSPY_DIVERSITY_SCORE_MULTIPLIER: float = Field(default=2.0, ge=1.0, le=5.0)
+    JOBSPY_MAX_SCORE: float = Field(default=100.0, ge=50.0, le=200.0)
+    JOBSPY_AI_KEYWORDS_THRESHOLD_WITH_DESC: int = Field(default=2, ge=1, le=5)
+    JOBSPY_AI_KEYWORDS_THRESHOLD_NO_DESC: int = Field(default=1, ge=1, le=3)
+    JOBSPY_DIVERSITY_DENOMINATOR: float = Field(default=10.0, ge=5.0, le=20.0)
+    JOBSPY_TOP_KEYWORDS_LIMIT: int = Field(default=20, ge=5, le=50)
+    
     # Celery
     CELERY_BROKER_URL: str = "redis://localhost:6379/1"
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/2"
