@@ -26,7 +26,6 @@ class Settings(BaseSettings):
     
     # API
     API_V1_PREFIX: str = "/api/v1"
-    # API_V2_PREFIX: str = "/api/v2"
     RATE_LIMIT_PER_MINUTE: int = Field(default=60, ge=1, le=1000)
     
     # Parameter Version
@@ -41,11 +40,23 @@ class Settings(BaseSettings):
     SNOWFLAKE_WAREHOUSE: str 
     SNOWFLAKE_ROLE: str 
     
-    # AWS
+    # AWS S3
     AWS_ACCESS_KEY_ID: SecretStr
     AWS_SECRET_ACCESS_KEY: SecretStr
     AWS_REGION: str = "us-east-2"
     S3_BUCKET: str
+    
+    # SEC EDGAR Configuration (NEW)
+    SEC_USER_AGENT: str = Field(
+        default="MyCompany admin@mycompany.com",
+        description="SEC requires a valid User-Agent with company name and email"
+    )
+    SEC_RATE_LIMIT: int = Field(
+        default=10, 
+        ge=1, 
+        le=10,
+        description="SEC limits to 10 requests per second"
+    )
     
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
@@ -58,7 +69,7 @@ class Settings(BaseSettings):
     DEFAULT_LLM_MODEL: str = "gpt-4o-2024-08-06"
     FALLBACK_LLM_MODEL: str = "claude-sonnet-4-20250514"
     
-    # Cost Management (NEW)
+    # Cost Management
     DAILY_COST_BUDGET_USD: float = Field(default=500.0, ge=0)
     COST_ALERT_THRESHOLD_PCT: float = Field(default=0.8, ge=0, le=1)
     
@@ -77,7 +88,7 @@ class Settings(BaseSettings):
     W_USE_CASES: float = Field(default=0.12, ge=0.0, le=1.0)
     W_CULTURE: float = Field(default=0.10, ge=0.0, le=1.0)
     
-    # HITL Thresholds (NEW)
+    # HITL Thresholds
     HITL_SCORE_CHANGE_THRESHOLD: float = Field(default=15.0, ge=5, le=30)
     HITL_EBITDA_PROJECTION_THRESHOLD: float = Field(default=10.0, ge=5, le=25)
     
@@ -86,6 +97,7 @@ class Settings(BaseSettings):
     JOBSPY_DEFAULT_SITES: List[str] = Field(default=["linkedin", "indeed", "glassdoor"])
     JOBSPY_RESULTS_WANTED: int = Field(default=100, ge=10, le=1000)
     JOBSPY_HOURS_OLD: int = Field(default=72, ge=1, le=720)
+    JOBSPY_FUZZY_MATCH_THRESHOLD: float = Field(default=75.0, ge=50.0, le=100.0)
     JOBSPY_AI_SCORE_MULTIPLIER: float = Field(default=15.0, ge=5.0, le=50.0)
     JOBSPY_RATIO_SCORE_WEIGHT: float = Field(default=50.0, ge=10.0, le=100.0)
     JOBSPY_VOLUME_BONUS_MAX: float = Field(default=30.0, ge=10.0, le=50.0)

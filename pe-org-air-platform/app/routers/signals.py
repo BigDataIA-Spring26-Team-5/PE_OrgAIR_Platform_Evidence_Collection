@@ -1,557 +1,479 @@
 """
-Signals Router - Job Postings, Patents, and Tech Stack Data
+Signals API Router
 app/routers/signals.py
 
-Provides API endpoints for collecting and retrieving AI-related signals for companies.
-- POST /collect: Triggers data collection for a company (by company_id from Snowflake)
-- GET endpoints: Retrieve previously collected data from local storage (by ticker)
-
-Storage structure:
-    data/signals/jobs/<ticker>/     - Job postings and tech stack
-    data/signals/patents/<ticker>/  - Patent data
+Endpoints:
+- POST /api/v1/signals/collect         - Trigger signal collection for a company
+- GET  /api/v1/signals                 - List signals (filterable)
+- GET  /api/v1/companies/{id}/signals  - Get signal summary for company
+- GET  /api/v1/companies/{id}/signals/{category} - Get signals by category
 """
 
-from typing import List, Optional
-from uuid import UUID
-
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
+from pydantic import BaseModel, Field
+from typing import Optional, List, Dict, Any
+from uuid import uuid4
+from datetime import datetime, timezone
+from enum import Enum
+import logging
 
-from app.models.signal_responses import (
-    JobPostingsResponse,
-    PatentsResponse,
-    TechStacksResponse,
-    AllSignalsResponse,
-    JobPostingResponse,
-    PatentResponse,
-    TechStackResponse,
-    SignalCollectRequest,
-    SignalCollectResponse,
-    StoredSignalSummary,
-    SignalScoresResponse,
-)
-from app.pipelines.pipeline2_state import Pipeline2State
-from app.pipelines.job_signals import run_job_signals
-from app.pipelines.patent_signals import run_patent_signals
-from app.pipelines.keywords import TOP_AI_TOOLS
-from app.pipelines.utils import Company
-from app.services.signals_storage import SignalsStorage
+from app.services.leadership_service import get_leadership_service
+from app.services.job_signal_service import get_job_signal_service
+from app.services.tech_signal_service import get_tech_signal_service
+from app.services.patent_signal_service import get_patent_signal_service
+from app.repositories.signal_repository import get_signal_repository
 from app.repositories.company_repository import CompanyRepository
-from app.repositories.signal_scores_repository import (
-    SignalScoresRepository,
-    calculate_composite_score,
+
+logger = logging.getLogger(__name__)
+
+# In-memory task status store (in production, use Redis or database)
+_task_store: Dict[str, Dict[str, Any]] = {}
+
+
+# =============================================================================
+# Enums and Models
+# =============================================================================
+
+class SignalCategory(str, Enum):
+    """Signal category types."""
+    TECHNOLOGY_HIRING = "technology_hiring"
+    INNOVATION_ACTIVITY = "innovation_activity"
+    DIGITAL_PRESENCE = "digital_presence"
+    LEADERSHIP_SIGNALS = "leadership_signals"
+
+
+class CollectionRequest(BaseModel):
+    """Request model for signal collection."""
+    company_id: str = Field(..., description="Company ID or ticker symbol")
+    categories: List[str] = Field(
+        default=["technology_hiring", "innovation_activity", "digital_presence", "leadership_signals"],
+        description="Signal categories to collect"
+    )
+    years_back: int = Field(default=5, ge=1, le=10, description="Years back for patent search")
+    force_refresh: bool = Field(default=False, description="Force refresh cached data")
+
+
+class CollectionResponse(BaseModel):
+    """Response model for signal collection."""
+    task_id: str
+    status: str
+    message: str
+
+
+class TaskStatusResponse(BaseModel):
+    """Response model for task status."""
+    task_id: str
+    status: str
+    started_at: Optional[str] = None
+    completed_at: Optional[str] = None
+    progress: Optional[Dict[str, Any]] = None
+    result: Optional[Dict[str, Any]] = None
+    error: Optional[str] = None
+
+
+class SignalSummary(BaseModel):
+    """Signal summary for a company."""
+    company_id: str
+    company_name: Optional[str] = None
+    ticker: Optional[str] = None
+    technology_hiring_score: Optional[float] = None
+    innovation_activity_score: Optional[float] = None
+    digital_presence_score: Optional[float] = None
+    leadership_signals_score: Optional[float] = None
+    composite_score: Optional[float] = None
+    signal_count: int = 0
+    last_updated: Optional[str] = None
+
+
+class SignalDetail(BaseModel):
+    """Detailed signal record."""
+    signal_id: str
+    company_id: str
+    category: str
+    source: Optional[str] = None
+    normalized_score: Optional[float] = None
+    confidence: Optional[float] = None
+    evidence_count: int = 0
+    signal_date: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
+
+
+# =============================================================================
+# Routers
+# =============================================================================
+
+# Main signals router
+router = APIRouter(prefix="/api/v1", tags=["Signals"])
+
+
+# =============================================================================
+# POST /api/v1/signals/collect - Trigger signal collection
+# =============================================================================
+
+@router.post(
+    "/signals/collect",
+    response_model=CollectionResponse,
+    summary="Trigger signal collection for a company",
+    description="""
+    Trigger signal collection for a company. Runs asynchronously in the background.
+
+    **Categories:**
+    - `technology_hiring` - Job posting analysis (LinkedIn, Indeed, etc.)
+    - `innovation_activity` - Patent analysis (PatentsView API)
+    - `digital_presence` - Tech stack analysis (from job descriptions)
+    - `leadership_signals` - Leadership analysis (DEF 14A SEC filings)
+
+    Returns a task_id to check status via GET /api/v1/signals/tasks/{task_id}
+    """
 )
-
-router = APIRouter(prefix="/api/v1/signals", tags=["signals"])
-
-
-def _create_state(company_name: str, output_dir: str) -> Pipeline2State:
-    """Create a pipeline state for a single company."""
-    return Pipeline2State(
-        companies=[Company.from_name(company_name, 0).to_dict()],
-        output_dir=output_dir
-    )
-
-
-async def _collect_signals_task(
-    company_id: str,
-    company_name: str,
-    ticker: str,
-    collect_jobs: bool,
-    collect_patents: bool,
-    patents_years_back: int,
-) -> None:
-    """
-    Background task to collect all signals for a company.
-
-    Storage strategy (Option 1: Local + S3 parallel):
-    1. Save to local filesystem
-    2. Upload to S3 in parallel
-    3. Upsert scores to Snowflake (replace if ticker exists)
-
-    Args:
-        company_id: UUID of the company from Snowflake
-        company_name: Company name for search/scraping
-        ticker: Company ticker symbol for storage directory naming
-    """
-    storage = SignalsStorage(enable_s3=True)
-
-    # Initialize score tracking
-    job_market_score = None
-    techstack_score = None
-    patent_score = None
-    total_jobs = 0
-    ai_jobs = 0
-    total_patents = 0
-    ai_patents = 0
-    techstack_keywords = []
-    s3_jobs_key = None
-    s3_patents_key = None
-
-    # Collect job postings and tech stack
-    if collect_jobs:
-        job_postings = []
-
-        try:
-            job_state = _create_state(company_name, f"data/signals/jobs/{ticker.upper()}")
-            job_state = await run_job_signals(job_state, use_cloud_storage=False)
-
-            job_postings = job_state.job_postings
-            job_market_score = job_state.job_market_scores.get("company-0")
-            techstack_score = job_state.techstack_scores.get("company-0")
-            techstack_keywords = job_state.company_techstacks.get("company-0", [])
-        except Exception as e:
-            print(f"[signals] Job collection failed for {company_name} ({ticker}): {e}")
-
-        # Save job signals (local + S3 parallel)
-        local_path, s3_jobs_key = storage.save_job_signals(
-            company_id=company_id,
-            company_name=company_name,
-            ticker=ticker,
-            job_postings=job_postings,
-            job_market_score=job_market_score,
-            techstack_score=techstack_score,
-            techstack_keywords=techstack_keywords,
-        )
-
-        total_jobs = len(job_postings)
-        ai_jobs = sum(1 for j in job_postings if j.get("is_ai_role", False))
-        print(f"[signals] Jobs saved for {company_name} ({ticker}): {total_jobs} jobs")
-
-    # Collect patents
-    if collect_patents:
-        patents = []
-
-        try:
-            patent_state = _create_state(company_name, f"data/signals/patents/{ticker.upper()}")
-            patent_state = await run_patent_signals(patent_state, years_back=patents_years_back)
-
-            patents = patent_state.patents
-            patent_score = patent_state.patent_scores.get("company-0")
-        except Exception as e:
-            print(f"[signals] Patent collection failed for {company_name} ({ticker}): {e}")
-
-        # Save patent signals (local + S3 parallel)
-        local_path, s3_patents_key = storage.save_patent_signals(
-            company_id=company_id,
-            company_name=company_name,
-            ticker=ticker,
-            patents=patents,
-            patent_score=patent_score,
-        )
-
-        total_patents = len(patents)
-        ai_patents = sum(1 for p in patents if p.get("is_ai_patent", False))
-        print(f"[signals] Patents saved for {company_name} ({ticker}): {total_patents} patents")
-
-    # Calculate composite score (Leadership is None for now)
-    composite_score = calculate_composite_score(
-        hiring_score=job_market_score,
-        innovation_score=patent_score,
-        tech_stack_score=techstack_score,
-        leadership_score=None,  # Blank for now
-    )
-
-    # Upsert to Snowflake (replace if ticker exists)
-    try:
-        scores_repo = SignalScoresRepository()
-        scores_repo.upsert_signal_scores(
-            company_id=company_id,
-            company_name=company_name,
-            ticker=ticker,
-            hiring_score=job_market_score,
-            innovation_score=patent_score,
-            tech_stack_score=techstack_score,
-            leadership_score=None,  # Blank for now
-            composite_score=composite_score,
-            total_jobs=total_jobs,
-            ai_jobs=ai_jobs,
-            total_patents=total_patents,
-            ai_patents=ai_patents,
-            techstack_keywords=techstack_keywords,
-            s3_jobs_key=s3_jobs_key,
-            s3_patents_key=s3_patents_key,
-        )
-        scores_repo.close()
-        print(f"[signals] Snowflake upsert complete for {ticker}: composite_score={composite_score}")
-    except Exception as e:
-        print(f"[signals] Snowflake upsert failed for {company_name} ({ticker}): {e}")
-
-    print(f"[signals] Collection complete for {company_name} ({ticker})")
-
-
-# ============================================
-# POST /collect - Trigger signal collection
-# ============================================
-
-@router.post("/collect", response_model=SignalCollectResponse)
 async def collect_signals(
-    req: SignalCollectRequest,
-    background_tasks: BackgroundTasks,
+    request: CollectionRequest,
+    background_tasks: BackgroundTasks
 ):
-    """
-    Trigger signal collection (job postings, patents, tech stack) for a company.
+    """Trigger signal collection for a company."""
+    # Generate task ID
+    task_id = str(uuid4())
 
-    Requires a valid company_id from the Snowflake database.
-    The company must have a ticker symbol for storage organization.
+    # Initialize task status
+    _task_store[task_id] = {
+        "task_id": task_id,
+        "status": "queued",
+        "started_at": datetime.now(timezone.utc).isoformat(),
+        "completed_at": None,
+        "progress": {
+            "total_categories": len(request.categories),
+            "completed_categories": 0,
+            "current_category": None
+        },
+        "result": None,
+        "error": None
+    }
 
-    This endpoint queues a background task to:
-    1. Scrape job postings from LinkedIn, Indeed, Glassdoor
-    2. Fetch patents from PatentsView API
-    3. Extract tech stack keywords from job descriptions
-    4. Store data locally organized by ticker:
-       - data/signals/jobs/<TICKER>/
-       - data/signals/patents/<TICKER>/
-
-    Use GET endpoints with the ticker to retrieve the collected data.
-    """
-    # Look up company from Snowflake
-    company_repo = CompanyRepository()
-    company = company_repo.get_by_id(req.company_id)
-
-    if company is None:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Company with ID '{req.company_id}' not found in database"
-        )
-
-    company_id = str(req.company_id)
-    company_name = company["name"]
-    ticker = company.get("ticker")
-
-    if not ticker:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Company '{company_name}' does not have a ticker symbol. Ticker is required for signal storage."
-        )
-
+    # Add to background tasks
     background_tasks.add_task(
-        _collect_signals_task,
-        company_id=company_id,
-        company_name=company_name,
-        ticker=ticker,
-        collect_jobs=req.collect_jobs,
-        collect_patents=req.collect_patents,
-        patents_years_back=req.patents_years_back,
+        run_signal_collection,
+        task_id=task_id,
+        company_id=request.company_id,
+        categories=request.categories,
+        years_back=request.years_back,
+        force_refresh=request.force_refresh
     )
 
-    return SignalCollectResponse(
+    logger.info(f"Signal collection queued: task_id={task_id}, company={request.company_id}")
+
+    return CollectionResponse(
+        task_id=task_id,
         status="queued",
-        message=f"Signal collection queued for {company_name} ({ticker})",
-        company_id=req.company_id,
-        company_name=company_name,
+        message=f"Signal collection started for company {request.company_id}"
     )
 
 
-# ============================================
-# GET /companies - List companies with signals
-# ============================================
+@router.get(
+    "/signals/tasks/{task_id}",
+    response_model=TaskStatusResponse,
+    summary="Get task status",
+    description="Check the status of a signal collection task."
+)
+async def get_task_status(task_id: str):
+    """Get the status of a signal collection task."""
+    if task_id not in _task_store:
+        raise HTTPException(status_code=404, detail=f"Task not found: {task_id}")
 
-@router.get("/companies", response_model=List[StoredSignalSummary])
-async def list_signal_companies():
-    """
-    List all companies that have collected signals data.
+    return TaskStatusResponse(**_task_store[task_id])
 
-    Returns summaries including scores and counts for each company.
+
+# =============================================================================
+# GET /api/v1/signals - List signals (filterable)
+# =============================================================================
+
+@router.get(
+    "/signals",
+    summary="List signals (filterable)",
+    description="""
+    List all signals with optional filters.
+
+    **Filters:**
+    - `category` - Filter by signal category
+    - `ticker` - Filter by company ticker
+    - `min_score` - Minimum normalized score
+    - `limit` - Maximum results to return
     """
-    storage = SignalsStorage()
-    companies = storage.list_all_companies()
+)
+async def list_signals(
+    category: Optional[str] = Query(None, description="Filter by category"),
+    ticker: Optional[str] = Query(None, description="Filter by company ticker"),
+    min_score: Optional[float] = Query(None, ge=0, le=100, description="Minimum score"),
+    limit: int = Query(100, ge=1, le=1000, description="Max results")
+):
+    """List signals with optional filters."""
+    repo = get_signal_repository()
+    company_repo = CompanyRepository()
 
     results = []
-    for c in companies:
+
+    if ticker:
+        # Get signals for specific company
+        company = company_repo.get_by_ticker(ticker.upper())
+        if not company:
+            raise HTTPException(status_code=404, detail=f"Company not found: {ticker}")
+
+        company_id = str(company['id'])
+        if category:
+            signals = repo.get_signals_by_category(company_id, category)
+        else:
+            signals = repo.get_signals_by_company(company_id)
+
+        results = signals
+    else:
+        # Get signals for all companies
+        companies = company_repo.get_all()
+        for company in companies:
+            company_id = str(company.get('id'))
+            if category:
+                signals = repo.get_signals_by_category(company_id, category)
+            else:
+                signals = repo.get_signals_by_company(company_id)
+            results.extend(signals)
+
+    # Apply min_score filter
+    if min_score is not None:
+        results = [s for s in results if (s.get('normalized_score') or 0) >= min_score]
+
+    # Apply limit
+    results = results[:limit]
+
+    return {
+        "total": len(results),
+        "filters": {
+            "category": category,
+            "ticker": ticker,
+            "min_score": min_score
+        },
+        "signals": results
+    }
+
+
+# =============================================================================
+# GET /api/v1/companies/{id}/signals - Get signal summary for company
+# =============================================================================
+
+@router.get(
+    "/companies/{company_id}/signals",
+    summary="Get signal summary for company",
+    description="""
+    Get aggregated signal summary for a company.
+
+    The company_id can be either:
+    - Company UUID/ID
+    - Ticker symbol (e.g., "AAPL", "MSFT")
+    """
+)
+async def get_company_signals(company_id: str):
+    """Get signal summary for a company."""
+    repo = get_signal_repository()
+    company_repo = CompanyRepository()
+
+    # Try to find company by ticker first, then by ID
+    company = company_repo.get_by_ticker(company_id.upper())
+    if not company:
+        # Try as company ID
+        companies = company_repo.get_all()
+        company = next((c for c in companies if str(c.get('id')) == company_id), None)
+
+    if not company:
+        raise HTTPException(status_code=404, detail=f"Company not found: {company_id}")
+
+    ticker = company.get('ticker')
+    db_company_id = str(company.get('id'))
+
+    # Get summary
+    summary = repo.get_summary_by_ticker(ticker) if ticker else None
+
+    # Get all signals for this company
+    signals = repo.get_signals_by_company(db_company_id)
+
+    # Group signals by category
+    signals_by_category = {}
+    for signal in signals:
+        cat = signal.get('category', 'unknown')
+        if cat not in signals_by_category:
+            signals_by_category[cat] = []
+        signals_by_category[cat].append(signal)
+
+    return {
+        "company_id": db_company_id,
+        "company_name": company.get('name'),
+        "ticker": ticker,
+        "summary": {
+            "technology_hiring_score": summary.get("technology_hiring_score") if summary else None,
+            "innovation_activity_score": summary.get("innovation_activity_score") if summary else None,
+            "digital_presence_score": summary.get("digital_presence_score") if summary else None,
+            "leadership_signals_score": summary.get("leadership_signals_score") if summary else None,
+            "composite_score": summary.get("composite_score") if summary else None,
+            "signal_count": len(signals),
+            "last_updated": summary.get("updated_at") if summary else None
+        },
+        "categories": {
+            cat: {
+                "count": len(sigs),
+                "latest_score": sigs[0].get('normalized_score') if sigs else None
+            }
+            for cat, sigs in signals_by_category.items()
+        }
+    }
+
+
+# =============================================================================
+# GET /api/v1/companies/{id}/signals/{category} - Get signals by category
+# =============================================================================
+
+@router.get(
+    "/companies/{company_id}/signals/{category}",
+    summary="Get signals by category",
+    description="""
+    Get detailed signals for a company filtered by category.
+
+    **Categories:**
+    - `technology_hiring` - Job posting/hiring signals
+    - `innovation_activity` - Patent/innovation signals
+    - `digital_presence` - Tech stack signals
+    - `leadership_signals` - Leadership/executive signals
+    """
+)
+async def get_company_signals_by_category(company_id: str, category: str):
+    """Get signals for a company filtered by category."""
+    repo = get_signal_repository()
+    company_repo = CompanyRepository()
+
+    # Validate category
+    valid_categories = ["technology_hiring", "innovation_activity", "digital_presence", "leadership_signals"]
+    if category not in valid_categories:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid category: {category}. Valid categories: {valid_categories}"
+        )
+
+    # Try to find company by ticker first, then by ID
+    company = company_repo.get_by_ticker(company_id.upper())
+    if not company:
+        companies = company_repo.get_all()
+        company = next((c for c in companies if str(c.get('id')) == company_id), None)
+
+    if not company:
+        raise HTTPException(status_code=404, detail=f"Company not found: {company_id}")
+
+    ticker = company.get('ticker')
+    db_company_id = str(company.get('id'))
+
+    # Get signals for this category
+    signals = repo.get_signals_by_category(db_company_id, category)
+
+    # Calculate aggregate stats
+    scores = [s.get('normalized_score') for s in signals if s.get('normalized_score') is not None]
+    avg_score = sum(scores) / len(scores) if scores else None
+
+    return {
+        "company_id": db_company_id,
+        "company_name": company.get('name'),
+        "ticker": ticker,
+        "category": category,
+        "signal_count": len(signals),
+        "average_score": round(avg_score, 2) if avg_score else None,
+        "signals": signals
+    }
+
+
+# =============================================================================
+# Background Task Implementation
+# =============================================================================
+
+async def run_signal_collection(
+    task_id: str,
+    company_id: str,
+    categories: List[str],
+    years_back: int,
+    force_refresh: bool
+):
+    """Background task for signal collection."""
+    logger.info(f"Starting signal collection: task_id={task_id}, company={company_id}")
+
+    # Update status to running
+    _task_store[task_id]["status"] = "running"
+
+    # Get company info
+    company_repo = CompanyRepository()
+    company = company_repo.get_by_ticker(company_id.upper())
+    if not company:
+        companies = company_repo.get_all()
+        company = next((c for c in companies if str(c.get('id')) == company_id), None)
+
+    if not company:
+        _task_store[task_id]["status"] = "failed"
+        _task_store[task_id]["error"] = f"Company not found: {company_id}"
+        _task_store[task_id]["completed_at"] = datetime.now(timezone.utc).isoformat()
+        return
+
+    ticker = company.get('ticker')
+    result = {
+        "company_id": str(company.get('id')),
+        "company_name": company.get('name'),
+        "ticker": ticker,
+        "signals": {},
+        "errors": []
+    }
+
+    # Process each category
+    for i, category in enumerate(categories):
+        _task_store[task_id]["progress"]["current_category"] = category
+
         try:
-            # Use jobs_collected_at or patents_collected_at as collected_at
-            collected_at = c.get("jobs_collected_at") or c.get("patents_collected_at") or ""
-            results.append(StoredSignalSummary(
-                company_id=c.get("company_id", ""),
-                company_name=c.get("company_name", ""),
-                ticker=c.get("ticker", ""),
-                collected_at=collected_at,
-                total_jobs=c.get("total_jobs", 0),
-                ai_jobs=c.get("ai_jobs", 0),
-                job_market_score=c.get("job_market_score"),
-                total_patents=c.get("total_patents", 0),
-                ai_patents=c.get("ai_patents", 0),
-                patent_portfolio_score=c.get("patent_portfolio_score"),
-                techstack_score=c.get("techstack_score"),
-                techstack_keywords=c.get("techstack_keywords", []),
-            ))
-        except Exception:
-            continue
+            if category == "technology_hiring":
+                service = get_job_signal_service()
+                signal_result = await service.analyze_company(ticker, force_refresh=force_refresh)
+                result["signals"]["technology_hiring"] = {
+                    "status": "success",
+                    "score": signal_result.get("normalized_score"),
+                    "details": signal_result
+                }
 
-    return results
+            elif category == "innovation_activity":
+                service = get_patent_signal_service()
+                signal_result = await service.analyze_company(ticker, years_back=years_back)
+                result["signals"]["innovation_activity"] = {
+                    "status": "success",
+                    "score": signal_result.get("normalized_score"),
+                    "details": signal_result
+                }
 
+            elif category == "digital_presence":
+                service = get_tech_signal_service()
+                signal_result = await service.analyze_company(ticker, force_refresh=force_refresh)
+                result["signals"]["digital_presence"] = {
+                    "status": "success",
+                    "score": signal_result.get("normalized_score"),
+                    "details": signal_result
+                }
 
-# ============================================
-# GET /job_postings - Retrieve stored job data
-# ============================================
+            elif category == "leadership_signals":
+                service = get_leadership_service()
+                signal_result = await service.analyze_company(ticker)
+                result["signals"]["leadership_signals"] = {
+                    "status": "success",
+                    "score": signal_result.get("normalized_score"),
+                    "details": signal_result
+                }
 
-@router.get("/job_postings", response_model=JobPostingsResponse)
-async def get_job_postings(
-    ticker: str = Query(..., description="Company ticker symbol to retrieve job postings for"),
-    limit: int = Query(100, ge=1, le=500, description="Maximum number of job postings to return"),
-    offset: int = Query(0, ge=0, description="Offset for pagination"),
-):
-    """
-    Retrieve stored job postings for a company by ticker.
+        except Exception as e:
+            logger.error(f"Error collecting {category} signals: {e}")
+            result["signals"][category] = {"status": "failed", "error": str(e)}
+            result["errors"].append(f"{category}: {str(e)}")
 
-    Returns previously collected job data from local storage.
-    Use POST /collect to trigger fresh data collection.
-    """
-    storage = SignalsStorage()
-    data = storage.get_job_postings(ticker, limit=limit, offset=offset)
+        _task_store[task_id]["progress"]["completed_categories"] = i + 1
 
-    if data is None:
-        raise HTTPException(
-            status_code=404,
-            detail=f"No job data found for ticker '{ticker.upper()}'. Use POST /collect to fetch data first."
-        )
+    # Update task status
+    _task_store[task_id]["status"] = "completed" if not result["errors"] else "completed_with_errors"
+    _task_store[task_id]["completed_at"] = datetime.now(timezone.utc).isoformat()
+    _task_store[task_id]["result"] = result
+    _task_store[task_id]["progress"]["current_category"] = None
 
-    # Convert to response models
-    job_responses = []
-    for job in data.get("job_postings", []):
-        try:
-            job_responses.append(JobPostingResponse(**job))
-        except Exception:
-            continue
-
-    return JobPostingsResponse(
-        company_id=data.get("company_id", ""),
-        company_name=data.get("company_name"),
-        total_count=data.get("total_count", 0),
-        ai_count=data.get("ai_count", 0),
-        job_market_score=data.get("job_market_score"),
-        job_postings=job_responses,
-        errors=[],
-    )
-
-
-# ============================================
-# GET /patents - Retrieve stored patent data
-# ============================================
-
-@router.get("/patents", response_model=PatentsResponse)
-async def get_patents(
-    ticker: str = Query(..., description="Company ticker symbol to retrieve patents for"),
-    limit: int = Query(100, ge=1, le=500, description="Maximum number of patents to return"),
-    offset: int = Query(0, ge=0, description="Offset for pagination"),
-):
-    """
-    Retrieve stored patents for a company by ticker.
-
-    Returns previously collected patent data from local storage.
-    Use POST /collect to trigger fresh data collection.
-    """
-    storage = SignalsStorage()
-    data = storage.get_patents(ticker, limit=limit, offset=offset)
-
-    if data is None:
-        raise HTTPException(
-            status_code=404,
-            detail=f"No patent data found for ticker '{ticker.upper()}'. Use POST /collect to fetch data first."
-        )
-
-    # Convert to response models
-    patent_responses = []
-    for patent in data.get("patents", []):
-        try:
-            patent_responses.append(PatentResponse(**patent))
-        except Exception:
-            continue
-
-    return PatentsResponse(
-        company_id=data.get("company_id", ""),
-        company_name=data.get("company_name"),
-        total_count=data.get("total_count", 0),
-        ai_count=data.get("ai_count", 0),
-        patent_portfolio_score=data.get("patent_portfolio_score"),
-        patents=patent_responses,
-    )
-
-
-# ============================================
-# GET /tech_stacks - Retrieve stored tech data
-# ============================================
-
-@router.get("/tech_stacks", response_model=TechStacksResponse)
-async def get_tech_stacks(
-    ticker: str = Query(..., description="Company ticker symbol to retrieve tech stack for"),
-):
-    """
-    Retrieve stored tech stack data for a company by ticker.
-
-    Returns previously collected tech stack data from local storage.
-    Use POST /collect to trigger fresh data collection.
-    """
-    storage = SignalsStorage()
-    data = storage.get_techstack(ticker)
-
-    if data is None:
-        raise HTTPException(
-            status_code=404,
-            detail=f"No tech stack data found for ticker '{ticker.upper()}'. Use POST /collect to fetch data first."
-        )
-
-    keywords = data.get("techstack_keywords", [])
-    ai_tools = [k for k in keywords if k in TOP_AI_TOOLS]
-    techstack_score = data.get("techstack_score", 0)
-    company_name = data.get("company_name", "")
-    company_id = data.get("company_id", "")
-
-    techstack = TechStackResponse(
-        company_id=company_id,
-        company_name=company_name,
-        techstack_keywords=keywords,
-        ai_tools_found=ai_tools,
-        techstack_score=techstack_score,
-        total_keywords=len(keywords),
-        total_ai_tools=len(ai_tools),
-    )
-
-    return TechStacksResponse(
-        company_id=company_id,
-        company_name=company_name,
-        techstack_score=techstack_score,
-        techstacks=[techstack],
-    )
-
-
-# ============================================
-# GET /all - Retrieve all stored signals
-# ============================================
-
-@router.get("/all", response_model=AllSignalsResponse)
-async def get_all_signals(
-    ticker: str = Query(..., description="Company ticker symbol to retrieve all signals for"),
-    jobs_limit: int = Query(50, ge=1, le=200, description="Maximum number of job postings to return"),
-    patents_limit: int = Query(50, ge=1, le=200, description="Maximum number of patents to return"),
-):
-    """
-    Retrieve all stored signal data for a company by ticker.
-
-    Returns previously collected job postings, patents, and tech stack data.
-    Use POST /collect to trigger fresh data collection.
-    """
-    storage = SignalsStorage()
-
-    # Check if company has any data
-    summary = storage.get_combined_summary(ticker)
-    if summary is None:
-        raise HTTPException(
-            status_code=404,
-            detail=f"No signal data found for ticker '{ticker.upper()}'. Use POST /collect to fetch data first."
-        )
-
-    company_id = summary.get("company_id", "")
-    company_name = summary.get("company_name", "")
-
-    # Get job postings
-    job_data = storage.get_job_postings(ticker, limit=jobs_limit, offset=0)
-    job_responses = []
-    if job_data:
-        for job in job_data.get("job_postings", []):
-            try:
-                job_responses.append(JobPostingResponse(**job))
-            except Exception:
-                continue
-
-    # Get patents
-    patent_data = storage.get_patents(ticker, limit=patents_limit, offset=0)
-    patent_responses = []
-    if patent_data:
-        for patent in patent_data.get("patents", []):
-            try:
-                patent_responses.append(PatentResponse(**patent))
-            except Exception:
-                continue
-
-    # Get tech stack
-    techstack_data = storage.get_techstack(ticker)
-    techstacks = []
-    if techstack_data:
-        keywords = techstack_data.get("techstack_keywords", [])
-        ai_tools = [k for k in keywords if k in TOP_AI_TOOLS]
-        techstack_score = techstack_data.get("techstack_score", 0)
-
-        techstacks.append(TechStackResponse(
-            company_id=company_id,
-            company_name=company_name,
-            techstack_keywords=keywords,
-            ai_tools_found=ai_tools,
-            techstack_score=techstack_score,
-            total_keywords=len(keywords),
-            total_ai_tools=len(ai_tools),
-        ))
-
-    return AllSignalsResponse(
-        company_id=company_id,
-        company_name=company_name,
-        job_market_score=summary.get("job_market_score"),
-        patent_portfolio_score=summary.get("patent_portfolio_score"),
-        techstack_score=summary.get("techstack_score"),
-        total_jobs=summary.get("total_jobs", 0),
-        ai_jobs=summary.get("ai_jobs", 0),
-        total_patents=summary.get("total_patents", 0),
-        ai_patents=summary.get("ai_patents", 0),
-        job_postings=job_responses,
-        patents=patent_responses,
-        techstacks=techstacks,
-    )
-
-
-# ============================================
-# GET /scores - Retrieve signal scores from Snowflake
-# ============================================
-
-@router.get("/scores", response_model=SignalScoresResponse)
-async def get_signal_scores(
-    ticker: str = Query(..., description="Company ticker symbol to retrieve scores for"),
-):
-    """
-    Retrieve signal scores for a company from Snowflake.
-
-    Scores include:
-    - hiring_score: Job market/hiring signal (0-100)
-    - innovation_score: Patent/innovation signal (0-100)
-    - tech_stack_score: Tech stack signal (0-100)
-    - leadership_score: Leadership signal (0-100) - blank for now
-    - composite_score: Average of available scores
-
-    Use POST /collect to trigger fresh data collection and score calculation.
-    """
-    try:
-        scores_repo = SignalScoresRepository()
-        scores = scores_repo.get_by_ticker(ticker)
-        scores_repo.close()
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to retrieve scores from Snowflake: {e}"
-        )
-
-    if scores is None:
-        raise HTTPException(
-            status_code=404,
-            detail=f"No signal scores found for ticker '{ticker.upper()}'. Use POST /collect to fetch data first."
-        )
-
-    return SignalScoresResponse(**scores)
-
-
-@router.get("/scores/all", response_model=List[SignalScoresResponse])
-async def get_all_signal_scores():
-    """
-    Retrieve all signal scores from Snowflake.
-
-    Returns a list of all companies with their signal scores.
-    """
-    try:
-        scores_repo = SignalScoresRepository()
-        all_scores = scores_repo.get_all()
-        scores_repo.close()
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to retrieve scores from Snowflake: {e}"
-        )
-
-    return [SignalScoresResponse(**s) for s in all_scores]
+    logger.info(f"Signal collection completed: task_id={task_id}")

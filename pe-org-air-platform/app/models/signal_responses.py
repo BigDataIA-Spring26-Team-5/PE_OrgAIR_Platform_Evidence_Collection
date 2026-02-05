@@ -11,33 +11,68 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 
-class JobPostingResponse(BaseModel):
-    """Job posting response model for API."""
-    id: str
-    company_id: str
-    company_name: str
-    title: str
-    description: str
-    location: Optional[str] = None
-    posted_date: Optional[datetime] = None
-    source: str = "unknown"
-    url: Optional[str] = None
-    ai_keywords_found: List[str] = Field(default_factory=list)
-    techstack_keywords_found: List[str] = Field(default_factory=list)
-    is_ai_role: bool = False
-    ai_score: float = Field(default=0.0, ge=0, le=100)
+# ============================================
+# Base Models for Reuse
+# ============================================
 
+class DateTimeConfigMixin:
+    """Mixin for datetime JSON serialization configuration."""
     class Config:
         json_encoders = {
             datetime: lambda v: v.isoformat() if v else None
         }
 
 
-class PatentResponse(BaseModel):
-    """Patent response model for API."""
-    id: str
+class CompanyInfoMixin(BaseModel):
+    """Mixin for common company information fields."""
     company_id: str
     company_name: str
+
+
+class UUIDCompanyInfoMixin(BaseModel):
+    """Mixin for company information with UUID."""
+    company_id: Optional[UUID] = None
+    company_name: Optional[str] = None
+
+
+class OptionalCompanyInfoMixin(BaseModel):
+    """Mixin for optional company information fields."""
+    company_id: Optional[str] = None
+    company_name: Optional[str] = None
+
+
+class AIScoreMixin(BaseModel):
+    """Mixin for AI-related scoring fields."""
+    ai_keywords_found: List[str] = Field(default_factory=list)
+    is_ai_related: bool = False
+    ai_score: float = Field(default=0.0, ge=0, le=100)
+
+
+class TotalCountMixin(BaseModel):
+    """Mixin for total and AI counts."""
+    total_count: int = 0
+    ai_count: int = 0
+
+
+# ============================================
+# Core Response Models
+# ============================================
+
+class JobPostingResponse(CompanyInfoMixin, AIScoreMixin, DateTimeConfigMixin):
+    """Job posting response model for API."""
+    id: str
+    title: str
+    description: str
+    location: Optional[str] = None
+    posted_date: Optional[datetime] = None
+    source: str = "unknown"
+    url: Optional[str] = None
+    techstack_keywords_found: List[str] = Field(default_factory=list)
+
+
+class PatentResponse(CompanyInfoMixin, AIScoreMixin, DateTimeConfigMixin):
+    """Patent response model for API."""
+    id: str
     patent_id: str
     patent_number: str
     title: str
@@ -47,26 +82,20 @@ class PatentResponse(BaseModel):
     assignees: List[str] = Field(default_factory=list)
     inventors: List[str] = Field(default_factory=list)
     cpc_codes: List[str] = Field(default_factory=list)
-    ai_keywords_found: List[str] = Field(default_factory=list)
-    is_ai_patent: bool = False
-    ai_score: float = Field(default=0.0, ge=0, le=100)
-
-    class Config:
-        json_encoders = {
-            datetime: lambda v: v.isoformat() if v else None
-        }
 
 
-class TechStackResponse(BaseModel):
+class TechStackResponse(CompanyInfoMixin):
     """Tech stack response model for API."""
-    company_id: str
-    company_name: str
     techstack_keywords: List[str] = Field(default_factory=list)
     ai_tools_found: List[str] = Field(default_factory=list)
     techstack_score: float = Field(default=0.0, ge=0, le=100)
     total_keywords: int = 0
     total_ai_tools: int = 0
 
+
+# ============================================
+# Pipeline and Error Models
+# ============================================
 
 class PipelineError(BaseModel):
     """Error details from pipeline execution."""
@@ -76,39 +105,36 @@ class PipelineError(BaseModel):
     timestamp: Optional[str] = None
 
 
-class JobPostingsResponse(BaseModel):
+# ============================================
+# Collection Response Models
+# ============================================
+
+class BaseCollectionResponse(OptionalCompanyInfoMixin):
+    """Base model for collection responses."""
+    pass
+
+
+class JobPostingsResponse(BaseCollectionResponse, TotalCountMixin):
     """Response model for job postings endpoint."""
-    company_id: Optional[str] = None
-    company_name: Optional[str] = None
-    total_count: int
-    ai_count: int
     job_market_score: Optional[float] = None
     job_postings: List[JobPostingResponse] = Field(default_factory=list)
     errors: List[PipelineError] = Field(default_factory=list)
 
 
-class PatentsResponse(BaseModel):
+class PatentsResponse(BaseCollectionResponse, TotalCountMixin):
     """Response model for patents endpoint."""
-    company_id: Optional[str] = None
-    company_name: Optional[str] = None
-    total_count: int
-    ai_count: int
     patent_portfolio_score: Optional[float] = None
     patents: List[PatentResponse] = Field(default_factory=list)
 
 
-class TechStacksResponse(BaseModel):
+class TechStacksResponse(BaseCollectionResponse):
     """Response model for tech stacks endpoint."""
-    company_id: Optional[str] = None
-    company_name: Optional[str] = None
     techstack_score: Optional[float] = None
     techstacks: List[TechStackResponse] = Field(default_factory=list)
 
 
-class AllSignalsResponse(BaseModel):
+class AllSignalsResponse(BaseCollectionResponse, TotalCountMixin):
     """Response model for all signals endpoint."""
-    company_id: Optional[str] = None
-    company_name: Optional[str] = None
     job_market_score: Optional[float] = None
     patent_portfolio_score: Optional[float] = None
     techstack_score: Optional[float] = None
@@ -142,30 +168,32 @@ class SignalCollectResponse(BaseModel):
     data_path: Optional[str] = None
 
 
-class StoredSignalSummary(BaseModel):
-    """Summary of stored signals for a company."""
-    company_id: str
-    company_name: str
+# ============================================
+# Summary and Score Models
+# ============================================
+
+class BaseScoreSummary(CompanyInfoMixin):
+    """Base model for signal score summaries."""
     ticker: str = ""
-    collected_at: str
-    total_jobs: int = 0
-    ai_jobs: int = 0
     job_market_score: Optional[float] = None
-    total_patents: int = 0
-    ai_patents: int = 0
     patent_portfolio_score: Optional[float] = None
     techstack_score: Optional[float] = None
+    total_jobs: int = 0
+    ai_jobs: int = 0
+    total_patents: int = 0
+    ai_patents: int = 0
     techstack_keywords: List[str] = Field(default_factory=list)
 
 
-# ============================================
-# Signal Scores (Snowflake persistence)
-# ============================================
+class StoredSignalSummary(BaseScoreSummary, DateTimeConfigMixin):
+    """Summary of stored signals for a company."""
+    collected_at: str
 
-class SignalScoresResponse(BaseModel):
+
+class SignalScoresResponse(BaseScoreSummary, DateTimeConfigMixin):
     """
     Response model for signal scores stored in Snowflake.
-
+    
     Scores:
     - hiring_score: Job market/hiring signal (0-100)
     - innovation_score: Patent/innovation signal (0-100)
@@ -173,19 +201,11 @@ class SignalScoresResponse(BaseModel):
     - leadership_score: Leadership signal (0-100) - optional, blank for now
     - composite_score: Weighted average of available scores
     """
-    company_id: str
-    company_name: str
-    ticker: str
     hiring_score: Optional[float] = Field(None, ge=0, le=100, description="Job market/hiring score")
     innovation_score: Optional[float] = Field(None, ge=0, le=100, description="Patent/innovation score")
     tech_stack_score: Optional[float] = Field(None, ge=0, le=100, description="Tech stack score")
     leadership_score: Optional[float] = Field(None, ge=0, le=100, description="Leadership score (blank for now)")
     composite_score: Optional[float] = Field(None, ge=0, le=100, description="Composite score")
-    total_jobs: int = 0
-    ai_jobs: int = 0
-    total_patents: int = 0
-    ai_patents: int = 0
-    techstack_keywords: List[str] = Field(default_factory=list)
     s3_jobs_key: Optional[str] = None
     s3_patents_key: Optional[str] = None
     created_at: Optional[datetime] = None

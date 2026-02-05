@@ -1,31 +1,73 @@
 from __future__ import annotations
-
 import asyncio
 import json
+import logging
 import re
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
-
+from typing import List, Optional, Dict, Any
 from app.config import settings
-from app.models.job_signals import JobPosting
+from app.models.signal import JobPosting
 from app.pipelines.keywords import AI_KEYWORDS, AI_TECHSTACK_KEYWORDS, TOP_AI_TOOLS
 from app.pipelines.pipeline2_state import Pipeline2State
-from app.pipelines.utils import clean_nan, company_name_matches, safe_filename
+from app.pipelines.utils import clean_nan, safe_filename
+from app.pipelines.tech_signals import (
+    TechStackCollector, TechnologyDetection, 
+    calculate_techstack_score, create_external_signal_from_techstack,
+    log_techstack_results
+)
+
+# RapidFuzz for fuzzy company name matching
+from rapidfuzz import fuzz
+
+logger = logging.getLogger(__name__)
 
 
 def step1_init_job_collection(state: Pipeline2State) -> Pipeline2State:
     """Initialize job collection step."""
     state.mark_started()
-
+    
     # Create output directory
     Path(state.output_dir).mkdir(parents=True, exist_ok=True)
-
-    print("Step 1: Job collection initialized")
-    print(f"  Output directory: {state.output_dir}")
+    
+    logger.info("-" * 40)
+    logger.info("📁 [1/5] INITIALIZING JOB COLLECTION")
+    logger.info(f"   Output directory: {state.output_dir}")
     return state
 
+def is_company_match_fuzzy(job_company: str, target_company: str, threshold: float = 75.0) -> bool:
+    """
+    Use fuzzy matching to determine if job company matches target company.
+    
+    Args:
+        job_company: Company name from job posting
+        target_company: Target company we're searching for
+        threshold: Similarity score threshold (0-100)
+    
+    Returns:
+        True if companies match with sufficient similarity
+    """
+    if not job_company or not target_company:
+        return False
+    
+    # Clean the strings
+    job_clean = str(job_company).strip().lower()
+    target_clean = str(target_company).strip().lower()
+    
+    # If exact match after cleaning, return True immediately
+    if job_clean == target_clean:
+        return True
+    
+    # Use multiple similarity measures for robustness
+    scores = [
+        fuzz.token_sort_ratio(job_clean, target_clean),  # Handles word order
+        fuzz.partial_ratio(job_clean, target_clean),     # Handles substrings
+        fuzz.ratio(job_clean, target_clean),            # Simple ratio
+    ]
+    
+    # Return True if any score meets the threshold
+    return max(scores) >= threshold
 
 async def step2_fetch_job_postings(
     state: Pipeline2State,
@@ -34,20 +76,10 @@ async def step2_fetch_job_postings(
     results_wanted: Optional[int] = None,
     hours_old: Optional[int] = None,
 ) -> Pipeline2State:
-    """
-    Fetch job postings for each company using python-jobspy.
-
-    Strategy:
-    1. Search using company name as search term
-    2. Post-filter results by matching the 'company' column from JobSpy
-    3. This filters out jobs that just mention the company (e.g., "Microsoft Office skills")
-
-    Args:
-        state: Pipeline state
-        sites: Job sites to scrape (default: from config)
-        results_wanted: Max results to fetch (before filtering, default: from config)
-        hours_old: Max age of job postings in hours (default: from config)
-    """
+    
+    logger.info("-" * 40)
+    logger.info("🔍 [2/5] FETCHING JOB POSTINGS")
+    
     # Use config defaults if not provided
     if sites is None:
         sites = settings.JOBSPY_DEFAULT_SITES
@@ -55,60 +87,80 @@ async def step2_fetch_job_postings(
         results_wanted = settings.JOBSPY_RESULTS_WANTED
     if hours_old is None:
         hours_old = settings.JOBSPY_HOURS_OLD
-
+    
+    logger.info(f"   Sites: {', '.join(sites)}")
+    logger.info(f"   Max results: {results_wanted}")
+    logger.info(f"   Hours old: {hours_old}")
+    logger.info(f"   Fuzzy match threshold: {settings.JOBSPY_FUZZY_MATCH_THRESHOLD}%")
+    
     # Try to import jobspy
     try:
         from jobspy import scrape_jobs
     except ImportError as e:
         error_msg = "python-jobspy not installed. Run: pip install python-jobspy"
-        print(f"  [error] {error_msg}")
+        logger.error(f"   ❌ {error_msg}")
         state.add_error("job_fetch", "import", error_msg)
         raise ImportError(error_msg) from e
-
+    
+    # Initialize tech stack collector
+    tech_collector = TechStackCollector()
+    
     for company in state.companies:
         company_id = company.get("id", "")
         company_name = company.get("name", "")
-
+        
         if not company_name:
             continue
-
+        
         # Rate limiting
         await asyncio.sleep(max(state.request_delay, settings.JOBSPY_REQUEST_DELAY))
-
+        
         try:
-            print(f"  Scraping jobs for: {company_name}...")
-
+            logger.info(f"   📥 Scraping: {company_name}...")
+            
             # Scrape jobs - search by company name
-            # JobSpy will return jobs where the search term appears in title/description/company
             jobs_df = scrape_jobs(
                 site_name=sites,
-                search_term=company_name,  # Search for company name
+                search_term=company_name,
                 results_wanted=results_wanted,
                 hours_old=hours_old,
                 country_indeed="USA",
+                linkedin_fetch_description=True,  # Get full descriptions
             )
-
+            
             postings = []
             filtered_count = 0
             total_raw = 0
-
+            
             if jobs_df is not None and not jobs_df.empty:
                 total_raw = len(jobs_df)
-
+                
+                # Log a few samples for debugging
+                sample_companies = jobs_df['company'].head(3).tolist()
+                logger.debug(f"      Sample company names from scraped jobs: {sample_companies}")
+                
                 for _, row in jobs_df.iterrows():
                     # Get the ACTUAL company name from the job posting
                     job_company = str(row.get("company", "")) if clean_nan(row.get("company")) else ""
                     source = str(row.get("site", "unknown"))
-
-                    # Post-filter: verify the job's company matches our target
-                    # This filters out jobs that just mention "Microsoft Office" etc.
-                    if not company_name_matches(job_company, company_name):
+                    
+                    # Use fuzzy matching instead of strict matching
+                    if not is_company_match_fuzzy(
+                        job_company, 
+                        company_name, 
+                        threshold=settings.JOBSPY_FUZZY_MATCH_THRESHOLD
+                    ):
                         filtered_count += 1
+                        
+                        # Log first few filtered items for debugging
+                        if filtered_count <= 3:
+                            logger.debug(f"      Filtered: '{job_company}' vs '{company_name}'")
                         continue
-
+                    
+                    # Create JobPosting instance
                     posting = JobPosting(
                         company_id=company_id,
-                        company_name=job_company,  # Use actual company name from job
+                        company_name=job_company,
                         title=str(row.get("title", "")),
                         description=str(row.get("description", "")),
                         location=str(row.get("location", "")) if clean_nan(row.get("location")) else None,
@@ -116,19 +168,42 @@ async def step2_fetch_job_postings(
                         source=source,
                         url=str(row.get("job_url", "")) if clean_nan(row.get("job_url")) else None,
                     )
-                    postings.append(posting)
-
-            state.job_postings.extend([p.model_dump() for p in postings])
+                    
+                    # Detect technologies using TechStackCollector
+                    description_text = posting.description or ""
+                    tech_detections = tech_collector.detect_technologies_from_text(
+                        f"{posting.title} {description_text}"
+                    )
+                    
+                    # Convert to dict for storage
+                    posting_dict = posting.model_dump()
+                    posting_dict["tech_detections"] = [
+                        {
+                            "name": t.name,
+                            "category": t.category,
+                            "is_ai_related": t.is_ai_related,
+                            "confidence": t.confidence
+                        }
+                        for t in tech_detections
+                    ]
+                    
+                    postings.append(posting_dict)
+            
+            state.job_postings.extend(postings)
             state.summary["job_postings_collected"] += len(postings)
-
-            print(f"    [raw] {total_raw} results from JobSpy")
-            print(f"    [filtered] {len(postings)} jobs from {company_name} (removed {filtered_count} unrelated)")
-
+            
+            logger.info(f"      • Raw results: {total_raw}")
+            logger.info(f"      • Matched jobs: {len(postings)} (filtered {filtered_count} unrelated)")
+            
+            # If we filtered everything out, log warning
+            if total_raw > 0 and len(postings) == 0:
+                logger.warning(f"      ⚠️  No jobs matched after filtering. Try lowering JOBSPY_FUZZY_MATCH_THRESHOLD")
+                
         except Exception as e:
             state.add_error("job_fetch", company_id, str(e))
-            print(f"  [error] {company_name}: {e}")
-
-    print(f"Step 2: Collected {len(state.job_postings)} job postings total")
+            logger.error(f"      ❌ Error: {e}")
+    
+    logger.info(f"   ✅ Total collected: {len(state.job_postings)} job postings")
     return state
 
 
@@ -137,8 +212,6 @@ def _has_keyword(text: str, keyword: str) -> bool:
     Check if keyword exists in text with word boundary awareness.
     Handles short keywords like 'ai', 'ml' that could match parts of words.
     """
-    import re
-
     # For very short keywords (2-3 chars), use word boundary matching
     if len(keyword) <= 3:
         # Match as whole word or with common separators
@@ -152,64 +225,145 @@ def _has_keyword(text: str, keyword: str) -> bool:
 def step3_classify_ai_jobs(state: Pipeline2State) -> Pipeline2State:
     """
     Classify job postings as AI-related using AI_KEYWORDS.
-
-    Classification logic:
-    - If description is available: require 2+ AI keywords
-    - If title-only (no description): require 1+ AI keyword (more lenient)
     """
-
+    logger.info("-" * 40)
+    logger.info("🤖 [3/5] CLASSIFYING AI-RELATED JOBS")
+    
     for posting in state.job_postings:
         title = posting.get('title', '')
         description = posting.get('description', '') or ''
-
+        
         # Check if we have a real description
         has_description = description and description.lower() not in ('none', 'nan', '')
-
+        
         # Combine title and description for searching
         text = f"{title} {description}".lower()
         title_lower = title.lower()
-
+        
         # Find matching AI keywords
         ai_keywords_found = []
         for keyword in AI_KEYWORDS:
             if _has_keyword(text, keyword):
                 ai_keywords_found.append(keyword)
-
+        
         # Find matching tech stack keywords
         techstack_found = []
         for keyword in AI_TECHSTACK_KEYWORDS:
             if _has_keyword(text, keyword):
                 techstack_found.append(keyword)
-
+        
         posting["ai_keywords_found"] = ai_keywords_found
         posting["techstack_keywords_found"] = techstack_found
-
+        
         # Determine if AI role based on keyword count
-        # Lower threshold for title-only jobs (LinkedIn often doesn't return descriptions)
         if has_description:
-            # With description: require JOBSPY_AI_KEYWORDS_THRESHOLD_WITH_DESC keywords for confidence
             posting["is_ai_role"] = len(ai_keywords_found) >= settings.JOBSPY_AI_KEYWORDS_THRESHOLD_WITH_DESC
         else:
-            # Title-only: require JOBSPY_AI_KEYWORDS_THRESHOLD_NO_DESC keyword (title keywords are more reliable)
             posting["is_ai_role"] = len(ai_keywords_found) >= settings.JOBSPY_AI_KEYWORDS_THRESHOLD_NO_DESC
-
+        
         # Calculate AI score (0-JOBSPY_MAX_SCORE)
         posting["ai_score"] = min(settings.JOBSPY_MAX_SCORE, len(ai_keywords_found) * settings.JOBSPY_AI_SCORE_MULTIPLIER)
-
+    
     ai_count = sum(1 for p in state.job_postings if p.get("is_ai_role"))
-    print(f"Step 3: Classified {ai_count} AI-related jobs out of {len(state.job_postings)}")
+    total_count = len(state.job_postings)
+    
+    logger.info(f"   • Total jobs analyzed: {total_count}")
+    logger.info(f"   • AI-related jobs: {ai_count}")
+    if total_count > 0:
+        logger.info(f"   • AI job ratio: {(ai_count/total_count*100):.1f}%")
+    
     return state
+
+
+def calculate_job_score(jobs: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """
+    Calculate job market score for AI hiring signals.
+
+    Scoring Algorithm (0-100):
+    - AI Ratio Score: (ai_jobs / total_tech_jobs) * 60 (max 60 points)
+    - Skill Diversity: (unique_skills / 10) * 20 (max 20 points)
+    - Volume Bonus: (ai_jobs / 5) * 20 (max 20 points)
+    """
+
+    # AI keywords for job classification
+    AI_KEYWORDS = [
+        "machine learning", "ml engineer", "data scientist",
+        "artificial intelligence", "deep learning", "nlp",
+        "computer vision", "mlops", "ai engineer",
+        "pytorch", "tensorflow", "llm", "large language model"
+    ]
+
+    # AI skills for diversity scoring
+    AI_SKILLS = [
+        "python", "pytorch", "tensorflow", "scikit-learn",
+        "spark", "hadoop", "kubernetes", "docker",
+        "aws sagemaker", "azure ml", "gcp vertex",
+        "huggingface", "langchain", "openai"
+    ]
+
+    # Tech job detection keywords
+    TECH_KEYWORDS = [
+        "engineer", "developer", "programmer", "software",
+        "data", "analyst", "scientist", "technical"
+    ]
+
+    total_tech_jobs = 0
+    ai_jobs = 0
+    all_skills = set()
+
+    for job in jobs:
+        title = job.get('title', '').lower()
+        description = job.get('description', '') or ''
+        description = description.lower()
+        full_text = f"{title} {description}"
+
+        # Check if tech job (based on title)
+        if any(kw in title for kw in TECH_KEYWORDS):
+            total_tech_jobs += 1
+
+            # Check if AI job (based on full text)
+            if any(kw in full_text for kw in AI_KEYWORDS):
+                ai_jobs += 1
+
+                # Extract AI skills for diversity scoring
+                for skill in AI_SKILLS:
+                    if skill in full_text:
+                        all_skills.add(skill)
+
+    # Calculate AI ratio
+    ai_ratio = ai_jobs / total_tech_jobs if total_tech_jobs > 0 else 0
+
+    # Calculate score components
+    ratio_score = min(ai_ratio * 60, 60)
+    diversity_score = min(len(all_skills) / 10, 1) * 20
+    volume_bonus = min(ai_jobs / 5, 1) * 20
+
+    final_score = ratio_score + diversity_score + volume_bonus
+
+    # Calculate confidence based on sample size
+    confidence = min(0.5 + total_tech_jobs / 100, 0.95)
+
+    return {
+        "score": round(final_score, 1),
+        "ai_jobs": ai_jobs,
+        "total_tech_jobs": total_tech_jobs,
+        "ai_ratio": round(ai_ratio, 3),
+        "all_skills": list(all_skills),
+        "score_breakdown": {
+            "ratio_score": round(ratio_score, 1),
+            "diversity_score": round(diversity_score, 1),
+            "volume_bonus": round(volume_bonus, 1)
+        },
+        "confidence": confidence
+    }
 
 
 def step4_score_job_market(state: Pipeline2State) -> Pipeline2State:
     """
-    Calculate job market score for each company.
-
-    Scoring algorithm:
-    - Base: (AI jobs / Total jobs) * JOBSPY_RATIO_SCORE_WEIGHT
-    - Volume bonus: min(JOBSPY_VOLUME_BONUS_MAX, AI_job_count * JOBSPY_VOLUME_BONUS_MULTIPLIER)
-    - Keyword diversity: (unique AI keywords / JOBSPY_DIVERSITY_DENOMINATOR) * JOBSPY_DIVERSITY_SCORE_MULTIPLIER
+    Calculate job market score for each company using the main scoring algorithm.
     """
+    logger.info("-" * 40)
+    logger.info("📊 [4/5] SCORING JOB MARKET")
 
     company_jobs = defaultdict(list)
     for posting in state.job_postings:
@@ -220,110 +374,140 @@ def step4_score_job_market(state: Pipeline2State) -> Pipeline2State:
             state.job_market_scores[company_id] = 0.0
             continue
 
-        ai_jobs = [j for j in jobs if j.get("is_ai_role")]
-        total_jobs = len(jobs)
-        ai_count = len(ai_jobs)
+        # Use main scoring algorithm
+        analysis = calculate_job_score(jobs)
 
-        # Ratio component (0-JOBSPY_RATIO_SCORE_WEIGHT points)
-        ratio_score = (ai_count / total_jobs * settings.JOBSPY_RATIO_SCORE_WEIGHT) if total_jobs > 0 else 0
-
-        # Volume bonus (0-JOBSPY_VOLUME_BONUS_MAX points)
-        volume_bonus = min(settings.JOBSPY_VOLUME_BONUS_MAX, ai_count * settings.JOBSPY_VOLUME_BONUS_MULTIPLIER)
-
-        # Keyword diversity (0-JOBSPY_DIVERSITY_SCORE_MAX points)
-        all_keywords = set()
-        for job in ai_jobs:
-            all_keywords.update(job.get("ai_keywords_found", []))
-        diversity_score = min(settings.JOBSPY_DIVERSITY_SCORE_MAX, len(all_keywords) * settings.JOBSPY_DIVERSITY_SCORE_MULTIPLIER)
-
-        final_score = min(settings.JOBSPY_MAX_SCORE, ratio_score + volume_bonus + diversity_score)
+        final_score = analysis["score"]
         state.job_market_scores[company_id] = round(final_score, 2)
 
-    print(f"Step 4: Scored job market for {len(state.job_market_scores)} companies")
+        # Store analysis for later use
+        state.job_market_analyses[company_id] = analysis
+
+        company_name = jobs[0].get("company_name", company_id) if jobs else company_id
+        breakdown = analysis["score_breakdown"]
+        logger.info(
+            f"   • {company_name}: {final_score:.1f}/100 "
+            f"(ratio={breakdown['ratio_score']:.1f}, diversity={breakdown['diversity_score']:.1f}, volume={breakdown['volume_bonus']:.1f})"
+        )
+
+    logger.info(f"   ✅ Scored {len(state.job_market_scores)} companies")
     return state
 
 
 def step4b_score_techstack(state: Pipeline2State) -> Pipeline2State:
     """
     Calculate techstack score for each company based on AI tools presence.
-
-    Process:
-    1. Aggregate all unique techstack keywords from ALL jobs (not just AI jobs)
-    2. Score based on presence of specific AI tools (TOP_AI_TOOLS)
-
-    Scoring algorithm:
-    - Base: (AI tools found / Total AI tools) * 50
-    - Volume bonus: min(30, total_techstack_keywords * 1)
-    - Top tools bonus: 5 points per TOP_AI_TOOLS keyword (max 20)
+    
+    Uses both original scoring and TechStackCollector analysis.
     """
-
+    logger.info("-" * 40)
+    logger.info("🔧 [4b/5] SCORING TECH STACK")
+    
+    tech_collector = TechStackCollector()
     company_jobs = defaultdict(list)
+    
     for posting in state.job_postings:
         company_jobs[posting["company_id"]].append(posting)
-
+    
     for company_id, jobs in company_jobs.items():
         if not jobs:
             state.techstack_scores[company_id] = 0.0
             state.company_techstacks[company_id] = []
             continue
-
+        
         # Aggregate ALL unique techstack keywords from all jobs
         all_techstack_keywords = set()
         for job in jobs:
             all_techstack_keywords.update(job.get("techstack_keywords_found", []))
-
+        
+        # Aggregate technology detections
+        all_tech_detections = []
+        for job in jobs:
+            tech_detections = job.get("tech_detections", [])
+            for tech in tech_detections:
+                all_tech_detections.append(
+                    TechnologyDetection(
+                        name=tech["name"],
+                        category=tech["category"],
+                        is_ai_related=tech["is_ai_related"],
+                        confidence=tech["confidence"]
+                    )
+                )
+        
         # Store unique techstack for this company
         state.company_techstacks[company_id] = sorted(list(all_techstack_keywords))
-
-        # Find AI-specific tools (intersection with TOP_AI_TOOLS)
-        ai_tools_found = all_techstack_keywords & TOP_AI_TOOLS
-        total_ai_tools = len(TOP_AI_TOOLS)
-
-        # Base score: ratio of AI tools found (0-50 points)
-        base_score = (len(ai_tools_found) / total_ai_tools * 50) if total_ai_tools > 0 else 0
-
-        # Volume bonus: reward having more techstack keywords (0-30 points)
-        volume_bonus = min(30, len(all_techstack_keywords) * 1)
-
-        # Top tools bonus: extra points for specific high-value AI tools (0-20 points)
-        top_tools_bonus = min(20, len(ai_tools_found) * 5)
-
-        final_score = min(100.0, base_score + volume_bonus + top_tools_bonus)
+        
+        # Calculate original techstack score
+        original_analysis = calculate_techstack_score(all_techstack_keywords, all_tech_detections)
+        original_score = original_analysis["score"]
+        
+        # TechStackCollector scoring
+        collector_analysis = tech_collector.analyze_tech_stack(
+            company_id=company_id,
+            technologies=all_tech_detections
+        )
+        collector_score = collector_analysis["score"]
+        
+        # Combine scores (weighted average)
+        collector_weight = 0.3  # 30% weight to collector score
+        original_weight = 0.7   # 70% weight to original score
+        
+        final_score = (
+            original_score * original_weight +
+            collector_score * collector_weight
+        )
+        
         state.techstack_scores[company_id] = round(final_score, 2)
-
-    print(f"Step 4b: Scored techstack for {len(state.techstack_scores)} companies")
+        state.techstack_analyses[company_id] = {
+            "original": original_analysis,
+            "collector": collector_analysis,
+            "combined_score": final_score
+        }
+        
+        company_name = jobs[0].get("company_name", company_id) if jobs else company_id
+        log_techstack_results(
+            company_name=company_name,
+            original_score=original_score,
+            collector_score=collector_score,
+            final_score=final_score,
+            keywords_count=len(all_techstack_keywords),
+            ai_tools_count=len(original_analysis.get("ai_tools_found", []))
+        )
+    
+    logger.info(f"   ✅ Scored techstack for {len(state.techstack_scores)} companies")
     return state
 
 
 def step5_save_to_json(state: Pipeline2State) -> Pipeline2State:
     """Save results to local JSON files (legacy/debug mode)."""
-
+    logger.info("-" * 40)
+    logger.info("💾 [5/5] SAVING RESULTS TO JSON")
+    
     output_dir = Path(state.output_dir)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-
+    
     # Save all job postings
     all_jobs_file = output_dir / f"all_jobs_{timestamp}.json"
     with open(all_jobs_file, "w", encoding="utf-8") as f:
         json.dump(state.job_postings, f, indent=2, default=str)
-    print(f"  Saved all jobs to: {all_jobs_file}")
-
+    logger.info(f"   📄 All jobs: {all_jobs_file}")
+    
     # Save AI-related jobs only
     ai_jobs = [p for p in state.job_postings if p.get("is_ai_role")]
     ai_jobs_file = output_dir / f"ai_jobs_{timestamp}.json"
     with open(ai_jobs_file, "w", encoding="utf-8") as f:
         json.dump(ai_jobs, f, indent=2, default=str)
-    print(f"  Saved AI jobs to: {ai_jobs_file}")
-
+    logger.info(f"   📄 AI jobs: {ai_jobs_file}")
+    
     # Save per-company results
     company_jobs = defaultdict(list)
     for posting in state.job_postings:
         company_jobs[posting["company_id"]].append(posting)
-
+    
     for company_id, jobs in company_jobs.items():
-        # Get company name for filename
         company_name = jobs[0].get("company_name", company_id) if jobs else company_id
         safe_name = safe_filename(company_name)
-
+        
         company_file = output_dir / f"{safe_name}_{timestamp}.json"
         company_data = {
             "company_id": company_id,
@@ -333,11 +517,12 @@ def step5_save_to_json(state: Pipeline2State) -> Pipeline2State:
             "job_market_score": state.job_market_scores.get(company_id, 0),
             "techstack_score": state.techstack_scores.get(company_id, 0),
             "techstack_keywords": state.company_techstacks.get(company_id, []),
+            "techstack_analysis": state.techstack_analyses.get(company_id, {}),
             "jobs": jobs
         }
         with open(company_file, "w", encoding="utf-8") as f:
             json.dump(company_data, f, indent=2, default=str)
-
+    
     # Save summary
     summary_file = output_dir / f"summary_{timestamp}.json"
     summary_data = {
@@ -345,113 +530,137 @@ def step5_save_to_json(state: Pipeline2State) -> Pipeline2State:
         "job_market_scores": state.job_market_scores,
         "techstack_scores": state.techstack_scores,
         "company_techstacks": state.company_techstacks,
+        "techstack_analyses": state.techstack_analyses,
         "companies": [c.get("name", c.get("id")) for c in state.companies]
     }
     with open(summary_file, "w", encoding="utf-8") as f:
         json.dump(summary_data, f, indent=2, default=str)
-    print(f"  Saved summary to: {summary_file}")
-
-    print(f"Step 5: Saved results to {output_dir}")
+    logger.info(f"   📄 Summary: {summary_file}")
+    
+    logger.info(f"   ✅ Saved to {output_dir}")
     return state
 
 
 def step5_store_to_s3_and_snowflake(state: Pipeline2State) -> Pipeline2State:
     """
     Store results in S3 (raw data) and Snowflake (aggregated signals).
-
-    S3 Structure:
-        raw/jobs/{company_name}/{timestamp}.json - All job postings for company
-
-    Snowflake:
-        external_signals table - One row per company with job_market score
     """
-    from app.services.s3_storage import S3Storage
+    from app.services.s3_storage import get_s3_service
     from app.services.snowflake import SnowflakeService
-
+    
+    logger.info("-" * 40)
+    logger.info("☁️ [5/5] STORING TO S3 & SNOWFLAKE")
+    
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_dir = Path(state.output_dir)
-
+    
     # Initialize services
-    s3 = S3Storage()
+    s3 = get_s3_service()
     db = SnowflakeService()
-
+    
     try:
         # Group jobs by company
         company_jobs = defaultdict(list)
         for posting in state.job_postings:
             company_jobs[posting["company_id"]].append(posting)
-
+        
         for company_id, jobs in company_jobs.items():
             if not jobs:
                 continue
-
+            
             company_name = jobs[0].get("company_name", company_id)
-            safe_name = safe_filename(company_name)
-
+            ticker = None
+            for company in state.companies:
+                if company.get("id") == company_id:
+                    ticker = company.get("ticker", "").upper()
+                    break
+            if not ticker:
+                ticker = safe_filename(company_name).upper()
+            
+            # Get tech stack analyses
+            techstack_analysis = state.techstack_analyses.get(company_id, {})
+            original_analysis = techstack_analysis.get("original", {})
+            collector_analysis = techstack_analysis.get("collector", {})
+            
             # -----------------------------------------
             # S3: Upload raw job postings
             # -----------------------------------------
-            s3_key = f"raw/jobs/{safe_name}/{timestamp}.json"
-            local_path = output_dir / f"{safe_name}_{timestamp}.json"
-
-            # Save locally first
-            with open(local_path, "w", encoding="utf-8") as f:
-                json.dump(jobs, f, indent=2, default=str)
-
-            # Upload to S3
-            s3.upload_file(local_path, s3_key)
-            print(f"  [S3] Uploaded: {s3_key}")
-
+            jobs_s3_key = f"signals/jobs/{ticker}/{timestamp}.json"
+            jobs_data = {
+                "company_id": company_id,
+                "company_name": company_name,
+                "ticker": ticker,
+                "collection_date": timestamp,
+                "total_jobs": len(jobs),
+                "ai_jobs": sum(1 for j in jobs if j.get("is_ai_role")),
+                "job_market_score": state.job_market_scores.get(company_id, 0),
+                "techstack_score": state.techstack_scores.get(company_id, 0),
+                "techstack_analysis": techstack_analysis,
+                "jobs": jobs
+            }
+            s3.upload_json(jobs_data, jobs_s3_key)
+            logger.info(f"   📤 S3 Jobs: {jobs_s3_key}")
+            
+            # -----------------------------------------
+            # S3: Upload tech stack analysis
+            # -----------------------------------------
+            techstack_keywords = state.company_techstacks.get(company_id, [])
+            techstack_score = state.techstack_scores.get(company_id, 0.0)
+            
+            techstack_s3_key = f"signals/techstack/{ticker}/{timestamp}.json"
+            techstack_data = {
+                "company_id": company_id,
+                "company_name": company_name,
+                "ticker": ticker,
+                "collection_date": timestamp,
+                "techstack_score": techstack_score,
+                "all_keywords": techstack_keywords,
+                "ai_tools_found": original_analysis.get("ai_tools_found", []),
+                "total_keywords": original_analysis.get("total_keywords", 0),
+                "total_ai_tools": original_analysis.get("total_ai_tools", 0),
+                "techstack_analysis": techstack_analysis
+            }
+            s3.upload_json(techstack_data, techstack_s3_key)
+            logger.info(f"   📤 S3 TechStack: {techstack_s3_key}")
+            
             # -----------------------------------------
             # Snowflake: Insert external signal
             # -----------------------------------------
-            ai_jobs = [j for j in jobs if j.get("is_ai_role")]
+            job_market_analysis = state.job_market_analyses.get(company_id, {})
             score = state.job_market_scores.get(company_id, 0.0)
-            total_jobs = len(jobs)
-            ai_count = len(ai_jobs)
 
-            # Calculate score breakdown for raw_payload
-            ratio_score = (ai_count / total_jobs * settings.JOBSPY_RATIO_SCORE_WEIGHT) if total_jobs > 0 else 0
-            volume_bonus = min(settings.JOBSPY_VOLUME_BONUS_MAX, ai_count * settings.JOBSPY_VOLUME_BONUS_MULTIPLIER)
-            all_keywords = set()
-            for job in ai_jobs:
-                all_keywords.update(job.get("ai_keywords_found", []))
-            diversity_score = min(settings.JOBSPY_DIVERSITY_SCORE_MAX, len(all_keywords) * settings.JOBSPY_DIVERSITY_SCORE_MULTIPLIER)
+            ai_count = job_market_analysis.get("ai_jobs", 0)
+            total_tech_jobs = job_market_analysis.get("total_tech_jobs", 0)
 
             # Build summary text
-            summary = f"Found {ai_count} AI roles out of {total_jobs} total jobs"
+            summary = f"Found {ai_count} AI roles out of {total_tech_jobs} tech jobs"
 
-            # Get techstack data for this company
-            techstack_keywords = state.company_techstacks.get(company_id, [])
-            techstack_score = state.techstack_scores.get(company_id, 0.0)
-            ai_tools_found = list(set(techstack_keywords) & TOP_AI_TOOLS)
-
-            # Build raw_payload with detailed metrics
+            # Build raw_payload with detailed metrics from analysis
             raw_payload = {
                 "collection_date": timestamp,
-                "s3_key": s3_key,
-                "total_jobs": total_jobs,
+                "s3_jobs_key": jobs_s3_key,
+                "s3_techstack_key": techstack_s3_key,
+                "total_jobs": len(jobs),
+                "total_tech_jobs": total_tech_jobs,
                 "ai_jobs": ai_count,
-                "score_breakdown": {
-                    "ratio_score": round(ratio_score, 2),
-                    "volume_bonus": round(volume_bonus, 2),
-                    "diversity_score": round(diversity_score, 2),
-                },
-                "top_ai_keywords": list(all_keywords)[:settings.JOBSPY_TOP_KEYWORDS_LIMIT],
+                "ai_ratio": job_market_analysis.get("ai_ratio", 0),
+                "score_breakdown": job_market_analysis.get("score_breakdown", {}),
+                "all_skills": job_market_analysis.get("all_skills", []),
+                "confidence": job_market_analysis.get("confidence", 0.5),
                 "sources": list(set(j.get("source", "unknown") for j in jobs)),
                 "techstack": {
                     "score": techstack_score,
                     "all_keywords": techstack_keywords,
-                    "ai_tools_found": ai_tools_found,
+                    "ai_tools_found": original_analysis.get("ai_tools_found", []),
+                    "techstack_analysis": techstack_analysis,
                 },
             }
-
+            
             # Determine primary source
             source_counts = defaultdict(int)
             for job in jobs:
                 source_counts[job.get("source", "other")] += 1
             primary_source = max(source_counts, key=source_counts.get) if source_counts else "other"
-
+            
             # Insert into Snowflake
             signal_id = f"{company_id}_job_market_{timestamp}"
             db.insert_external_signal(
@@ -464,11 +673,11 @@ def step5_store_to_s3_and_snowflake(state: Pipeline2State) -> Pipeline2State:
                 summary=summary,
                 raw_payload=raw_payload,
             )
-            print(f"  [Snowflake] Inserted signal: {signal_id} (score: {score})")
-
-        print(f"Step 5: Stored results for {len(company_jobs)} companies in S3 + Snowflake")
+            logger.info(f"   💾 Snowflake: {company_name} (score: {score})")
+        
+        logger.info(f"   ✅ Stored {len(company_jobs)} companies in S3 + Snowflake")
         return state
-
+    
     finally:
         db.close()
 
@@ -476,28 +685,34 @@ def step5_store_to_s3_and_snowflake(state: Pipeline2State) -> Pipeline2State:
 async def run_job_signals(
     state: Pipeline2State,
     *,
-    use_cloud_storage: bool = True,
+    skip_storage: bool = False,
+    use_local_storage: bool = False,
 ) -> Pipeline2State:
     """
-    Run the complete job signals collection pipeline.
+    Run the job signals collection pipeline (extract, classify, score).
 
     Args:
         state: Pipeline state with companies loaded
-        use_cloud_storage: If True, store in S3 + Snowflake. If False, save to local JSON only.
+        skip_storage: If True, skip all storage steps (for pipeline2_runner integration)
+        use_local_storage: If True and skip_storage=False, save to local JSON instead of S3/Snowflake
 
     Returns:
-        Updated pipeline state with job postings and scores
+        Updated pipeline state with job postings, classifications, and scores
     """
+    # Step 1: Initialize
     state = step1_init_job_collection(state)
+    # Step 2: Fetch job postings
     state = await step2_fetch_job_postings(state)
+    # Step 3: Classify AI jobs
     state = step3_classify_ai_jobs(state)
+    # Step 4: Score job market
     state = step4_score_job_market(state)
+    # Step 4b: Score tech stack
     state = step4b_score_techstack(state)
-
-    if use_cloud_storage:
-        state = step5_store_to_s3_and_snowflake(state)
-    else:
-        state = step5_save_to_json(state)
-
-    state.mark_completed()
+    # Step 5: Storage (optional - pipeline2_runner handles this separately)
+    if not skip_storage:
+        if use_local_storage:
+            state = step5_save_to_json(state)
+        else:
+            state = step5_store_to_s3_and_snowflake(state)
     return state
