@@ -18,11 +18,12 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Query
 
 from app.pipelines.pdf_parser import PDFParser
-from app.services.s3_storage import S3Storage
+# from app.services.s3_storage import S3Storage
+from app.services.s3_storage import S3StorageService
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/sec", tags=["SEC-EDGAR Filings"])
+router = APIRouter(prefix="/api/v1/sec", tags=["Sample PDF Parsing"])
 
 
 @router.get("/parse-pdf")
