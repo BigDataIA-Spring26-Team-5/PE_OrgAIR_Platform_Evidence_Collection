@@ -457,3 +457,5 @@ Since leadership is 20% of composite, I'll break down the internal scoring:
 ComponentMax PointsWhat We MeasureTech Executive Presence30CTO, CDO, Chief AI Officer foundAI/Tech Keywords in Compensation30Mentions of AI, digital, automationTech-Linked Performance Metrics25Bonuses tied to tech goalsBoard Tech Expertise15Directors with tech backgroundsTotal100Normalized score
 
 
+What DEF 14A Contains (Proxy Statement)
+SectionWhat It RevealsExecutive CompensationHow much executives are paid, bonuses tied to tech/AI goalsDirector CompensationBoard member pay and incentivesNamed Executive Officers (NEOs)CEO, CFO, CTO - their names and rolesCompensation Discussion & Analysis (CD&A)Strategy behind pay decisionsPerformance MetricsWhat KPIs trigger bonuses (tech adoption, digital transformation?)
