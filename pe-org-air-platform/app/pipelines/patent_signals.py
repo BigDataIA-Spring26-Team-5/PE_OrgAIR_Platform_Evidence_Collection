@@ -25,7 +25,7 @@ from dotenv import load_dotenv
 from app.pipelines.pipeline2_state import Pipeline2State
 from app.pipelines.keywords import PATENT_AI_KEYWORDS, AI_KEYWORDS
 from app.pipelines.utils import clean_nan, safe_filename
-from app.models.patent_signals import Patent
+from app.models.signal import Patent
 
 # Load environment variables from .env file
 load_dotenv()

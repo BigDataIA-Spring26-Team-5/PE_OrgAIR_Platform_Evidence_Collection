@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from app.config import settings
-from app.models.job_signals import JobPosting
+from app.models.signal import JobPosting
 from app.pipelines.keywords import AI_KEYWORDS, AI_TECHSTACK_KEYWORDS, TOP_AI_TOOLS
 from app.pipelines.pipeline2_state import Pipeline2State
 from app.pipelines.utils import clean_nan, company_name_matches, safe_filename
