@@ -2,8 +2,7 @@ import json
 import logging
 from typing import Dict, List, Optional
 from datetime import datetime, timezone
-from app.pipelines.job_signals import run_job_signals
-from app.pipelines.pipeline2_state import Pipeline2State
+from app.services.job_data_service import get_job_data_service
 from app.services.s3_storage import get_s3_service
 from app.repositories.company_repository import CompanyRepository
 from app.repositories.signal_repository import get_signal_repository
@@ -20,13 +19,21 @@ class JobSignalService:
     """Service to extract technology hiring signals from job postings."""
     
     def __init__(self):
+        self.job_data_service = get_job_data_service()
         self.s3_service = get_s3_service()
         self.company_repo = CompanyRepository()
         self.signal_repo = get_signal_repository()
     
-    def analyze_company(self, ticker: str) -> Dict:
+    async def analyze_company(self, ticker: str, force_refresh: bool = False) -> Dict:
         """
         Analyze job postings for a company and create technology_hiring signals.
+        
+        Args:
+            ticker: Company ticker symbol
+            force_refresh: If True, force fresh data collection
+            
+        Returns:
+            Dictionary with analysis results
         """
         ticker = ticker.upper()
         logger.info("=" * 60)
@@ -47,48 +54,41 @@ class JobSignalService:
         if deleted:
             logger.info(f"  🗑️ Deleted {deleted} existing technology_hiring signals")
         
-        # Create pipeline state for this company
-        state = Pipeline2State(
-            companies=[{"id": company_id, "name": company_name, "ticker": ticker}],
-            output_dir=f"data/signals/jobs/{ticker}"
-        )
-        
         try:
-            # Run job signals pipeline
-            logger.info("📊 Running job signals pipeline...")
-            state = run_job_signals(state, use_cloud_storage=True)
+            # Get job data (collect fresh if needed)
+            logger.info("📊 Getting job data for analysis...")
+            job_data = await self.job_data_service.collect_job_data(ticker, force_refresh=force_refresh)
             
-            # Get the job market score from the pipeline state
-            job_market_score = state.job_market_scores.get(company_id, 0.0)
-            techstack_score = state.techstack_scores.get(company_id, 0.0)
+            if not job_data or "job_postings" not in job_data:
+                raise ValueError(f"No job data available for {ticker}")
             
-            # Calculate overall technology hiring score (weighted average)
-            # 70% job market score, 30% techstack score
-            overall_score = (job_market_score * 0.7) + (techstack_score * 0.3)
+            # Analyze job market from the shared job data
+            logger.info("📈 Analyzing job market...")
+            analysis_result = self.job_data_service.analyze_job_market(job_data)
             
-            # Get AI job count and total jobs
-            ai_jobs = sum(1 for p in state.job_postings if p.get("is_ai_role"))
-            total_jobs = len(state.job_postings)
+            job_market_score = analysis_result["job_market_scores"].get(company_id, 0.0)
+            total_jobs = analysis_result["total_jobs"]
+            ai_jobs = analysis_result["ai_jobs"]
             
-            # Get unique techstack keywords
-            techstack_keywords = state.company_techstacks.get(company_id, [])
+            # Calculate confidence based on data quality
+            confidence = self._calculate_confidence(total_jobs, ai_jobs)
             
-            # Create signal record
+            # Create signal record (focus only on job market, not tech stack)
             self.signal_repo.create_signal(
                 company_id=company_id,
                 category="technology_hiring",
                 source="jobspy",
                 signal_date=datetime.now(timezone.utc),
-                raw_value=f"Job analysis: {ai_jobs} AI jobs out of {total_jobs} total",
-                normalized_score=overall_score,
-                confidence=0.8,  # High confidence for job data
+                raw_value=f"Job market analysis: {ai_jobs} AI jobs out of {total_jobs} total",
+                normalized_score=job_market_score,
+                confidence=confidence,
                 metadata={
                     "job_market_score": job_market_score,
-                    "techstack_score": techstack_score,
                     "ai_jobs_count": ai_jobs,
                     "total_jobs_count": total_jobs,
-                    "techstack_keywords": techstack_keywords,
-                    "job_postings_analyzed": total_jobs
+                    "job_postings_analyzed": total_jobs,
+                    "data_collected_at": job_data.get("collected_at"),
+                    "analysis_method": "job_market_scoring"
                 }
             )
             
@@ -98,7 +98,7 @@ class JobSignalService:
             self.signal_repo.upsert_summary(
                 company_id=company_id,
                 ticker=ticker,
-                hiring_score=overall_score
+                hiring_score=job_market_score
             )
             
             # Summary
@@ -107,28 +107,25 @@ class JobSignalService:
             logger.info(f"   Total jobs analyzed: {total_jobs}")
             logger.info(f"   AI jobs found: {ai_jobs}")
             logger.info(f"   Job Market Score: {job_market_score:.1f}/100")
-            logger.info(f"   Techstack Score: {techstack_score:.1f}/100")
-            logger.info(f"   Overall Score: {overall_score:.1f}/100")
-            logger.info(f"   Techstack Keywords: {len(techstack_keywords)} unique")
+            logger.info(f"   Confidence: {confidence:.2f}")
+            logger.info(f"   Data freshness: {job_data.get('collected_at', 'unknown')}")
             logger.info("=" * 60)
             
             return {
                 "ticker": ticker,
                 "company_id": company_id,
                 "company_name": company_name,
-                "normalized_score": round(overall_score, 2),
-                "confidence": 0.8,
+                "normalized_score": round(job_market_score, 2),
+                "confidence": round(confidence, 3),
                 "breakdown": {
-                    "job_market_score": round(job_market_score, 1),
-                    "techstack_score": round(techstack_score, 1),
-                    "overall_score": round(overall_score, 1)
+                    "job_market_score": round(job_market_score, 1)
                 },
                 "job_metrics": {
                     "total_jobs": total_jobs,
                     "ai_jobs": ai_jobs,
                     "ai_job_ratio": round(ai_jobs / total_jobs * 100, 1) if total_jobs > 0 else 0
                 },
-                "techstack_keywords": techstack_keywords,
+                "data_freshness": job_data.get("collected_at"),
                 "job_postings_analyzed": total_jobs
             }
             
@@ -136,12 +133,40 @@ class JobSignalService:
             logger.error(f"❌ Error analyzing job signals for {ticker}: {e}")
             raise
     
-    def analyze_all_companies(self) -> Dict:
+    def _calculate_confidence(self, total_jobs: int, ai_jobs: int) -> float:
+        """
+        Calculate confidence score based on data quality.
+        
+        Factors:
+        1. Total jobs analyzed (more data = higher confidence)
+        2. Ratio of AI jobs (balanced data = higher confidence)
+        3. Absolute number of AI jobs (more AI jobs = higher confidence)
+        """
+        if total_jobs == 0:
+            return 0.3  # Low confidence with no data
+        
+        # Base confidence from total jobs (0.3 to 0.7)
+        total_confidence = min(0.7, 0.3 + (total_jobs / 50.0))
+        
+        # Ratio confidence (balanced ratio is best)
+        ai_ratio = ai_jobs / total_jobs
+        ratio_confidence = 1.0 - abs(ai_ratio - 0.5) * 2.0  # 1.0 at 50%, decreases toward extremes
+        
+        # AI count confidence (more AI jobs = better)
+        ai_count_confidence = min(0.5, ai_jobs / 10.0)
+        
+        # Combined confidence (weighted average)
+        confidence = (total_confidence * 0.4) + (ratio_confidence * 0.3) + (ai_count_confidence * 0.3)
+        
+        return min(0.95, max(0.3, confidence))  # Clamp between 0.3 and 0.95
+    
+    async def analyze_all_companies(self, force_refresh: bool = False) -> Dict:
         """Analyze technology hiring signals for all target companies."""
         target_tickers = ["CAT", "DE", "UNH", "HCA", "ADP", "PAYX", "WMT", "TGT", "JPM", "GS"]
         
         logger.info("=" * 60)
         logger.info("🎯 ANALYZING TECHNOLOGY HIRING SIGNALS FOR ALL COMPANIES")
+        logger.info(f"   Force refresh: {force_refresh}")
         logger.info("=" * 60)
         
         results = []
@@ -150,12 +175,13 @@ class JobSignalService:
         
         for ticker in target_tickers:
             try:
-                result = self.analyze_company(ticker)
+                result = await self.analyze_company(ticker, force_refresh=force_refresh)
                 results.append({
                     "ticker": ticker,
                     "status": "success",
                     "score": result["normalized_score"],
-                    "jobs_analyzed": result["job_postings_analyzed"]
+                    "jobs_analyzed": result["job_postings_analyzed"],
+                    "ai_jobs": result["job_metrics"]["ai_jobs"]
                 })
                 success_count += 1
             except Exception as e:
@@ -177,6 +203,7 @@ class JobSignalService:
             "total_companies": len(target_tickers),
             "successful": success_count,
             "failed": failed_count,
+            "force_refresh": force_refresh,
             "results": results
         }
 

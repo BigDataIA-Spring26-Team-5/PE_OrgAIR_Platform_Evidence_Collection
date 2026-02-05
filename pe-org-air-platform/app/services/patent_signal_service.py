@@ -24,7 +24,7 @@ class PatentSignalService:
         self.company_repo = CompanyRepository()
         self.signal_repo = get_signal_repository()
     
-    def analyze_company(self, ticker: str, years_back: int = 5) -> Dict:
+    async def analyze_company(self, ticker: str, years_back: int = 5) -> Dict:
         """
         Analyze patents for a company and create innovation_activity signals.
         """
@@ -56,7 +56,7 @@ class PatentSignalService:
         try:
             # Run patent signals pipeline
             logger.info("📊 Running patent signals pipeline...")
-            state = run_patent_signals(
+            state = await run_patent_signals(
                 state, 
                 years_back=years_back,
                 results_per_company=100
@@ -168,7 +168,7 @@ class PatentSignalService:
         
         return min(0.95, max(0.3, confidence))  # Clamp between 0.3 and 0.95
     
-    def analyze_all_companies(self, years_back: int = 5) -> Dict:
+    async def analyze_all_companies(self, years_back: int = 5) -> Dict:
         """Analyze innovation activity signals for all target companies."""
         target_tickers = ["CAT", "DE", "UNH", "HCA", "ADP", "PAYX", "WMT", "TGT", "JPM", "GS"]
         
@@ -183,7 +183,7 @@ class PatentSignalService:
         
         for ticker in target_tickers:
             try:
-                result = self.analyze_company(ticker, years_back=years_back)
+                result = await self.analyze_company(ticker, years_back=years_back)
                 results.append({
                     "ticker": ticker,
                     "status": "success",
