@@ -1,0 +1,177 @@
+{
+  "document_id": "13ac19e209e687bb6b6ac6ea78d9022c3e07de4925106015f9ba4ede54196b3a",
+  "ticker": "DE",
+  "filing_type": "8-K",
+  "table_count": 5,
+  "tables": [
+    {
+      "table_index": 0,
+      "headers": [
+        "​",
+        "​",
+        "​"
+      ],
+      "rows": [
+        [
+          "​",
+          "FORM 8-K",
+          "​"
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 3,
+      "context": "Washington, D.C. 20549",
+      "source": "HTML"
+    },
+    {
+      "table_index": 1,
+      "headers": [
+        "​",
+        "​",
+        "​",
+        "​",
+        "​"
+      ],
+      "rows": [
+        [
+          "Delaware",
+          "​",
+          "1-4121",
+          "​",
+          "36-2382580"
+        ],
+        [
+          "(State or other jurisdiction of incorporation)",
+          "​",
+          "(Commission File Number)",
+          "​",
+          "(IRS Employer Identification No.)"
+        ]
+      ],
+      "row_count": 2,
+      "col_count": 5,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 2,
+      "headers": [
+        "​",
+        "​",
+        "​",
+        "​",
+        "​"
+      ],
+      "rows": [
+        [
+          "Title of each class",
+          "​",
+          "Trading symbol",
+          "​",
+          "Name of each exchange on which registered"
+        ],
+        [
+          "Common stock, $1 par value",
+          "​",
+          "DE",
+          "​",
+          "New York Stock Exchange"
+        ],
+        [
+          "6.55% Debentures Due 2028",
+          "​",
+          "DE28",
+          "​",
+          "New York Stock Exchange"
+        ]
+      ],
+      "row_count": 3,
+      "col_count": 5,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 3,
+      "headers": [
+        "​",
+        "​"
+      ],
+      "rows": [
+        [
+          "Number",
+          "Description of Exhibit"
+        ],
+        [
+          "99.1",
+          "Press Release"
+        ],
+        [
+          "104",
+          "Cover Page Interactive Data File (the cover page XBRL tags are imbedded in the Inline XBRL document)"
+        ]
+      ],
+      "row_count": 3,
+      "col_count": 2,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 4,
+      "headers": [
+        "​",
+        "​",
+        "​"
+      ],
+      "rows": [
+        [
+          "​",
+          "DEERE & COMPANY"
+        ],
+        [
+          "​",
+          "​"
+        ],
+        [
+          "​",
+          "​",
+          "​"
+        ],
+        [
+          "​",
+          "By:",
+          "/s/ Edward R. Berk"
+        ],
+        [
+          "​",
+          "​",
+          "Edward R. Berk"
+        ],
+        [
+          "​",
+          "​",
+          "Secretary"
+        ],
+        [
+          "​",
+          "​",
+          "​"
+        ],
+        [
+          "​",
+          "​",
+          "​"
+        ],
+        [
+          "Dated: December 3, 2024",
+          "​",
+          "​"
+        ]
+      ],
+      "row_count": 9,
+      "col_count": 3,
+      "context": "Pursuant to the requirements of the Securities Exchange Act of 1934, the Registrant has duly caused this report to be signed on its behalf by the undersigned hereunto duly authorized.",
+      "source": "HTML"
+    }
+  ],
+  "extracted_at": "2026-02-03T22:31:07.602680+00:00"
+}

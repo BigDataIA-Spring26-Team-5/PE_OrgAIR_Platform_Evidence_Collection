@@ -9,7 +9,10 @@ streamlit>=1.30.0
 pytest
 sec-edgar-downloader
 pdfplumber>=0.9.0
-beautifulsoup4>=4.12.0
+beautifulsoup4
+lxml
+pdfplumber
+PyMuPDF
 # ============================================
 # Pydantic & Settings
 # ============================================
@@ -76,3 +79,9 @@ pytest-cov>=4.1.0
 httpx>=0.26.0
 fakeredis>=2.21.0
 moto>=5.0.0
+
+# HTTP requests for downloading exhibits
+requests>=2.31.0
+
+# Optional: Convert HTML filings to PDF (requires system dependencies)
+# weasyprint>=60.0  # Uncomment if you want HTML-to-PDF conversion

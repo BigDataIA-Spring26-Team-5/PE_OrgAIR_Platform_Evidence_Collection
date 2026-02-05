@@ -1,0 +1,339 @@
+{
+  "document_id": "8fdeef1a8a7eb11d6ba2c67e14f73fffe06f7abadf207b0ae53e003f913670f7",
+  "ticker": "CAT",
+  "filing_type": "8-K",
+  "table_count": 12,
+  "tables": [
+    {
+      "table_index": 0,
+      "headers": [
+        "Delaware",
+        "",
+        "1-768",
+        "",
+        "37-0602744"
+      ],
+      "rows": [
+        [
+          "(State or other jurisdiction of incorporation)",
+          "",
+          "(Commission File Number)",
+          "",
+          "(I.R.S Employer Identification No.)"
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 5,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 1,
+      "headers": [
+        "5025 N. O'Connor Boulevard",
+        "",
+        ""
+      ],
+      "rows": [
+        [
+          "Suite 100, Irving, Texas",
+          "",
+          "75039"
+        ],
+        [
+          "(Address of principal executive offices)",
+          "",
+          "(Zip Code)"
+        ]
+      ],
+      "row_count": 2,
+      "col_count": 3,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 2,
+      "headers": [
+        "¨",
+        "Written communications pursuant to Rule 425 under the Securities Act (17 CFR 230.425)"
+      ],
+      "rows": [
+        [
+          "¨",
+          "Soliciting material pursuant to Rule 14a-12 under the Exchange Act (17 CFR 240.14a-12)"
+        ],
+        [
+          "¨",
+          "Pre-commencement communications pursuant to Rule 14d-2(b) under the Exchange Act (17 CFR 240.14d-2(b))"
+        ],
+        [
+          "¨",
+          "Pre-commencement communications pursuant to Rule 13e-4(c) under the Exchange Act (17 CFR 240.13e-4(c))"
+        ]
+      ],
+      "row_count": 3,
+      "col_count": 2,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 3,
+      "headers": [
+        "Title of each class",
+        "Trading Symbol (s)",
+        "Name of each exchange which registered"
+      ],
+      "rows": [
+        [
+          "Common Stock ($1.00 par value)",
+          "CAT",
+          "The New York Stock Exchange"
+        ],
+        [
+          "5.3% Debentures due September 15, 2035",
+          "CAT35",
+          "The New York Stock Exchange"
+        ]
+      ],
+      "row_count": 2,
+      "col_count": 3,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 4,
+      "headers": [
+        "Director",
+        "For",
+        "Against",
+        "Abstain",
+        "Broker Non-Votes"
+      ],
+      "rows": [
+        [
+          "Daniel M. Dickinson",
+          "326,660,785",
+          "18,932,620",
+          "934,022",
+          "74,004,102"
+        ],
+        [
+          "James C. Fish, Jr.",
+          "341,428,127",
+          "4,271,250",
+          "828,049",
+          "74,004,102"
+        ],
+        [
+          "Gerald Johnson",
+          "340,106,896",
+          "5,605,381",
+          "815,150",
+          "74,004,102"
+        ],
+        [
+          "David W. MacLennan",
+          "327,003,152",
+          "18,718,624",
+          "805,651",
+          "74,004,102"
+        ],
+        [
+          "Judith F. Marks",
+          "341,824,512",
+          "3,873,416",
+          "829,499",
+          "74,004,102"
+        ],
+        [
+          "Debra L. Reed-Klages",
+          "336,570,392",
+          "9,183,291",
+          "773,744",
+          "74,004,102"
+        ],
+        [
+          "Susan C. Schwab",
+          "333,731,841",
+          "11,960,261",
+          "835,325",
+          "74,004,102"
+        ],
+        [
+          "D. James Umpleby III",
+          "325,887,710",
+          "19,643,492",
+          "996,225",
+          "74,004,102"
+        ],
+        [
+          "Rayford Wilkins, Jr.",
+          "333,800,457",
+          "11,879,631",
+          "847,339",
+          "74,004,102"
+        ]
+      ],
+      "row_count": 9,
+      "col_count": 5,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 5,
+      "headers": [
+        "For",
+        "Against",
+        "Abstain"
+      ],
+      "rows": [
+        [
+          "403,595,983",
+          "16,114,120",
+          "821,426"
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 3,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 6,
+      "headers": [
+        "For",
+        "Against",
+        "Abstain",
+        "Broker Non-Votes"
+      ],
+      "rows": [
+        [
+          "321,850,327",
+          "22,746,919",
+          "1,930,181",
+          "74,004,102"
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 4,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 7,
+      "headers": [
+        "For",
+        "Against",
+        "Abstain",
+        "Broker Non-Votes"
+      ],
+      "rows": [
+        [
+          "108,014,627",
+          "236,756,305",
+          "1,756,038",
+          "74,004,102"
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 4,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 8,
+      "headers": [
+        "For",
+        "Against",
+        "Abstain",
+        "Broker Non-Votes"
+      ],
+      "rows": [
+        [
+          "79,632,882",
+          "263,694,581",
+          "3,199,944",
+          "74,004,102"
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 4,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 9,
+      "headers": [
+        "For",
+        "Against",
+        "Abstain",
+        "Broker Non-Votes"
+      ],
+      "rows": [
+        [
+          "5,325,304",
+          "339,010,066",
+          "2,192,057",
+          "74,004,102"
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 4,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 10,
+      "headers": [
+        "Exhibit"
+      ],
+      "rows": [
+        [
+          "Number",
+          "Description"
+        ],
+        [
+          "99.1",
+          "Caterpillar Inc. press release dated June 12, 2024"
+        ],
+        [
+          "104",
+          "The cover page from this Current Report on Form 8-K, formatted in Inline XBRL"
+        ]
+      ],
+      "row_count": 3,
+      "col_count": 2,
+      "context": "",
+      "source": "HTML"
+    },
+    {
+      "table_index": 11,
+      "headers": [
+        "",
+        "CATERPILLAR INC."
+      ],
+      "rows": [
+        [
+          "June 14, 2024",
+          "By:",
+          "/s/ Derek Owens"
+        ],
+        [
+          "",
+          "",
+          "Derek Owens"
+        ],
+        [
+          "",
+          "",
+          "Chief Legal Officer and General Counsel"
+        ]
+      ],
+      "row_count": 3,
+      "col_count": 3,
+      "context": "",
+      "source": "HTML"
+    }
+  ],
+  "extracted_at": "2026-02-03T22:22:37.145212+00:00"
+}

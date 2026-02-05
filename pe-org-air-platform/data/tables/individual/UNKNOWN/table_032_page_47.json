@@ -1,0 +1,36 @@
+{
+  "table_index": 32,
+  "headers": [
+    "Fixed-rate 0.000% – 4.850% notes 2025 – 2062 $ 86,781 0.03% – 5.75% $ 97,341 0.03% – 6.65%"
+  ],
+  "rows": [
+    [
+      "2025 debt issuance:"
+    ],
+    [
+      "Fixed-rate 4.000% – 4.750% notes 2028 – 2035 4,500 4.07% – 4.83% —"
+    ],
+    [
+      "Total term debt principal 91,281 97,341"
+    ],
+    [
+      "Unamortized premium/(discount) and issuance\ncosts, net (309) (321)"
+    ],
+    [
+      "Hedge accounting fair value adjustments (294) (358)"
+    ],
+    [
+      "Total term debt 90,678 96,662"
+    ],
+    [
+      "Less: Current portion of term debt (12,350) (10,912)"
+    ],
+    [
+      "Total non-current portion of term debt $ 78,328 $ 85,750"
+    ]
+  ],
+  "row_count": 8,
+  "col_count": 1,
+  "page": 47,
+  "source": "PDF: _10-K-2025-As-Filed.pdf"
+}
