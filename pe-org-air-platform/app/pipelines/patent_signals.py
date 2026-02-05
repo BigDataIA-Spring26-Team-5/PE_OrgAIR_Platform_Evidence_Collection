@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import os
 import re
 from collections import defaultdict
@@ -30,6 +31,8 @@ from app.models.signal import Patent
 # Load environment variables from .env file
 load_dotenv()
 
+logger = logging.getLogger(__name__)
+
 # PatentsView PatentSearch API configuration (new API as of 2024)
 # Docs: https://search.patentsview.org/docs/docs/Search%20API/SearchAPIReference/
 PATENTSVIEW_API_URL = os.getenv("PATENTSVIEW_API_URL", "https://search.patentsview.org/api/v1/patent/")
@@ -42,8 +45,9 @@ def step1_init_patent_collection(state: Pipeline2State) -> Pipeline2State:
     # Create output directory
     Path(state.output_dir).mkdir(parents=True, exist_ok=True)
 
-    print("Step 1: Patent collection initialized")
-    print(f"  Output directory: {state.output_dir}")
+    logger.info("-" * 40)
+    logger.info("📁 [1/5] INITIALIZING PATENT COLLECTION")
+    logger.info(f"   Output directory: {state.output_dir}")
     return state
 
 
@@ -63,19 +67,24 @@ async def step2_fetch_patents(
         results_per_company: Max results per company (max 1000)
         api_key: PatentsView API key (or set PATENTSVIEW_API_KEY env var)
     """
+    logger.info("-" * 40)
+    logger.info("🔍 [2/5] FETCHING PATENTS FROM PATENTSVIEW")
+
     # Get API key from parameter, module constant, or environment
     api_key = api_key or PATENTSVIEW_API_KEY
     if api_key:
-        print(f"  [info] Using PatentsView API key: {api_key[:8]}...")
+        logger.info(f"   API Key: {api_key[:8]}...")
     else:
-        print("  [warning] No API key provided. Set PATENTSVIEW_API_KEY in .env or pass --api-key")
-        print("  [info] Get free API key at: https://patentsview.org/apis/keyrequest")
-        print("  [info] Proceeding without API key (may have rate limits)...")
+        logger.warning("   ⚠️ No API key provided (may have rate limits)")
+        logger.info("   Get free API key at: https://patentsview.org/apis/keyrequest")
 
     # Calculate date range (past N years)
     end_date = datetime.now()
     start_date = end_date - timedelta(days=years_back * 365)
     start_date_str = start_date.strftime("%Y-%m-%d")
+
+    logger.info(f"   Date range: {start_date_str} to {end_date.strftime('%Y-%m-%d')}")
+    logger.info(f"   Max results per company: {results_per_company}")
 
     # Build headers
     headers = {"Content-Type": "application/json"}
@@ -94,7 +103,7 @@ async def step2_fetch_patents(
             await asyncio.sleep(max(state.request_delay, PATENTSVIEW_REQUEST_DELAY))
 
             try:
-                print(f"  Fetching patents for: {company_name}...")
+                logger.info(f"   📥 Fetching: {company_name}...")
 
                 # Build PatentSearch API query (new format)
                 # Docs: https://search.patentsview.org/docs/docs/Search%20API/SearchAPIReference/
@@ -182,22 +191,24 @@ async def step2_fetch_patents(
 
                 state.patents.extend([p.model_dump() for p in postings])
                 state.summary["patents_collected"] = state.summary.get("patents_collected", 0) + len(postings)
-                print(f"    [fetched] {company_name}: {len(postings)} patents")
+                logger.info(f"      • Patents found: {len(postings)}")
 
             except httpx.HTTPStatusError as e:
                 error_msg = f"HTTP {e.response.status_code}: {e.response.text[:200]}"
                 state.add_error("patent_fetch", company_id, error_msg)
-                print(f"    [error] {company_name}: {error_msg}")
+                logger.error(f"      ❌ Error: {error_msg}")
             except Exception as e:
                 state.add_error("patent_fetch", company_id, str(e))
-                print(f"    [error] {company_name}: {e}")
+                logger.error(f"      ❌ Error: {e}")
 
-    print(f"Step 2: Collected {len(state.patents)} patents total")
+    logger.info(f"   ✅ Total collected: {len(state.patents)} patents")
     return state
 
 
 def step3_classify_ai_patents(state: Pipeline2State) -> Pipeline2State:
     """Classify patents as AI-related using PATENT_AI_KEYWORDS and AI_KEYWORDS."""
+    logger.info("-" * 40)
+    logger.info("🤖 [3/5] CLASSIFYING AI-RELATED PATENTS")
 
     # Combine patent-specific and general AI keywords
     all_ai_keywords = PATENT_AI_KEYWORDS | AI_KEYWORDS
@@ -225,7 +236,11 @@ def step3_classify_ai_patents(state: Pipeline2State) -> Pipeline2State:
         patent["ai_score"] = min(100.0, len(ai_keywords_found) * 20.0)
 
     ai_count = sum(1 for p in state.patents if p.get("is_ai_patent"))
-    print(f"Step 3: Classified {ai_count} AI-related patents out of {len(state.patents)}")
+    total_count = len(state.patents)
+
+    logger.info(f"   • Total patents analyzed: {total_count}")
+    logger.info(f"   • AI-related patents: {ai_count}")
+    logger.info(f"   • AI patent ratio: {(ai_count/total_count*100):.1f}%" if total_count > 0 else "   • AI patent ratio: N/A")
     return state
 
 
@@ -239,6 +254,8 @@ def step4_score_patent_portfolio(state: Pipeline2State) -> Pipeline2State:
     - Recency bonus: (patents in last 2 years / total) * 20
     - Keyword diversity: (unique AI keywords / 10) * 10
     """
+    logger.info("-" * 40)
+    logger.info("📊 [4/5] SCORING PATENT PORTFOLIO")
 
     company_patents = defaultdict(list)
     for patent in state.patents:
@@ -284,12 +301,18 @@ def step4_score_patent_portfolio(state: Pipeline2State) -> Pipeline2State:
         final_score = min(100.0, ratio_score + volume_bonus + recency_score + diversity_score)
         state.patent_scores[company_id] = round(final_score, 2)
 
-    print(f"Step 4: Scored patent portfolio for {len(state.patent_scores)} companies")
+        # Get company name for logging
+        company_name = patents[0].get("company_name", company_id) if patents else company_id
+        logger.info(f"   • {company_name}: {final_score:.1f}/100 (ratio={ratio_score:.1f}, volume={volume_bonus:.1f}, recency={recency_score:.1f}, diversity={diversity_score:.1f})")
+
+    logger.info(f"   ✅ Scored {len(state.patent_scores)} companies")
     return state
 
 
 def step5_save_patent_results(state: Pipeline2State) -> Pipeline2State:
-    """Save patent results to JSON files."""
+    """Save patent results to local JSON files (legacy/debug mode)."""
+    logger.info("-" * 40)
+    logger.info("💾 [5/5] SAVING PATENT RESULTS TO JSON")
 
     output_dir = Path(state.output_dir)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -298,14 +321,14 @@ def step5_save_patent_results(state: Pipeline2State) -> Pipeline2State:
     all_patents_file = output_dir / f"all_patents_{timestamp}.json"
     with open(all_patents_file, "w", encoding="utf-8") as f:
         json.dump(state.patents, f, indent=2, default=str)
-    print(f"  Saved all patents to: {all_patents_file}")
+    logger.info(f"   📄 All patents: {all_patents_file}")
 
     # Save AI-related patents only
     ai_patents = [p for p in state.patents if p.get("is_ai_patent")]
     ai_patents_file = output_dir / f"ai_patents_{timestamp}.json"
     with open(ai_patents_file, "w", encoding="utf-8") as f:
         json.dump(ai_patents, f, indent=2, default=str)
-    print(f"  Saved AI patents to: {ai_patents_file}")
+    logger.info(f"   📄 AI patents: {ai_patents_file}")
 
     # Save per-company results
     company_patents = defaultdict(list)
@@ -340,10 +363,125 @@ def step5_save_patent_results(state: Pipeline2State) -> Pipeline2State:
     }
     with open(summary_file, "w", encoding="utf-8") as f:
         json.dump(summary_data, f, indent=2, default=str)
-    print(f"  Saved summary to: {summary_file}")
+    logger.info(f"   📄 Summary: {summary_file}")
 
-    print(f"Step 5: Saved patent results to {output_dir}")
+    logger.info(f"   ✅ Saved to {output_dir}")
     return state
+
+
+def step5_store_to_s3_and_snowflake(state: Pipeline2State) -> Pipeline2State:
+    """
+    Store patent results in S3 (raw data) and Snowflake (aggregated signals).
+
+    S3 Structure:
+        signals/patents/{ticker}/{timestamp}.json - All patents for company
+
+    Snowflake:
+        external_signals table - One row per company with patent_portfolio score
+    """
+    from app.services.s3_storage import get_s3_service
+    from app.services.snowflake import SnowflakeService
+
+    logger.info("-" * 40)
+    logger.info("☁️ [5/5] STORING PATENTS TO S3 & SNOWFLAKE")
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    # Initialize services
+    s3 = get_s3_service()
+    db = SnowflakeService()
+
+    try:
+        # Group patents by company
+        company_patents = defaultdict(list)
+        for patent in state.patents:
+            company_patents[patent["company_id"]].append(patent)
+
+        for company_id, patents in company_patents.items():
+            if not patents:
+                continue
+
+            company_name = patents[0].get("company_name", company_id)
+            # Get ticker from company info in state
+            ticker = None
+            for company in state.companies:
+                if company.get("id") == company_id:
+                    ticker = company.get("ticker", "").upper()
+                    break
+            if not ticker:
+                ticker = safe_filename(company_name).upper()
+
+            ai_patents = [p for p in patents if p.get("is_ai_patent")]
+            total_patents = len(patents)
+            ai_count = len(ai_patents)
+            score = state.patent_scores.get(company_id, 0.0)
+
+            # -----------------------------------------
+            # S3: Upload patent data
+            # -----------------------------------------
+            s3_key = f"signals/patents/{ticker}/{timestamp}.json"
+            patent_data = {
+                "company_id": company_id,
+                "company_name": company_name,
+                "ticker": ticker,
+                "collection_date": timestamp,
+                "total_patents": total_patents,
+                "ai_patents": ai_count,
+                "patent_portfolio_score": score,
+                "patents": patents
+            }
+            s3.upload_json(patent_data, s3_key)
+            logger.info(f"   📤 S3: {s3_key}")
+
+            # -----------------------------------------
+            # Snowflake: Insert external signal
+            # -----------------------------------------
+            # Collect all AI keywords found
+            all_keywords = set()
+            for patent in ai_patents:
+                all_keywords.update(patent.get("ai_keywords_found", []))
+
+            # Build summary text
+            summary = f"Found {ai_count} AI patents out of {total_patents} total patents"
+
+            # Build raw_payload with detailed metrics
+            raw_payload = {
+                "collection_date": timestamp,
+                "s3_key": s3_key,
+                "total_patents": total_patents,
+                "ai_patents": ai_count,
+                "ai_ratio": round(ai_count / total_patents * 100, 1) if total_patents > 0 else 0,
+                "top_ai_keywords": list(all_keywords)[:20],
+                "recent_patents": [
+                    {
+                        "patent_id": p.get("patent_id"),
+                        "title": p.get("title"),
+                        "date": str(p.get("patent_date", "")),
+                        "is_ai": p.get("is_ai_patent", False)
+                    }
+                    for p in sorted(patents, key=lambda x: x.get("patent_date") or "", reverse=True)[:10]
+                ]
+            }
+
+            # Insert into Snowflake
+            signal_id = f"{company_id}_patent_portfolio_{timestamp}"
+            db.insert_external_signal(
+                signal_id=signal_id,
+                company_id=company_id,
+                category="patent_portfolio",
+                source="patentsview",
+                score=score,
+                evidence_count=ai_count,
+                summary=summary,
+                raw_payload=raw_payload,
+            )
+            logger.info(f"   💾 Snowflake: {company_name} (score: {score})")
+
+        logger.info(f"   ✅ Stored {len(company_patents)} companies in S3 + Snowflake")
+        return state
+
+    finally:
+        db.close()
 
 
 async def run_patent_signals(
@@ -351,6 +489,7 @@ async def run_patent_signals(
     years_back: int = 5,
     results_per_company: int = 100,
     api_key: Optional[str] = None,
+    use_cloud_storage: bool = True,
 ) -> Pipeline2State:
     """
     Run the complete patent signals collection pipeline.
@@ -360,6 +499,7 @@ async def run_patent_signals(
         years_back: How many years back to search (default: 5)
         results_per_company: Max patents per company
         api_key: PatentsView API key (optional, or set PATENTSVIEW_API_KEY env var)
+        use_cloud_storage: If True, store in S3 + Snowflake. If False, save to local JSON only.
 
     Returns:
         Updated pipeline state with patents and scores
@@ -373,5 +513,10 @@ async def run_patent_signals(
     )
     state = step3_classify_ai_patents(state)
     state = step4_score_patent_portfolio(state)
-    state = step5_save_patent_results(state)
+
+    if use_cloud_storage:
+        state = step5_store_to_s3_and_snowflake(state)
+    else:
+        state = step5_save_patent_results(state)
+
     return state

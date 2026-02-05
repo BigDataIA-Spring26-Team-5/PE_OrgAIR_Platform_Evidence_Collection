@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import re
 from collections import defaultdict
 from datetime import datetime
@@ -14,6 +15,8 @@ from app.pipelines.keywords import AI_KEYWORDS, AI_TECHSTACK_KEYWORDS, TOP_AI_TO
 from app.pipelines.pipeline2_state import Pipeline2State
 from app.pipelines.utils import clean_nan, company_name_matches, safe_filename
 
+logger = logging.getLogger(__name__)
+
 
 def step1_init_job_collection(state: Pipeline2State) -> Pipeline2State:
     """Initialize job collection step."""
@@ -22,8 +25,9 @@ def step1_init_job_collection(state: Pipeline2State) -> Pipeline2State:
     # Create output directory
     Path(state.output_dir).mkdir(parents=True, exist_ok=True)
 
-    print("Step 1: Job collection initialized")
-    print(f"  Output directory: {state.output_dir}")
+    logger.info("-" * 40)
+    logger.info("📁 [1/5] INITIALIZING JOB COLLECTION")
+    logger.info(f"   Output directory: {state.output_dir}")
     return state
 
 
@@ -48,6 +52,9 @@ async def step2_fetch_job_postings(
         results_wanted: Max results to fetch (before filtering, default: from config)
         hours_old: Max age of job postings in hours (default: from config)
     """
+    logger.info("-" * 40)
+    logger.info("🔍 [2/5] FETCHING JOB POSTINGS")
+
     # Use config defaults if not provided
     if sites is None:
         sites = settings.JOBSPY_DEFAULT_SITES
@@ -56,12 +63,16 @@ async def step2_fetch_job_postings(
     if hours_old is None:
         hours_old = settings.JOBSPY_HOURS_OLD
 
+    logger.info(f"   Sites: {', '.join(sites)}")
+    logger.info(f"   Max results: {results_wanted}")
+    logger.info(f"   Hours old: {hours_old}")
+
     # Try to import jobspy
     try:
         from jobspy import scrape_jobs
     except ImportError as e:
         error_msg = "python-jobspy not installed. Run: pip install python-jobspy"
-        print(f"  [error] {error_msg}")
+        logger.error(f"   ❌ {error_msg}")
         state.add_error("job_fetch", "import", error_msg)
         raise ImportError(error_msg) from e
 
@@ -76,7 +87,7 @@ async def step2_fetch_job_postings(
         await asyncio.sleep(max(state.request_delay, settings.JOBSPY_REQUEST_DELAY))
 
         try:
-            print(f"  Scraping jobs for: {company_name}...")
+            logger.info(f"   📥 Scraping: {company_name}...")
 
             # Scrape jobs - search by company name
             # JobSpy will return jobs where the search term appears in title/description/company
@@ -121,14 +132,14 @@ async def step2_fetch_job_postings(
             state.job_postings.extend([p.model_dump() for p in postings])
             state.summary["job_postings_collected"] += len(postings)
 
-            print(f"    [raw] {total_raw} results from JobSpy")
-            print(f"    [filtered] {len(postings)} jobs from {company_name} (removed {filtered_count} unrelated)")
+            logger.info(f"      • Raw results: {total_raw}")
+            logger.info(f"      • Matched jobs: {len(postings)} (filtered {filtered_count} unrelated)")
 
         except Exception as e:
             state.add_error("job_fetch", company_id, str(e))
-            print(f"  [error] {company_name}: {e}")
+            logger.error(f"      ❌ Error: {e}")
 
-    print(f"Step 2: Collected {len(state.job_postings)} job postings total")
+    logger.info(f"   ✅ Total collected: {len(state.job_postings)} job postings")
     return state
 
 
@@ -157,6 +168,8 @@ def step3_classify_ai_jobs(state: Pipeline2State) -> Pipeline2State:
     - If description is available: require 2+ AI keywords
     - If title-only (no description): require 1+ AI keyword (more lenient)
     """
+    logger.info("-" * 40)
+    logger.info("🤖 [3/5] CLASSIFYING AI-RELATED JOBS")
 
     for posting in state.job_postings:
         title = posting.get('title', '')
@@ -197,7 +210,11 @@ def step3_classify_ai_jobs(state: Pipeline2State) -> Pipeline2State:
         posting["ai_score"] = min(settings.JOBSPY_MAX_SCORE, len(ai_keywords_found) * settings.JOBSPY_AI_SCORE_MULTIPLIER)
 
     ai_count = sum(1 for p in state.job_postings if p.get("is_ai_role"))
-    print(f"Step 3: Classified {ai_count} AI-related jobs out of {len(state.job_postings)}")
+    total_count = len(state.job_postings)
+
+    logger.info(f"   • Total jobs analyzed: {total_count}")
+    logger.info(f"   • AI-related jobs: {ai_count}")
+    logger.info(f"   • AI job ratio: {(ai_count/total_count*100):.1f}%" if total_count > 0 else "   • AI job ratio: N/A")
     return state
 
 
@@ -210,6 +227,8 @@ def step4_score_job_market(state: Pipeline2State) -> Pipeline2State:
     - Volume bonus: min(JOBSPY_VOLUME_BONUS_MAX, AI_job_count * JOBSPY_VOLUME_BONUS_MULTIPLIER)
     - Keyword diversity: (unique AI keywords / JOBSPY_DIVERSITY_DENOMINATOR) * JOBSPY_DIVERSITY_SCORE_MULTIPLIER
     """
+    logger.info("-" * 40)
+    logger.info("📊 [4/5] SCORING JOB MARKET")
 
     company_jobs = defaultdict(list)
     for posting in state.job_postings:
@@ -239,7 +258,11 @@ def step4_score_job_market(state: Pipeline2State) -> Pipeline2State:
         final_score = min(settings.JOBSPY_MAX_SCORE, ratio_score + volume_bonus + diversity_score)
         state.job_market_scores[company_id] = round(final_score, 2)
 
-    print(f"Step 4: Scored job market for {len(state.job_market_scores)} companies")
+        # Get company name for logging
+        company_name = jobs[0].get("company_name", company_id) if jobs else company_id
+        logger.info(f"   • {company_name}: {final_score:.1f}/100 (ratio={ratio_score:.1f}, volume={volume_bonus:.1f}, diversity={diversity_score:.1f})")
+
+    logger.info(f"   ✅ Scored {len(state.job_market_scores)} companies")
     return state
 
 
@@ -256,6 +279,8 @@ def step4b_score_techstack(state: Pipeline2State) -> Pipeline2State:
     - Volume bonus: min(30, total_techstack_keywords * 1)
     - Top tools bonus: 5 points per TOP_AI_TOOLS keyword (max 20)
     """
+    logger.info("-" * 40)
+    logger.info("🔧 [4b/5] SCORING TECH STACK")
 
     company_jobs = defaultdict(list)
     for posting in state.job_postings:
@@ -291,12 +316,18 @@ def step4b_score_techstack(state: Pipeline2State) -> Pipeline2State:
         final_score = min(100.0, base_score + volume_bonus + top_tools_bonus)
         state.techstack_scores[company_id] = round(final_score, 2)
 
-    print(f"Step 4b: Scored techstack for {len(state.techstack_scores)} companies")
+        # Get company name for logging
+        company_name = jobs[0].get("company_name", company_id) if jobs else company_id
+        logger.info(f"   • {company_name}: {final_score:.1f}/100 (keywords={len(all_techstack_keywords)}, ai_tools={len(ai_tools_found)})")
+
+    logger.info(f"   ✅ Scored techstack for {len(state.techstack_scores)} companies")
     return state
 
 
 def step5_save_to_json(state: Pipeline2State) -> Pipeline2State:
     """Save results to local JSON files (legacy/debug mode)."""
+    logger.info("-" * 40)
+    logger.info("💾 [5/5] SAVING RESULTS TO JSON")
 
     output_dir = Path(state.output_dir)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -305,14 +336,14 @@ def step5_save_to_json(state: Pipeline2State) -> Pipeline2State:
     all_jobs_file = output_dir / f"all_jobs_{timestamp}.json"
     with open(all_jobs_file, "w", encoding="utf-8") as f:
         json.dump(state.job_postings, f, indent=2, default=str)
-    print(f"  Saved all jobs to: {all_jobs_file}")
+    logger.info(f"   📄 All jobs: {all_jobs_file}")
 
     # Save AI-related jobs only
     ai_jobs = [p for p in state.job_postings if p.get("is_ai_role")]
     ai_jobs_file = output_dir / f"ai_jobs_{timestamp}.json"
     with open(ai_jobs_file, "w", encoding="utf-8") as f:
         json.dump(ai_jobs, f, indent=2, default=str)
-    print(f"  Saved AI jobs to: {ai_jobs_file}")
+    logger.info(f"   📄 AI jobs: {ai_jobs_file}")
 
     # Save per-company results
     company_jobs = defaultdict(list)
@@ -349,9 +380,9 @@ def step5_save_to_json(state: Pipeline2State) -> Pipeline2State:
     }
     with open(summary_file, "w", encoding="utf-8") as f:
         json.dump(summary_data, f, indent=2, default=str)
-    print(f"  Saved summary to: {summary_file}")
+    logger.info(f"   📄 Summary: {summary_file}")
 
-    print(f"Step 5: Saved results to {output_dir}")
+    logger.info(f"   ✅ Saved to {output_dir}")
     return state
 
 
@@ -360,19 +391,22 @@ def step5_store_to_s3_and_snowflake(state: Pipeline2State) -> Pipeline2State:
     Store results in S3 (raw data) and Snowflake (aggregated signals).
 
     S3 Structure:
-        raw/jobs/{company_name}/{timestamp}.json - All job postings for company
+        signals/jobs/{ticker}/{timestamp}.json - All job postings for company
+        signals/techstack/{ticker}/{timestamp}.json - Tech stack analysis for company
 
     Snowflake:
         external_signals table - One row per company with job_market score
     """
-    from app.services.s3_storage import S3Storage
+    from app.services.s3_storage import get_s3_service
     from app.services.snowflake import SnowflakeService
 
+    logger.info("-" * 40)
+    logger.info("☁️ [5/5] STORING TO S3 & SNOWFLAKE")
+
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_dir = Path(state.output_dir)
 
     # Initialize services
-    s3 = S3Storage()
+    s3 = get_s3_service()
     db = SnowflakeService()
 
     try:
@@ -386,21 +420,53 @@ def step5_store_to_s3_and_snowflake(state: Pipeline2State) -> Pipeline2State:
                 continue
 
             company_name = jobs[0].get("company_name", company_id)
-            safe_name = safe_filename(company_name)
+            # Get ticker from company info in state
+            ticker = None
+            for company in state.companies:
+                if company.get("id") == company_id:
+                    ticker = company.get("ticker", "").upper()
+                    break
+            if not ticker:
+                ticker = safe_filename(company_name).upper()
 
             # -----------------------------------------
             # S3: Upload raw job postings
             # -----------------------------------------
-            s3_key = f"raw/jobs/{safe_name}/{timestamp}.json"
-            local_path = output_dir / f"{safe_name}_{timestamp}.json"
+            jobs_s3_key = f"signals/jobs/{ticker}/{timestamp}.json"
+            jobs_data = {
+                "company_id": company_id,
+                "company_name": company_name,
+                "ticker": ticker,
+                "collection_date": timestamp,
+                "total_jobs": len(jobs),
+                "ai_jobs": sum(1 for j in jobs if j.get("is_ai_role")),
+                "job_market_score": state.job_market_scores.get(company_id, 0),
+                "jobs": jobs
+            }
+            s3.upload_json(jobs_data, jobs_s3_key)
+            logger.info(f"   📤 S3 Jobs: {jobs_s3_key}")
 
-            # Save locally first
-            with open(local_path, "w", encoding="utf-8") as f:
-                json.dump(jobs, f, indent=2, default=str)
+            # -----------------------------------------
+            # S3: Upload tech stack analysis
+            # -----------------------------------------
+            techstack_keywords = state.company_techstacks.get(company_id, [])
+            techstack_score = state.techstack_scores.get(company_id, 0.0)
+            ai_tools_found = list(set(techstack_keywords) & TOP_AI_TOOLS)
 
-            # Upload to S3
-            s3.upload_file(local_path, s3_key)
-            print(f"  [S3] Uploaded: {s3_key}")
+            techstack_s3_key = f"signals/techstack/{ticker}/{timestamp}.json"
+            techstack_data = {
+                "company_id": company_id,
+                "company_name": company_name,
+                "ticker": ticker,
+                "collection_date": timestamp,
+                "techstack_score": techstack_score,
+                "all_keywords": techstack_keywords,
+                "ai_tools_found": ai_tools_found,
+                "total_keywords": len(techstack_keywords),
+                "total_ai_tools": len(ai_tools_found)
+            }
+            s3.upload_json(techstack_data, techstack_s3_key)
+            logger.info(f"   📤 S3 TechStack: {techstack_s3_key}")
 
             # -----------------------------------------
             # Snowflake: Insert external signal
@@ -421,15 +487,11 @@ def step5_store_to_s3_and_snowflake(state: Pipeline2State) -> Pipeline2State:
             # Build summary text
             summary = f"Found {ai_count} AI roles out of {total_jobs} total jobs"
 
-            # Get techstack data for this company
-            techstack_keywords = state.company_techstacks.get(company_id, [])
-            techstack_score = state.techstack_scores.get(company_id, 0.0)
-            ai_tools_found = list(set(techstack_keywords) & TOP_AI_TOOLS)
-
             # Build raw_payload with detailed metrics
             raw_payload = {
                 "collection_date": timestamp,
-                "s3_key": s3_key,
+                "s3_jobs_key": jobs_s3_key,
+                "s3_techstack_key": techstack_s3_key,
                 "total_jobs": total_jobs,
                 "ai_jobs": ai_count,
                 "score_breakdown": {
@@ -464,9 +526,9 @@ def step5_store_to_s3_and_snowflake(state: Pipeline2State) -> Pipeline2State:
                 summary=summary,
                 raw_payload=raw_payload,
             )
-            print(f"  [Snowflake] Inserted signal: {signal_id} (score: {score})")
+            logger.info(f"   💾 Snowflake: {company_name} (score: {score})")
 
-        print(f"Step 5: Stored results for {len(company_jobs)} companies in S3 + Snowflake")
+        logger.info(f"   ✅ Stored {len(company_jobs)} companies in S3 + Snowflake")
         return state
 
     finally:
