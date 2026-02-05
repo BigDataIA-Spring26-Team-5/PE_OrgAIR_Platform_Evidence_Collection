@@ -489,34 +489,45 @@ async def run_patent_signals(
     years_back: int = 5,
     results_per_company: int = 100,
     api_key: Optional[str] = None,
-    use_cloud_storage: bool = True,
+    skip_storage: bool = False,
+    use_local_storage: bool = False,
 ) -> Pipeline2State:
     """
-    Run the complete patent signals collection pipeline.
+    Run the patent signals collection pipeline (extract, classify, score).
 
     Args:
         state: Pipeline state with companies loaded
         years_back: How many years back to search (default: 5)
         results_per_company: Max patents per company
         api_key: PatentsView API key (optional, or set PATENTSVIEW_API_KEY env var)
-        use_cloud_storage: If True, store in S3 + Snowflake. If False, save to local JSON only.
+        skip_storage: If True, skip all storage steps (for pipeline2_runner integration)
+        use_local_storage: If True and skip_storage=False, save to local JSON instead of S3/Snowflake
 
     Returns:
-        Updated pipeline state with patents and scores
+        Updated pipeline state with patents, classifications, and scores
     """
+    # Step 1: Initialize
     state = step1_init_patent_collection(state)
+
+    # Step 2: Fetch patents
     state = await step2_fetch_patents(
         state,
         years_back=years_back,
         results_per_company=results_per_company,
         api_key=api_key,
     )
+
+    # Step 3: Classify AI patents
     state = step3_classify_ai_patents(state)
+
+    # Step 4: Score patent portfolio
     state = step4_score_patent_portfolio(state)
 
-    if use_cloud_storage:
-        state = step5_store_to_s3_and_snowflake(state)
-    else:
-        state = step5_save_patent_results(state)
+    # Step 5: Storage (optional - pipeline2_runner handles this separately)
+    if not skip_storage:
+        if use_local_storage:
+            state = step5_save_patent_results(state)
+        else:
+            state = step5_store_to_s3_and_snowflake(state)
 
     return state

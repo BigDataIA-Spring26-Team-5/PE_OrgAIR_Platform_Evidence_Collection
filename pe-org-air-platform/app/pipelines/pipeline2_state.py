@@ -45,6 +45,12 @@ class Pipeline2State:
 
     # Techstack data (company_id -> list of unique keywords)
     company_techstacks: Dict[str, List[str]] = field(default_factory=dict)
+
+    # Techstack analyses (company_id -> analysis results)
+    techstack_analyses: Dict[str, Dict[str, Any]] = field(default_factory=dict)
+
+    # Job market analyses (company_id -> analysis results)
+    job_market_analyses: Dict[str, Dict[str, Any]] = field(default_factory=dict)
     
     # S3 loaded data (from step 2)
     loaded_s3_data: Dict[str, Any] = field(default_factory=lambda: {
