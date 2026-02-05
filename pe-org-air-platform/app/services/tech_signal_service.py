@@ -2,8 +2,7 @@ import json
 import logging
 from typing import Dict, List, Optional
 from datetime import datetime, timezone
-from app.pipelines.job_signals import step4b_score_techstack
-from app.pipelines.pipeline2_state import Pipeline2State
+from app.services.job_data_service import get_job_data_service
 from app.services.s3_storage import get_s3_service
 from app.repositories.company_repository import CompanyRepository
 from app.repositories.signal_repository import get_signal_repository
@@ -20,15 +19,22 @@ class TechSignalService:
     """Service to extract digital presence signals from tech stack analysis."""
     
     def __init__(self):
+        self.job_data_service = get_job_data_service()
         self.s3_service = get_s3_service()
         self.company_repo = CompanyRepository()
         self.signal_repo = get_signal_repository()
     
-    def analyze_company(self, ticker: str) -> Dict:
+    async def analyze_company(self, ticker: str, force_refresh: bool = False) -> Dict:
         """
         Analyze digital presence for a company and create digital_presence signals.
-        Currently uses tech stack analysis from job postings.
-        Could be extended with BuiltWith/SimilarTech APIs in the future.
+        Uses tech stack analysis from shared job data.
+        
+        Args:
+            ticker: Company ticker symbol
+            force_refresh: If True, force fresh data collection
+            
+        Returns:
+            Dictionary with analysis results
         """
         ticker = ticker.upper()
         logger.info("=" * 60)
@@ -49,113 +55,123 @@ class TechSignalService:
         if deleted:
             logger.info(f"  🗑️ Deleted {deleted} existing digital_presence signals")
         
-        # Note: For now, we use tech stack analysis from job postings
-        # In the future, this could be extended with:
-        # 1. BuiltWith API for technology stack analysis
-        # 2. SimilarTech API for competitive analysis
-        # 3. Website technology detection
-        
-        # For Phase 2, we'll use the tech stack scoring from job_signals pipeline
-        # We need to run job collection first to get tech stack data
-        logger.info("📊 Running tech stack analysis from job postings...")
-        
-        # Create a minimal pipeline state for tech stack analysis
-        # Note: In a real implementation, we would fetch job postings first
-        # For now, we'll create a placeholder score based on company data
-        # TODO: Integrate with actual job posting collection for tech stack analysis
-        
-        # Placeholder implementation - using company data to generate a score
-        # This should be replaced with actual tech stack analysis
-        techstack_score = self._calculate_digital_presence_score(company_name, ticker)
-        
-        # Create signal record
-        self.signal_repo.create_signal(
-            company_id=company_id,
-            category="digital_presence",
-            source="tech_stack_analysis",
-            signal_date=datetime.now(timezone.utc),
-            raw_value=f"Digital presence analysis: Tech stack score {techstack_score:.1f}/100",
-            normalized_score=techstack_score,
-            confidence=0.6,  # Medium confidence for placeholder implementation
-            metadata={
-                "techstack_score": techstack_score,
-                "analysis_method": "job_postings_tech_stack",
-                "notes": "Placeholder implementation - should be extended with BuiltWith/SimilarTech APIs",
+        try:
+            # Get job data (collect fresh if needed)
+            logger.info("📊 Getting job data for tech stack analysis...")
+            job_data = await self.job_data_service.collect_job_data(ticker, force_refresh=force_refresh)
+            
+            if not job_data or "job_postings" not in job_data:
+                raise ValueError(f"No job data available for {ticker}")
+            
+            # Analyze tech stack from the shared job data
+            logger.info("🔧 Analyzing tech stack...")
+            analysis_result = self.job_data_service.analyze_tech_stack(job_data)
+            
+            techstack_score = analysis_result["techstack_scores"].get(company_id, 0.0)
+            techstack_keywords = analysis_result.get("techstack_keywords", [])
+            total_jobs = analysis_result["total_jobs"]
+            
+            # Calculate confidence based on data quality
+            confidence = self._calculate_confidence(total_jobs, len(techstack_keywords))
+            
+            # Create signal record
+            self.signal_repo.create_signal(
+                company_id=company_id,
+                category="digital_presence",
+                source="tech_stack_analysis",
+                signal_date=datetime.now(timezone.utc),
+                raw_value=f"Tech stack analysis: {len(techstack_keywords)} tech keywords from {total_jobs} jobs",
+                normalized_score=techstack_score,
+                confidence=confidence,
+                metadata={
+                    "techstack_score": techstack_score,
+                    "techstack_keywords": techstack_keywords,
+                    "total_jobs_analyzed": total_jobs,
+                    "unique_tech_keywords": len(techstack_keywords),
+                    "data_collected_at": job_data.get("collected_at"),
+                    "analysis_method": "tech_stack_scoring",
+                    "notes": "Based on job posting analysis. Could be extended with BuiltWith/SimilarTech APIs."
+                }
+            )
+            
+            # Update company signal summary
+            logger.info("-" * 40)
+            logger.info(f"📊 Updating company signal summary...")
+            self.signal_repo.upsert_summary(
+                company_id=company_id,
+                ticker=ticker,
+                digital_score=techstack_score
+            )
+            
+            # Summary
+            logger.info("=" * 60)
+            logger.info(f"📊 DIGITAL PRESENCE ANALYSIS COMPLETE FOR: {ticker}")
+            logger.info(f"   Total jobs analyzed: {total_jobs}")
+            logger.info(f"   Tech Stack Score: {techstack_score:.1f}/100")
+            logger.info(f"   Tech Keywords Found: {len(techstack_keywords)}")
+            logger.info(f"   Confidence: {confidence:.2f}")
+            logger.info(f"   Data freshness: {job_data.get('collected_at', 'unknown')}")
+            if techstack_keywords:
+                logger.info(f"   Top keywords: {', '.join(techstack_keywords[:5])}{'...' if len(techstack_keywords) > 5 else ''}")
+            logger.info("=" * 60)
+            
+            return {
+                "ticker": ticker,
+                "company_id": company_id,
                 "company_name": company_name,
-                "ticker": ticker
+                "normalized_score": round(techstack_score, 2),
+                "confidence": round(confidence, 3),
+                "breakdown": {
+                    "techstack_score": round(techstack_score, 1)
+                },
+                "tech_metrics": {
+                    "total_jobs_analyzed": total_jobs,
+                    "unique_tech_keywords": len(techstack_keywords),
+                    "tech_keywords": techstack_keywords
+                },
+                "data_freshness": job_data.get("collected_at"),
+                "analysis_method": "tech_stack_scoring",
+                "notes": "Based on job posting analysis. Could be extended with BuiltWith/SimilarTech APIs."
             }
-        )
-        
-        # Update company signal summary
-        logger.info("-" * 40)
-        logger.info(f"📊 Updating company signal summary...")
-        self.signal_repo.upsert_summary(
-            company_id=company_id,
-            ticker=ticker,
-            digital_score=techstack_score
-        )
-        
-        # Summary
-        logger.info("=" * 60)
-        logger.info(f"📊 DIGITAL PRESENCE ANALYSIS COMPLETE FOR: {ticker}")
-        logger.info(f"   Tech Stack Score: {techstack_score:.1f}/100")
-        logger.info(f"   Note: This is a placeholder implementation")
-        logger.info(f"   Future: Integrate with BuiltWith/SimilarTech APIs")
-        logger.info("=" * 60)
-        
-        return {
-            "ticker": ticker,
-            "company_id": company_id,
-            "company_name": company_name,
-            "normalized_score": round(techstack_score, 2),
-            "confidence": 0.6,
-            "breakdown": {
-                "techstack_score": round(techstack_score, 1)
-            },
-            "analysis_method": "job_postings_tech_stack",
-            "notes": "Placeholder - should be extended with BuiltWith/SimilarTech APIs"
-        }
+            
+        except Exception as e:
+            logger.error(f"❌ Error analyzing tech signals for {ticker}: {e}")
+            raise
     
-    def _calculate_digital_presence_score(self, company_name: str, ticker: str) -> float:
+    def _calculate_confidence(self, total_jobs: int, unique_keywords: int) -> float:
         """
-        Calculate digital presence score based on company data.
-        This is a placeholder implementation that should be replaced with:
-        1. Actual tech stack analysis from job postings
-        2. BuiltWith API integration
-        3. SimilarTech API integration
+        Calculate confidence score based on data quality.
         
-        For now, returns a placeholder score based on company name/ticker.
+        Factors:
+        1. Total jobs analyzed (more data = higher confidence)
+        2. Unique tech keywords found (more keywords = higher confidence)
+        3. Keyword density (keywords per job)
         """
-        # Placeholder logic - in real implementation, this would:
-        # 1. Fetch job postings for the company
-        # 2. Extract tech stack keywords using step4b_score_techstack()
-        # 3. Calculate score based on modern tech stack presence
+        if total_jobs == 0:
+            return 0.3  # Low confidence with no data
         
-        # Simple placeholder: tech companies get higher scores
-        tech_keywords = ["tech", "software", "digital", "cloud", "ai", "data"]
-        company_lower = company_name.lower()
+        # Base confidence from total jobs (0.3 to 0.7)
+        total_confidence = min(0.7, 0.3 + (total_jobs / 50.0))
         
-        # Check if company name contains tech-related keywords
-        tech_indicator = any(keyword in company_lower for keyword in tech_keywords)
+        # Keyword count confidence (more keywords = better)
+        keyword_confidence = min(0.5, unique_keywords / 20.0)
         
-        # Base score with tech indicator bonus
-        base_score = 50.0
-        if tech_indicator:
-            base_score += 20.0
+        # Keyword density confidence (balanced is best)
+        keyword_density = unique_keywords / total_jobs if total_jobs > 0 else 0
+        density_confidence = min(1.0, keyword_density * 10.0)  # 0.1 keywords per job = 1.0 confidence
         
-        # Add some variation based on ticker (placeholder)
-        ticker_hash = sum(ord(c) for c in ticker) % 100
-        variation = (ticker_hash / 100.0) * 30.0
+        # Combined confidence (weighted average)
+        confidence = (total_confidence * 0.4) + (keyword_confidence * 0.3) + (density_confidence * 0.3)
         
-        final_score = min(100.0, base_score + variation)
-        return round(final_score, 2)
+        return min(0.95, max(0.3, confidence))  # Clamp between 0.3 and 0.95
     
-    def analyze_all_companies(self) -> Dict:
+    async def analyze_all_companies(self, force_refresh: bool = False) -> Dict:
         """Analyze digital presence signals for all target companies."""
         target_tickers = ["CAT", "DE", "UNH", "HCA", "ADP", "PAYX", "WMT", "TGT", "JPM", "GS"]
         
         logger.info("=" * 60)
         logger.info("🎯 ANALYZING DIGITAL PRESENCE SIGNALS FOR ALL COMPANIES")
+        logger.info(f"   Force refresh: {force_refresh}")
         logger.info("=" * 60)
         
         results = []
@@ -164,12 +180,13 @@ class TechSignalService:
         
         for ticker in target_tickers:
             try:
-                result = self.analyze_company(ticker)
+                result = await self.analyze_company(ticker, force_refresh=force_refresh)
                 results.append({
                     "ticker": ticker,
                     "status": "success",
                     "score": result["normalized_score"],
-                    "method": result["analysis_method"]
+                    "jobs_analyzed": result["tech_metrics"]["total_jobs_analyzed"],
+                    "tech_keywords": result["tech_metrics"]["unique_tech_keywords"]
                 })
                 success_count += 1
             except Exception as e:
@@ -185,16 +202,17 @@ class TechSignalService:
         logger.info("📊 ALL COMPANIES DIGITAL PRESENCE ANALYSIS COMPLETE")
         logger.info(f"   Successful: {success_count}")
         logger.info(f"   Failed: {failed_count}")
-        logger.info(f"   Note: This is a placeholder implementation")
-        logger.info(f"   Future: Integrate with BuiltWith/SimilarTech APIs")
+        logger.info(f"   Note: Based on job posting analysis")
+        logger.info(f"   Future: Could be extended with BuiltWith/SimilarTech APIs")
         logger.info("=" * 60)
         
         return {
             "total_companies": len(target_tickers),
             "successful": success_count,
             "failed": failed_count,
+            "force_refresh": force_refresh,
             "results": results,
-            "notes": "Placeholder implementation - should be extended with BuiltWith/SimilarTech APIs"
+            "notes": "Based on job posting analysis. Could be extended with BuiltWith/SimilarTech APIs."
         }
 
 
