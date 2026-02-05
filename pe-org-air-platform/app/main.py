@@ -149,6 +149,7 @@ from app.routers.assessments import router as assessments_router
 from app.routers.dimensionScores import router as dimension_scores_router
 from app.routers.documents import router as documents_router
 from app.routers.pdf_parser import router as pdf_parser_router 
+from app.routers.signals import router as signals_router
 
 load_dotenv()
 
@@ -165,6 +166,7 @@ app = FastAPI(
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
 
 # REGISTER ROUTERS
+app.include_router(signals_router)
 app.include_router(health_router)            # Health check
 app.include_router(documents_router)         # Documents & collection
 app.include_router(pdf_parser_router)
