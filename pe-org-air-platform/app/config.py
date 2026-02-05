@@ -97,6 +97,7 @@ class Settings(BaseSettings):
     JOBSPY_DEFAULT_SITES: List[str] = Field(default=["linkedin", "indeed", "glassdoor"])
     JOBSPY_RESULTS_WANTED: int = Field(default=100, ge=10, le=1000)
     JOBSPY_HOURS_OLD: int = Field(default=72, ge=1, le=720)
+    JOBSPY_FUZZY_MATCH_THRESHOLD: float = Field(default=75.0, ge=50.0, le=100.0)
     JOBSPY_AI_SCORE_MULTIPLIER: float = Field(default=15.0, ge=5.0, le=50.0)
     JOBSPY_RATIO_SCORE_WEIGHT: float = Field(default=50.0, ge=10.0, le=100.0)
     JOBSPY_VOLUME_BONUS_MAX: float = Field(default=30.0, ge=10.0, le=50.0)

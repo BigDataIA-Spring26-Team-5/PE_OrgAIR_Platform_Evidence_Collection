@@ -9,7 +9,27 @@ Uses step-based architecture:
 3. Verify scores
 4. Write to Snowflake (aggregated scores)
 Use --local-only flag to save to local JSON files only.
-"""
+
+Examples:
+  # Run complete pipeline (all steps)
+  python -m app.pipelines.pipeline2_runner --companies Microsoft Google Amazon
+
+  # Run specific step only (for debugging)
+  python -m app.pipelines.pipeline2_runner --companies Microsoft --step extract
+  python -m app.pipelines.pipeline2_runner --companies Microsoft --step validate
+  python -m app.pipelines.pipeline2_runner --companies Microsoft --step score
+  python -m app.pipelines.pipeline2_runner --companies Microsoft --step snowflake
+
+  # Local mode only (no cloud storage)
+  python -m app.pipelines.pipeline2_runner --companies Microsoft --local-only
+
+  # Patent collection only
+  python -m app.pipelines.pipeline2_runner --companies Microsoft --mode patents
+
+  # Both jobs and patents
+  python -m app.pipelines.pipeline2_runner --companies Microsoft --mode both
+
+Get PatentsView API key at: https://patentsview.org/apis/keyrequest """
 
 from __future__ import annotations
 
@@ -69,10 +89,6 @@ class Pipeline2Runner:
         patents_api_key: Optional[str] = None,
         use_cloud_storage: bool = True,
     ) -> Dict[str, Any]:
-        """
-        Step 1: Extract job postings and/or patent data.
-        Stores raw data to S3 if use_cloud_storage=True.
-        """
         print("=" * 60)
         print("Step 1: Extract Data → S3 (raw/)")
         print("=" * 60)
@@ -148,10 +164,6 @@ class Pipeline2Runner:
     # STEP 2: VALIDATE DATA (Previously: Read from S3)
     # =============================================================================
     def step_validate_data(self) -> Dict[str, Any]:
-        """
-        Step 2: Validate extracted data is ready for scoring.
-        Data is already in state from step 1 (no S3 read needed).
-        """
         print("\n" + "=" * 60)
         print("Step 2: Validate Extracted Data")
         print("=" * 60)
@@ -193,10 +205,6 @@ class Pipeline2Runner:
     # STEP 3: VERIFY SCORES
     # =============================================================================
     def step_verify_scores(self) -> Dict[str, Any]:
-        """
-        Step 3: Verify scores calculated by signal pipelines.
-        Scoring is done in run_job_signals and run_patent_signals.
-        """
         print("\n" + "=" * 60)
         print("Step 3: Verify Scores")
         print("=" * 60)
@@ -241,10 +249,7 @@ class Pipeline2Runner:
     # STEP 4: WRITE TO SNOWFLAKE
     # =============================================================================
     def step_write_to_snowflake(self) -> Dict[str, Any]:
-        """
-        Step 4: Write scores to Snowflake.
-        Aggregated scores → company_signal_summaries table
-        """
+
         print("\n" + "=" * 60)
         print("Step 4: Write to Snowflake")
         print("=" * 60)
@@ -404,10 +409,6 @@ async def run_pipeline2(
     patents_api_key: Optional[str] = None,
     use_cloud_storage: bool = True,
 ) -> Pipeline2State:
-    """
-    Legacy function for backward compatibility.
-    Runs the new step-based pipeline internally.
-    """
     runner = Pipeline2Runner()
     
     await runner.run_pipeline(
@@ -430,28 +431,6 @@ async def main():
     parser = argparse.ArgumentParser(
         description="Pipeline 2: Job and Patent Collection (Step-based)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog=""" 
-Examples:
-  # Run complete pipeline (all steps)
-  python -m app.pipelines.pipeline2_runner --companies Microsoft Google Amazon
-
-  # Run specific step only (for debugging)
-  python -m app.pipelines.pipeline2_runner --companies Microsoft --step extract
-  python -m app.pipelines.pipeline2_runner --companies Microsoft --step validate
-  python -m app.pipelines.pipeline2_runner --companies Microsoft --step score
-  python -m app.pipelines.pipeline2_runner --companies Microsoft --step snowflake
-
-  # Local mode only (no cloud storage)
-  python -m app.pipelines.pipeline2_runner --companies Microsoft --local-only
-
-  # Patent collection only
-  python -m app.pipelines.pipeline2_runner --companies Microsoft --mode patents
-
-  # Both jobs and patents
-  python -m app.pipelines.pipeline2_runner --companies Microsoft --mode both
-
-Get PatentsView API key at: https://patentsview.org/apis/keyrequest
-        """
     )
     parser.add_argument("--companies", nargs="+", required=True, help="Company names to process")
     parser.add_argument("--mode", choices=["jobs", "patents", "both"], default="jobs",
