@@ -437,3 +437,10 @@ S3_BUCKET=pe-orgair-platform
 ```
 
 ---
+
+
+Leadership Score Breakdown (20% of Composite)
+Since leadership is 20% of composite, I'll break down the internal scoring:
+ComponentMax PointsWhat We MeasureTech Executive Presence30CTO, CDO, Chief AI Officer foundAI/Tech Keywords in Compensation30Mentions of AI, digital, automationTech-Linked Performance Metrics25Bonuses tied to tech goalsBoard Tech Expertise15Directors with tech backgroundsTotal100Normalized score
+
+
