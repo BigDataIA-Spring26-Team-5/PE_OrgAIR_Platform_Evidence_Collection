@@ -101,7 +101,7 @@ class JobDataService:
             }
             
             # Store in S3 for persistence
-            s3_key = f"signals/raw/{ticker}/{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.json"
+            s3_key = f"signals/jobposting/{ticker}/{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.json"
             self._store_in_s3(job_data, s3_key)
             
             # Update cache

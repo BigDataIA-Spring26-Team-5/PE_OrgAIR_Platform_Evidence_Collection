@@ -7,8 +7,8 @@ Uses step-based architecture:
 1. Extract data (jobs/patents) - scoring done by signal pipelines
 2. Validate extracted data
 3. Verify scores
-4. Write to Snowflake (aggregated scores)
-Use --local-only flag to save to local JSON files only.
+4. Save to local directory (always runs - jobs/, patents/, techstack/, summaries/)
+5. Write to Snowflake (aggregated scores) - skipped with --local-only
 
 Examples:
   # Run complete pipeline (all steps)
@@ -18,10 +18,14 @@ Examples:
   python -m app.pipelines.pipeline2_runner --companies Microsoft --step extract
   python -m app.pipelines.pipeline2_runner --companies Microsoft --step validate
   python -m app.pipelines.pipeline2_runner --companies Microsoft --step score
+  python -m app.pipelines.pipeline2_runner --companies Microsoft --step local
   python -m app.pipelines.pipeline2_runner --companies Microsoft --step snowflake
 
-  # Local mode only (no cloud storage)
+  # Skip cloud storage (local files only)
   python -m app.pipelines.pipeline2_runner --companies Microsoft --local-only
+
+  # Custom output directory
+  python -m app.pipelines.pipeline2_runner --companies Microsoft --output-dir ./output
 
   # Patent collection only
   python -m app.pipelines.pipeline2_runner --companies Microsoft --mode patents
@@ -36,7 +40,9 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import logging
 import os
+from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Optional, Dict, Any
@@ -46,9 +52,11 @@ from dotenv import load_dotenv
 from app.pipelines.pipeline2_state import Pipeline2State
 from app.pipelines.job_signals import run_job_signals
 from app.pipelines.patent_signals import run_patent_signals
-from app.pipelines.utils import Company
+from app.pipelines.utils import Company, safe_filename
 from app.services.s3_storage import S3Storage
 from app.services.snowflake import SnowflakeService
+
+logger = logging.getLogger(__name__)
 
 # Load environment variables from .env file
 load_dotenv()
@@ -56,12 +64,14 @@ load_dotenv()
 
 class Pipeline2Runner:
     """Pipeline 2 runner with step-based architecture similar to runner.py"""
-    
-    def __init__(self):
+
+    def __init__(self, output_dir: str = "data/signals"):
         self.state = Pipeline2State()
+        self.state.output_dir = output_dir
+        self.output_dir = Path(output_dir)
         self.s3 = S3Storage()
         self.snowflake = None
-        
+
     def _init_snowflake(self):
         """Initialize Snowflake connection if needed"""
         if self.snowflake is None:
@@ -244,18 +254,156 @@ class Pipeline2Runner:
             "patent_scores": len(self.state.patent_scores),
             "techstack_scores": len(self.state.techstack_scores)
         }
-    
-    # =============================================================================
-    # STEP 4: WRITE TO SNOWFLAKE
-    # =============================================================================
-    def step_write_to_snowflake(self) -> Dict[str, Any]:
 
+    # =============================================================================
+    # STEP 4: SAVE TO LOCAL DIRECTORY (Always runs)
+    # =============================================================================
+    def step_save_to_local(self) -> Dict[str, Any]:
+        """Save all collected data to local JSON files."""
         print("\n" + "=" * 60)
-        print("Step 4: Write to Snowflake")
+        print("Step 4: Save to Local Directory")
         print("=" * 60)
 
         if not self.state.is_step_complete("score"):
             return {"status": "error", "message": "Score step not complete"}
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        files_saved = []
+
+        # Create output directories
+        jobs_dir = self.output_dir / "jobs"
+        patents_dir = self.output_dir / "patents"
+        techstack_dir = self.output_dir / "techstack"
+        summary_dir = self.output_dir / "summaries"
+
+        for d in [jobs_dir, patents_dir, techstack_dir, summary_dir]:
+            d.mkdir(parents=True, exist_ok=True)
+
+        # Group data by company
+        company_jobs = defaultdict(list)
+        company_patents = defaultdict(list)
+
+        for posting in self.state.job_postings:
+            company_jobs[posting.get("company_id", "unknown")].append(posting)
+
+        for patent in self.state.patents:
+            company_patents[patent.get("company_id", "unknown")].append(patent)
+
+        # Save per-company job data
+        if self.state.job_postings:
+            print("\nSaving job data...")
+            for company_id, jobs in company_jobs.items():
+                company_name = self._get_company_name(company_id)
+                safe_name = safe_filename(company_name)
+
+                job_data = {
+                    "company_id": company_id,
+                    "company_name": company_name,
+                    "collection_date": timestamp,
+                    "total_jobs": len(jobs),
+                    "ai_jobs": sum(1 for j in jobs if j.get("is_ai_role")),
+                    "job_market_score": self.state.job_market_scores.get(company_id, 0),
+                    "job_market_analysis": self.state.job_market_analyses.get(company_id, {}),
+                    "jobs": jobs
+                }
+
+                job_file = jobs_dir / f"{safe_name}_{timestamp}.json"
+                with open(job_file, "w", encoding="utf-8") as f:
+                    json.dump(job_data, f, indent=2, default=str)
+                files_saved.append(str(job_file))
+                print(f"  ✓ {job_file.name}")
+
+        # Save per-company patent data
+        if self.state.patents:
+            print("\nSaving patent data...")
+            for company_id, patents in company_patents.items():
+                company_name = self._get_company_name(company_id)
+                safe_name = safe_filename(company_name)
+
+                patent_data = {
+                    "company_id": company_id,
+                    "company_name": company_name,
+                    "collection_date": timestamp,
+                    "total_patents": len(patents),
+                    "ai_patents": sum(1 for p in patents if p.get("is_ai_patent")),
+                    "patent_portfolio_score": self.state.patent_scores.get(company_id, 0),
+                    "patents": patents
+                }
+
+                patent_file = patents_dir / f"{safe_name}_{timestamp}.json"
+                with open(patent_file, "w", encoding="utf-8") as f:
+                    json.dump(patent_data, f, indent=2, default=str)
+                files_saved.append(str(patent_file))
+                print(f"  ✓ {patent_file.name}")
+
+        # Save per-company techstack data
+        if self.state.techstack_scores:
+            print("\nSaving techstack data...")
+            for company_id, score in self.state.techstack_scores.items():
+                company_name = self._get_company_name(company_id)
+                safe_name = safe_filename(company_name)
+
+                techstack_data = {
+                    "company_id": company_id,
+                    "company_name": company_name,
+                    "collection_date": timestamp,
+                    "techstack_score": score,
+                    "techstack_keywords": self.state.company_techstacks.get(company_id, []),
+                    "techstack_analysis": self.state.techstack_analyses.get(company_id, {})
+                }
+
+                techstack_file = techstack_dir / f"{safe_name}_{timestamp}.json"
+                with open(techstack_file, "w", encoding="utf-8") as f:
+                    json.dump(techstack_data, f, indent=2, default=str)
+                files_saved.append(str(techstack_file))
+                print(f"  ✓ {techstack_file.name}")
+
+        # Save overall summary
+        print("\nSaving summary...")
+        summary_data = {
+            "collection_date": timestamp,
+            "companies_processed": len(self.state.companies),
+            "companies": [c.get("name", c.get("id")) for c in self.state.companies],
+            "total_jobs": len(self.state.job_postings),
+            "total_patents": len(self.state.patents),
+            "ai_jobs": sum(1 for j in self.state.job_postings if j.get("is_ai_role")),
+            "ai_patents": sum(1 for p in self.state.patents if p.get("is_ai_patent")),
+            "scores": {
+                "job_market": self.state.job_market_scores,
+                "patent_portfolio": self.state.patent_scores,
+                "techstack": self.state.techstack_scores
+            },
+            "errors": self.state.summary.get("errors", [])
+        }
+
+        summary_file = summary_dir / f"pipeline2_summary_{timestamp}.json"
+        with open(summary_file, "w", encoding="utf-8") as f:
+            json.dump(summary_data, f, indent=2, default=str)
+        files_saved.append(str(summary_file))
+        print(f"  ✓ {summary_file.name}")
+
+        self.state.mark_step_complete("local_save")
+
+        print(f"\n✅ Saved {len(files_saved)} files to {self.output_dir}")
+
+        return {
+            "status": "success",
+            "files_saved": len(files_saved),
+            "output_dir": str(self.output_dir),
+            "files": files_saved
+        }
+
+    # =============================================================================
+    # STEP 5: WRITE TO SNOWFLAKE
+    # =============================================================================
+    def step_write_to_snowflake(self) -> Dict[str, Any]:
+
+        print("\n" + "=" * 60)
+        print("Step 5: Write to Snowflake")
+        print("=" * 60)
+
+        if not self.state.is_step_complete("local_save"):
+            return {"status": "error", "message": "Local save step not complete"}
 
         if not self.state.use_cloud_storage:
             print("Cloud storage not enabled, skipping Snowflake write")
@@ -350,8 +498,11 @@ class Pipeline2Runner:
         # Step 3: Verify scores
         results["step3_score"] = self.step_verify_scores()
 
-        # Step 4: Write to Snowflake
-        results["step4_snowflake"] = self.step_write_to_snowflake()
+        # Step 4: Save to local directory (always runs)
+        results["step4_local"] = self.step_save_to_local()
+
+        # Step 5: Write to Snowflake (only if cloud storage enabled)
+        results["step5_snowflake"] = self.step_write_to_snowflake()
 
         # Print summary
         self._print_summary()
@@ -379,12 +530,15 @@ class Pipeline2Runner:
                 print(f"  {company_name}: {score:.2f}/100")
         
         print(f"\nErrors: {len(self.state.summary.get('errors', []))}")
-        
+
+        print("\nLocal Storage:")
+        print(f"  {self.output_dir}/jobs/{{company}}_{{timestamp}}.json")
+        print(f"  {self.output_dir}/patents/{{company}}_{{timestamp}}.json")
+        print(f"  {self.output_dir}/techstack/{{company}}_{{timestamp}}.json")
+        print(f"  {self.output_dir}/summaries/pipeline2_summary_{{timestamp}}.json")
+
         if self.state.use_cloud_storage:
-            print("\nStorage Summary:")
-            print("  S3: raw/jobs/{company}/{timestamp}.json")
-            print("  S3: raw/patents/{company}/{timestamp}.json")
-            print("  Snowflake: external_signals table (raw data)")
+            print("\nCloud Storage:")
             print("  Snowflake: company_signal_summaries table (aggregated scores)")
     
     def _get_company_name(self, company_id: str) -> str:
@@ -399,8 +553,7 @@ async def run_pipeline2(
     *,
     companies: Optional[List[str]] = None,
     mode: str = "jobs",
-    jobs_output_dir: str = "data/signals/jobs",
-    patents_output_dir: str = "data/signals/patents",
+    output_dir: str = "data/signals",
     jobs_request_delay: float = 6.0,
     patents_request_delay: float = 1.5,
     jobs_results_per_company: int = 50,
@@ -409,8 +562,8 @@ async def run_pipeline2(
     patents_api_key: Optional[str] = None,
     use_cloud_storage: bool = True,
 ) -> Pipeline2State:
-    runner = Pipeline2Runner()
-    
+    runner = Pipeline2Runner(output_dir=output_dir)
+
     await runner.run_pipeline(
         companies=companies or [],
         mode=mode,
@@ -422,7 +575,7 @@ async def run_pipeline2(
         patents_api_key=patents_api_key,
         use_cloud_storage=use_cloud_storage
     )
-    
+
     return runner.state
 
 
@@ -435,7 +588,7 @@ async def main():
     parser.add_argument("--companies", nargs="+", required=True, help="Company names to process")
     parser.add_argument("--mode", choices=["jobs", "patents", "both"], default="jobs",
                         help="Pipeline mode: jobs (default), patents, or both")
-    parser.add_argument("--step", choices=["extract", "validate", "score", "snowflake", "all"], default="all",
+    parser.add_argument("--step", choices=["extract", "validate", "score", "local", "snowflake", "all"], default="all",
                         help="Run specific step only (default: all)")
     parser.add_argument("--jobs-delay", type=float, default=6.0, dest="jobs_request_delay",
                         help="Delay between job API requests in seconds")
@@ -450,12 +603,14 @@ async def main():
     parser.add_argument("--api-key", default=None, dest="patents_api_key",
                         help="PatentsView API key (or set PATENTSVIEW_API_KEY env var)")
     parser.add_argument("--local-only", action="store_true", dest="local_only",
-                        help="Save to local JSON files only (skip S3 and Snowflake)")
+                        help="Skip cloud storage (S3 and Snowflake), only save locally")
+    parser.add_argument("--output-dir", default="data/signals", dest="output_dir",
+                        help="Output directory for local JSON files (default: data/signals)")
 
     args = parser.parse_args()
 
-    runner = Pipeline2Runner()
-    
+    runner = Pipeline2Runner(output_dir=args.output_dir)
+
     if args.step == "all":
         # Run complete pipeline
         await runner.run_pipeline(
@@ -487,6 +642,8 @@ async def main():
             runner.step_validate_data()
         elif args.step == "score":
             runner.step_verify_scores()
+        elif args.step == "local":
+            runner.step_save_to_local()
         elif args.step == "snowflake":
             runner.step_write_to_snowflake()
 

@@ -1,5 +1,4 @@
 from __future__ import annotations
-
 import asyncio
 import json
 import logging
@@ -7,19 +6,20 @@ import re
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
-import pandas as pd
-
+from typing import List, Optional, Dict, Any
 from app.config import settings
 from app.models.signal import JobPosting
 from app.pipelines.keywords import AI_KEYWORDS, AI_TECHSTACK_KEYWORDS, TOP_AI_TOOLS
 from app.pipelines.pipeline2_state import Pipeline2State
-# from app.pipelines.utils import clean_nan, company_name_matches, safe_filename
+from app.pipelines.utils import clean_nan, safe_filename
 from app.pipelines.tech_signals import (
     TechStackCollector, TechnologyDetection, 
     calculate_techstack_score, create_external_signal_from_techstack,
     log_techstack_results
 )
+
+# RapidFuzz for fuzzy company name matching
+from rapidfuzz import fuzz
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +36,38 @@ def step1_init_job_collection(state: Pipeline2State) -> Pipeline2State:
     logger.info(f"   Output directory: {state.output_dir}")
     return state
 
+def is_company_match_fuzzy(job_company: str, target_company: str, threshold: float = 75.0) -> bool:
+    """
+    Use fuzzy matching to determine if job company matches target company.
+    
+    Args:
+        job_company: Company name from job posting
+        target_company: Target company we're searching for
+        threshold: Similarity score threshold (0-100)
+    
+    Returns:
+        True if companies match with sufficient similarity
+    """
+    if not job_company or not target_company:
+        return False
+    
+    # Clean the strings
+    job_clean = str(job_company).strip().lower()
+    target_clean = str(target_company).strip().lower()
+    
+    # If exact match after cleaning, return True immediately
+    if job_clean == target_clean:
+        return True
+    
+    # Use multiple similarity measures for robustness
+    scores = [
+        fuzz.token_sort_ratio(job_clean, target_clean),  # Handles word order
+        fuzz.partial_ratio(job_clean, target_clean),     # Handles substrings
+        fuzz.ratio(job_clean, target_clean),            # Simple ratio
+    ]
+    
+    # Return True if any score meets the threshold
+    return max(scores) >= threshold
 
 async def step2_fetch_job_postings(
     state: Pipeline2State,
@@ -44,9 +76,7 @@ async def step2_fetch_job_postings(
     results_wanted: Optional[int] = None,
     hours_old: Optional[int] = None,
 ) -> Pipeline2State:
-    """
-    Fetch job postings for each company using python-jobspy.
-    """
+    
     logger.info("-" * 40)
     logger.info("🔍 [2/5] FETCHING JOB POSTINGS")
     
@@ -61,6 +91,7 @@ async def step2_fetch_job_postings(
     logger.info(f"   Sites: {', '.join(sites)}")
     logger.info(f"   Max results: {results_wanted}")
     logger.info(f"   Hours old: {hours_old}")
+    logger.info(f"   Fuzzy match threshold: {settings.JOBSPY_FUZZY_MATCH_THRESHOLD}%")
     
     # Try to import jobspy
     try:
@@ -87,14 +118,14 @@ async def step2_fetch_job_postings(
         try:
             logger.info(f"   📥 Scraping: {company_name}...")
             
-            # SIMPLIFIED: Use direct scrape_jobs call
+            # Scrape jobs - search by company name
             jobs_df = scrape_jobs(
                 site_name=sites,
                 search_term=company_name,
                 results_wanted=results_wanted,
                 hours_old=hours_old,
-                country_indeed='USA',
-                linkedin_fetch_description=True,  # Added for better data
+                country_indeed="USA",
+                linkedin_fetch_description=True,  # Get full descriptions
             )
             
             postings = []
@@ -104,27 +135,27 @@ async def step2_fetch_job_postings(
             if jobs_df is not None and not jobs_df.empty:
                 total_raw = len(jobs_df)
                 
-                # SIMPLIFIED FILTERING: Use pandas boolean mask
-                mask = jobs_df['company'].str.contains(company_name, case=False, na=False)
-                filtered_jobs = jobs_df[mask]
-                filtered_count = total_raw - len(filtered_jobs)
+                # Log a few samples for debugging
+                sample_companies = jobs_df['company'].head(3).tolist()
+                logger.debug(f"      Sample company names from scraped jobs: {sample_companies}")
                 
-                for _, row in filtered_jobs.iterrows():
-                    # Simplified: No need for clean_nan since we already filtered
-                    job_company = str(row.get("company", ""))
+                for _, row in jobs_df.iterrows():
+                    # Get the ACTUAL company name from the job posting
+                    job_company = str(row.get("company", "")) if clean_nan(row.get("company")) else ""
                     source = str(row.get("site", "unknown"))
                     
-                    # Create JobPosting instance
-                    posting = JobPosting(
-                        company_id=company_id,
-                        company_name=job_company,
-                        title=str(row.get("title", "")),
-                        description=str(row.get("description", "")),
-                        location=str(row.get("location", "")) if pd.notna(row.get("location")) else None,
-                        posted_date=row.get("date_posted"),
-                        source=source,
-                        url=str(row.get("job_url", "")) if pd.notna(row.get("job_url")) else None,
-                    )
+                    # Use fuzzy matching instead of strict matching
+                    if not is_company_match_fuzzy(
+                        job_company, 
+                        company_name, 
+                        threshold=settings.JOBSPY_FUZZY_MATCH_THRESHOLD
+                    ):
+                        filtered_count += 1
+                        
+                        # Log first few filtered items for debugging
+                        if filtered_count <= 3:
+                            logger.debug(f"      Filtered: '{job_company}' vs '{company_name}'")
+                        continue
                     
                     # Create JobPosting instance
                     posting = JobPosting(
@@ -164,6 +195,10 @@ async def step2_fetch_job_postings(
             logger.info(f"      • Raw results: {total_raw}")
             logger.info(f"      • Matched jobs: {len(postings)} (filtered {filtered_count} unrelated)")
             
+            # If we filtered everything out, log warning
+            if total_raw > 0 and len(postings) == 0:
+                logger.warning(f"      ⚠️  No jobs matched after filtering. Try lowering JOBSPY_FUZZY_MATCH_THRESHOLD")
+                
         except Exception as e:
             state.add_error("job_fetch", company_id, str(e))
             logger.error(f"      ❌ Error: {e}")
@@ -174,15 +209,17 @@ async def step2_fetch_job_postings(
 
 def _has_keyword(text: str, keyword: str) -> bool:
     """
-    Check if keyword exists in text (case-insensitive).
+    Check if keyword exists in text with word boundary awareness.
+    Handles short keywords like 'ai', 'ml' that could match parts of words.
     """
-    # Convert to lowercase for case-insensitive matching
-    text_lower = text.lower()
-    keyword_lower = keyword.lower()
-    
-    # Use word boundaries for all keywords to avoid false positives
-    pattern = r'\b' + re.escape(keyword_lower) + r'\b'
-    return bool(re.search(pattern, text_lower))
+    # For very short keywords (2-3 chars), use word boundary matching
+    if len(keyword) <= 3:
+        # Match as whole word or with common separators
+        pattern = r'(?:^|[\s,\-_/\(\)])' + re.escape(keyword) + r'(?:$|[\s,\-_/\(\)])'
+        return bool(re.search(pattern, text, re.IGNORECASE))
+    else:
+        # For longer keywords, simple substring match is fine
+        return keyword in text
 
 
 def step3_classify_ai_jobs(state: Pipeline2State) -> Pipeline2State:
@@ -236,6 +273,7 @@ def step3_classify_ai_jobs(state: Pipeline2State) -> Pipeline2State:
         logger.info(f"   • AI job ratio: {(ai_count/total_count*100):.1f}%")
     
     return state
+
 
 def calculate_job_score(jobs: List[Dict[str, Any]]) -> Dict[str, Any]:
     """
@@ -663,24 +701,18 @@ async def run_job_signals(
     """
     # Step 1: Initialize
     state = step1_init_job_collection(state)
-
     # Step 2: Fetch job postings
     state = await step2_fetch_job_postings(state)
-
     # Step 3: Classify AI jobs
     state = step3_classify_ai_jobs(state)
-
     # Step 4: Score job market
     state = step4_score_job_market(state)
-
     # Step 4b: Score tech stack
     state = step4b_score_techstack(state)
-
     # Step 5: Storage (optional - pipeline2_runner handles this separately)
     if not skip_storage:
         if use_local_storage:
             state = step5_save_to_json(state)
         else:
             state = step5_store_to_s3_and_snowflake(state)
-
     return state
