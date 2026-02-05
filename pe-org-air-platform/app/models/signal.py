@@ -1,16 +1,8 @@
-from pydantic import BaseModel, Field
 from pydantic import BaseModel, Field, model_validator
 from uuid import UUID, uuid4
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any, List
 from enum import Enum
-
-# Handle Pydantic version compatibility
-try:
-    from pydantic import model_validator
-except ImportError:
-    # Fallback for older Pydantic versions
-    from pydantic import root_validator as model_validator
 
 
 class SignalCategory(str, Enum):
@@ -62,7 +54,7 @@ class CompanySignalSummary(BaseModel):
     signal_count: int = 0
     last_updated: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
-    @model_validator
+    @model_validator(mode='after')
     def calculate_composite(self) -> 'CompanySignalSummary':
         """Calculate weighted composite score only if ALL 4 signals exist."""
         scores = [
