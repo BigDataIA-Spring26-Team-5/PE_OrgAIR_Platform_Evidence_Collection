@@ -441,6 +441,46 @@ class S3StorageService:
             logger.error(f"Failed to list S3 files: {e}")
             return []
 
+    def upload_content(self, content: str, s3_key: str, content_type: str = "application/json") -> str:
+        """
+        Upload string content directly to S3.
+
+        Args:
+            content: String content to upload (JSON, text, etc.)
+            s3_key: Full S3 key path
+            content_type: MIME type of the content
+
+        Returns:
+            s3_key on success
+        """
+        try:
+            self.s3_client.put_object(
+                Bucket=self.bucket_name,
+                Key=s3_key,
+                Body=content.encode('utf-8'),
+                ContentType=content_type
+            )
+            logger.info(f"  ✅ Uploaded to S3: {s3_key}")
+            return s3_key
+        except ClientError as e:
+            logger.error(f"  ❌ S3 upload failed: {e}")
+            raise
+
+    def upload_json(self, data: dict, s3_key: str) -> str:
+        """
+        Upload a dictionary as JSON to S3.
+
+        Args:
+            data: Dictionary to serialize as JSON
+            s3_key: Full S3 key path
+
+        Returns:
+            s3_key on success
+        """
+        import json
+        content = json.dumps(data, indent=2, default=str)
+        return self.upload_content(content, s3_key, content_type="application/json")
+
 
 # Singleton instance
 _s3_service: Optional[S3StorageService] = None

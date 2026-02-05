@@ -2,9 +2,9 @@
 Services module for the PE OrgAIR Platform.
 """
 
-from app.services.cache import get_cache_service
+from app.services.cache import get_cache
 from app.services.document_chunking_service import get_document_chunking_service
-from app.services.document_collector import get_document_collector
+from app.services.document_collector import get_document_collector_service
 from app.services.document_parsing_service import get_document_parsing_service
 from app.services.leadership_service import get_leadership_service
 from app.services.redis_cache import get_redis_cache
@@ -19,7 +19,7 @@ from app.services.patent_signal_service import get_patent_signal_service
 
 __all__ = [
     # Core services
-    "get_cache_service",
+    "get_cache",
     "get_document_chunking_service",
     "get_document_collector",
     "get_document_parsing_service",
