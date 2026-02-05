@@ -1,2558 +1,1018 @@
-"""
-PE Org-AI-R Platform Foundation - Streamlit Dashboard
-"""
+# streamlit/app.py
+# SEC Filings & Signals Pipeline UI
 
-import streamlit as st
-import requests
-import subprocess
-import sys
+from __future__ import annotations
 import json
+import re
 import os
+from typing import Any, Dict, List, Optional, Tuple
 import pandas as pd
-from pathlib import Path
-from datetime import datetime
+import requests
+import streamlit as st
+import boto3
+from botocore.exceptions import ClientError
 
-# =============================================================================
-# CONFIGURATION
-# =============================================================================
-
-API_BASE_URL = "http://localhost:8000"
-
-st.set_page_config(
-    page_title="PE Org-AI-R Platform",
-    page_icon="🏢",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
-
-# =============================================================================
-# CUSTOM CSS
-# =============================================================================
-
-st.markdown("""
-<style>
-    .main-header {
-        font-size: 2.5rem;
-        font-weight: bold;
-        color: #1E3A8A;
-        text-align: center;
-        padding: 1rem;
-    }
-    .section-header {
-        font-size: 1.5rem;
-        font-weight: bold;
-        color: #1E3A8A;
-        border-bottom: 2px solid #3B82F6;
-        padding-bottom: 0.5rem;
-        margin-top: 2rem;
-    }
-    .cache-hit {
-        padding: 0.75rem;
-        border-radius: 0.5rem;
-        border: 1px solid #10B981;
-        margin-top: 0.5rem;
-    }
-    .cache-miss {
-        padding: 0.75rem;
-        border-radius: 0.5rem;
-        border: 1px solid #F59E0B;
-        margin-top: 0.5rem;
-    }
-    .cache-info {
-        font-family: monospace;
-        font-size: 0.85rem;
-    }
-</style>
-""", unsafe_allow_html=True)
-
-# =============================================================================
-# SIDEBAR NAVIGATION
-# =============================================================================
-
-st.sidebar.markdown("## 🏢 PE Org-AI-R Platform")
-st.sidebar.markdown("---")
-
-page = st.sidebar.radio(
-    "Navigation",
-    ["🏠 Home", "📊 ERD Diagram", "❄️ Snowflake Setup", "📋 Data Management", "🔌 API Explorer", "🧪 Test Runner", "SEC EDGAR Pipeline"]
-)
-
-# =============================================================================
-# HELPER FUNCTIONS
-# =============================================================================
-
-def get_project_root():
-    """Get the project root directory."""
-    current_file = Path(__file__).resolve()
-    project_root = current_file.parent.parent
-    return str(project_root)
-
-def check_api_health():
-    """Check if FastAPI is running."""
-    try:
-        response = requests.get(f"{API_BASE_URL}/health", timeout=5)
-        return True, response.json()
-    except requests.exceptions.ConnectionError:
-        return False, None
-    except Exception as e:
-        return False, str(e)
-
-def make_api_request(method, endpoint, data=None, params=None):
-    """Make API request and return response."""
-    url = f"{API_BASE_URL}{endpoint}"
-    try:
-        if method == "GET":
-            response = requests.get(url, params=params, timeout=10)
-        elif method == "POST":
-            response = requests.post(url, json=data, timeout=10)
-        elif method == "PUT":
-            response = requests.put(url, json=data, timeout=10)
-        elif method == "DELETE":
-            response = requests.delete(url, timeout=10)
-        elif method == "PATCH":
-            response = requests.patch(url, json=data, timeout=10)
-        else:
-            return None, None
-        
-        try:
-            return response.status_code, response.json()
-        except:
-            return response.status_code, None
-    except requests.exceptions.ConnectionError:
-        return None, "API not reachable. Make sure FastAPI is running on port 8000."
-    except Exception as e:
-        return None, str(e)
-
-def display_cache_info(response):
-    """Display cache information from API response."""
-    if not response or not isinstance(response, dict):
-        return
-    
-    cache = response.get("cache")
-    if not cache:
-        return
-    
-    hit = cache.get("hit", False)
-    source = cache.get("source", "unknown")
-    key = cache.get("key", "N/A")
-    latency = cache.get("latency_ms", 0)
-    ttl = cache.get("ttl_seconds", 0)
-    message = cache.get("message", "")
-    
-    if hit:
-        st.markdown(f"""
-        <div class="cache-hit">
-            <strong>✅ CACHE HIT</strong><br>
-            <span class="cache-info">
-                Source: <strong>{source}</strong> | 
-                Latency: <strong>{latency:.3f}ms</strong> | 
-                TTL: <strong>{ttl}s</strong><br>
-                Key: <code>{key}</code>
-            </span>
-        </div>
-        """, unsafe_allow_html=True)
-    else:
-        st.markdown(f"""
-        <div class="cache-miss">
-            <strong>❌ CACHE MISS</strong><br>
-            <span class="cache-info">
-                Source: <strong>{source}</strong> | 
-                Latency: <strong>{latency:.3f}ms</strong> | 
-                TTL: <strong>{ttl}s</strong><br>
-                Key: <code>{key}</code><br>
-                <em>Data now cached for future requests</em>
-            </span>
-        </div>
-        """, unsafe_allow_html=True)
-
-def get_streamlit_snowflake_connection():
-    """Get Snowflake connection using settings from app.config."""
-    import snowflake.connector
+# Load environment variables (if using python-dotenv)
+try:
     from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
-    # Load .env file from project root
-    project_root = get_project_root()
-    env_path = os.path.join(project_root, ".env")
-    load_dotenv(env_path)
+# AWS S3 Configuration
+AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID", "")
+AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY", "")
+AWS_REGION = os.getenv("AWS_REGION", "us-east-2")
+S3_BUCKET = os.getenv("S3_BUCKET", "pe-orgair-platform-group5")
 
-    return snowflake.connector.connect(
-        user=os.getenv("SNOWFLAKE_USER"),
-        password=os.getenv("SNOWFLAKE_PASSWORD"),
-        account=os.getenv("SNOWFLAKE_ACCOUNT"),
-        warehouse=os.getenv("SNOWFLAKE_WAREHOUSE"),
-        database=os.getenv("SNOWFLAKE_DATABASE"),
-        schema=os.getenv("SNOWFLAKE_SCHEMA"),
-        role=os.getenv("SNOWFLAKE_ROLE", "ACCOUNTADMIN"),
+def get_s3_client():
+    """Create and return an S3 client."""
+    return boto3.client(
+        's3',
+        aws_access_key_id=AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+        region_name=AWS_REGION
     )
 
-def execute_sql_file(file_path: str, conn) -> tuple:
-    """Execute SQL file, returns (success, message, results)."""
-    import re
+def fetch_from_s3(s3_key: str) -> str:
+    """Fetch file content from S3."""
     try:
-        with open(file_path, 'r') as f:
-            content = f.read()
-
-        # Handle $$ delimiters for stored procedures
-        # Split by $$ first to handle procedure definitions
-        parts = content.split('$$')
-        statements = []
-
-        if len(parts) > 1:
-            # Has procedure definitions
-            for i, part in enumerate(parts):
-                if i % 2 == 0:
-                    # Outside $$ - split by semicolon
-                    for stmt in part.split(';'):
-                        stmt = stmt.strip()
-                        if stmt and not stmt.startswith('--'):
-                            statements.append(stmt)
-                else:
-                    # Inside $$ - this is the procedure body, combine with previous
-                    if statements:
-                        statements[-1] = statements[-1] + '$$' + part + '$$'
-        else:
-            # No procedure definitions - simple split
-            for stmt in content.split(';'):
-                stmt = stmt.strip()
-                if stmt and not stmt.startswith('--'):
-                    # Remove comment lines
-                    lines = [l for l in stmt.split('\n') if not l.strip().startswith('--')]
-                    stmt = '\n'.join(lines).strip()
-                    if stmt:
-                        statements.append(stmt)
-
-        results = []
-        cursor = conn.cursor()
-
-        for stmt in statements:
-            if stmt:
-                try:
-                    cursor.execute(stmt)
-                    if cursor.description:
-                        results.append(cursor.fetchall())
-                    else:
-                        results.append(f"Executed: {stmt[:50]}...")
-                except Exception as e:
-                    results.append(f"Error in statement: {str(e)}")
-
-        cursor.close()
-        return True, f"Executed {len(statements)} statements", results
+        s3_client = get_s3_client()
+        response = s3_client.get_object(Bucket=S3_BUCKET, Key=s3_key)
+        content = response['Body'].read().decode('utf-8')
+        return content
+    except ClientError as e:
+        st.warning(f"S3 Error: {e}")
+        return ""
     except Exception as e:
-        return False, f"Error: {str(e)}", []
+        st.warning(f"Error fetching from S3: {e}")
+        return ""
 
-def parse_seed_for_api(file_path: str, entity_type: str) -> list:
-    """Parse CALL statements from seed files into API payloads."""
-    import re
+# Configuration
+st.set_page_config(page_title="SEC Filings & Signals", layout="wide", page_icon="📊")
 
-    with open(file_path, 'r') as f:
-        content = f.read()
+if "base_url" not in st.session_state:
+    st.session_state["base_url"] = "http://localhost:8000"
+if "last_ticker" not in st.session_state:
+    st.session_state["last_ticker"] = "CAT"
 
-    payloads = []
+# Helper Functions
+def api_url(base: str, path: str) -> str:
+    return f"{base.rstrip('/')}/{path.lstrip('/')}"
 
-    if entity_type == "companies":
-        # CALL insert_company('id', 'name', 'ticker', 'industry_id', position_factor)
-        pattern = r"CALL insert_company\('([^']+)',\s*'([^']+)',\s*(?:'([^']*)'|NULL),\s*'([^']+)',\s*([-\d.]+)\)"
-        matches = re.findall(pattern, content)
-        for match in matches:
-            payload = {
-                "id": match[0],
-                "name": match[1],
-                "industry_id": match[3],
-                "position_factor": float(match[4])
-            }
-            if match[2]:  # ticker
-                payload["ticker"] = match[2]
-            payloads.append(payload)
-
-    elif entity_type == "assessments":
-        # CALL insert_assessment('id', 'company_id', 'type', 'date', 'status', 'primary', 'secondary', score)
-        pattern = r"CALL insert_assessment\('([^']+)',\s*'([^']+)',\s*'([^']+)',\s*'([^']+)',\s*'([^']+)',\s*(?:'([^']*)'|NULL),\s*(?:'([^']*)'|NULL),\s*(?:([\d.]+)|NULL)\)"
-        matches = re.findall(pattern, content)
-        for match in matches:
-            payload = {
-                "id": match[0],
-                "company_id": match[1],
-                "assessment_type": match[2],
-                "assessment_date": match[3],
-                "status": match[4]
-            }
-            if match[5]:
-                payload["primary_assessor"] = match[5]
-            if match[6]:
-                payload["secondary_assessor"] = match[6]
-            if match[7]:
-                payload["v_r_score"] = float(match[7])
-            payloads.append(payload)
-
-    elif entity_type == "dimension_scores":
-        # CALL insert_dimension_score('id', 'assessment_id', 'dimension', score, weight, confidence, evidence_count)
-        pattern = r"CALL insert_dimension_score\('([^']+)',\s*'([^']+)',\s*'([^']+)',\s*([\d.]+),\s*([\d.]+),\s*([\d.]+),\s*(\d+)\)"
-        matches = re.findall(pattern, content)
-        for match in matches:
-            payload = {
-                "id": match[0],
-                "assessment_id": match[1],
-                "dimension": match[2],
-                "score": float(match[3]),
-                "weight": float(match[4]),
-                "confidence": float(match[5]),
-                "evidence_count": int(match[6])
-            }
-            payloads.append(payload)
-
-    return payloads
-
-def run_pytest(test_file=None):
-    """Run pytest and capture output."""
+def safe_json(resp: requests.Response) -> Dict[str, Any]:
     try:
-        project_root = get_project_root()
-        cmd = [sys.executable, "-m", "pytest", "-v", "--tb=short"]
-        
-        if test_file:
-            test_path = os.path.join(project_root, test_file)
-            if not os.path.exists(test_path):
-                return False, "", f"Test file not found: {test_path}"
-            cmd.append(test_path)
-        else:
-            tests_dir = os.path.join(project_root, "tests")
-            if not os.path.exists(tests_dir):
-                return False, "", f"Tests directory not found: {tests_dir}"
-            cmd.append(tests_dir)
-        
-        env = os.environ.copy()
-        env["PYTHONPATH"] = project_root
-        
-        result = subprocess.run(
-            cmd, capture_output=True, text=True,
-            cwd=project_root, timeout=300, env=env  # Changed from 120 to 300 seconds
-        )
-        
-        output = result.stdout
-        if result.stderr:
-            output += "\n--- STDERR ---\n" + result.stderr
-        
-        return result.returncode == 0, output, result.stderr
-    except subprocess.TimeoutExpired:
-        return False, "", "Test execution timed out (300s limit). Try running Model Tests and API Tests separately."
-    except Exception as e:
-        return False, "", f"Error: {str(e)}"
+        return resp.json()
+    except:
+        return {"_error": resp.text, "_status": resp.status_code}
 
-# =============================================================================
-# PAGE: HOME
-# =============================================================================
+def post_json(url: str, payload: Dict[str, Any], timeout_s: int = 240) -> Dict[str, Any]:
+    resp = requests.post(url, json=payload, timeout=timeout_s)
+    if resp.status_code >= 400:
+        raise RuntimeError(f"POST failed ({resp.status_code}): {safe_json(resp).get('detail', safe_json(resp))}")
+    return safe_json(resp)
 
-if page == "🏠 Home":
-    st.markdown('<p class="main-header">🏢 PE Org-AI-R Platform Foundation</p>', unsafe_allow_html=True)
-    
-    st.markdown("""
-    Welcome to the **PE Org-AI-R Platform Foundation** dashboard. This platform provides 
-    AI readiness assessment tools for portfolio companies.
-    """)
-    
-    st.markdown('<p class="section-header">🔍 System Status</p>', unsafe_allow_html=True)
-    
-    if st.button("🔄 Refresh Status"):
-        st.rerun()
-    
-    api_healthy, health_data = check_api_health()
-    
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        st.markdown("##### FastAPI")
-        if api_healthy:
-            st.success("✅ Running")
-        else:
-            st.error("❌ Not Running")
-            st.caption("Run: `uvicorn app.main:app --reload`")
-    
-    with col2:
-        st.markdown("##### Snowflake")
-        if health_data and isinstance(health_data, dict):
-            deps = health_data.get("dependencies", {})
-            snowflake_status = deps.get("snowflake", "unknown")
-            if snowflake_status.startswith("healthy"):
-                st.success("✅ Connected")
-            else:
-                st.error("❌ Not Connected")
-        else:
-            st.warning("⚠️ Check API first")
-    
-    with col3:
-        st.markdown("##### Redis")
-        if health_data and isinstance(health_data, dict):
-            deps = health_data.get("dependencies", {})
-            redis_status = deps.get("redis", "unknown")
-            if redis_status.startswith("healthy"):
-                st.success("✅ Connected")
-            else:
-                st.error("❌ Not Connected")
-        else:
-            st.warning("⚠️ Check API first")
-    
-    with col4:
-        st.markdown("##### AWS S3")
-        if health_data and isinstance(health_data, dict):
-            deps = health_data.get("dependencies", {})
-            s3_status = deps.get("s3", "unknown")
-            if s3_status.startswith("healthy"):
-                st.success("✅ Connected")
-            else:
-                st.error("❌ Not Connected")
-        else:
-            st.warning("⚠️ Check API first")
-    
-    if health_data:
-        with st.expander("📋 View Full Health Response"):
-            st.json(health_data)
-    
-    st.markdown('<p class="section-header">📈 Quick Overview</p>', unsafe_allow_html=True)
-    
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        st.metric("Models", "5")
-    with col2:
-        st.metric("API Endpoints", "16")
-    with col3:
-        st.metric("Dimensions", "7")
-    with col4:
-        st.metric("Test Cases", "79")
+def post(url: str, params: Optional[Dict[str, Any]] = None, timeout_s: int = 300) -> Dict[str, Any]:
+    resp = requests.post(url, params=params, timeout=timeout_s)
+    if resp.status_code >= 400:
+        raise RuntimeError(f"POST failed ({resp.status_code}): {safe_json(resp).get('detail', safe_json(resp))}")
+    return safe_json(resp)
 
-# =============================================================================
-# PAGE: ERD DIAGRAM
-# =============================================================================
+def get(url: str, params: Optional[Dict[str, Any]] = None, timeout_s: int = 120) -> Dict[str, Any]:
+    resp = requests.get(url, params=params, timeout=timeout_s)
+    if resp.status_code >= 400:
+        raise RuntimeError(f"GET failed ({resp.status_code}): {safe_json(resp).get('detail', safe_json(resp))}")
+    return safe_json(resp)
 
-elif page == "📊 ERD Diagram":
-    st.markdown('<p class="main-header">📊 Entity Relationship Diagram</p>', unsafe_allow_html=True)
+def render_kpis(items: List[Tuple[str, Any]]) -> None:
+    cols = st.columns(len(items))
+    for i, (label, value) in enumerate(items):
+        cols[i].metric(label, value)
+
+def show_json(title: str, data: Any) -> None:
+    with st.expander(title, expanded=False):
+        st.code(json.dumps(data, indent=2, default=str), language="json")
+
+def df_from_table(headers: List[str], rows: List[List[Any]]) -> pd.DataFrame:
+    if not rows:
+        return pd.DataFrame()
+    max_cols = max(len(r) for r in rows)
+    cols = headers[:max_cols] if headers else [f"col_{i}" for i in range(max_cols)]
+    while len(cols) < max_cols:
+        cols.append(f"col_{len(cols)}")
+    return pd.DataFrame([r + [None]*(max_cols - len(r)) for r in rows], columns=cols)
+
+def extract_section_content(text: str, section_name: str, max_chars: int = 1500) -> str:
+    """
+    Extract content for a specific section from the full document text.
+    Looks for section headers like 'Item 1. Business' and extracts following content.
+    """
+    if not text:
+        return ""
     
-    st.markdown('<p class="section-header">📋 Entity Details</p>', unsafe_allow_html=True)
-    
-    tab1, tab2, tab3, tab4 = st.tabs(["Industry", "Company", "Assessment", "Dimension Score"])
-    
-    with tab1:
-        st.markdown("""
-        | Field | Type | Constraints |
-        |-------|------|-------------|
-        | `id` | UUID | Primary Key |
-        | `name` | VARCHAR(255) | Unique, Not Null |
-        | `sector` | VARCHAR(100) | Not Null |
-        | `h_r_base` | DECIMAL(5,2) | 0-100 |
-        | `created_at` | TIMESTAMP | Auto-generated |
-        """)
-    
-    with tab2:
-        st.markdown("""
-        | Field | Type | Constraints |
-        |-------|------|-------------|
-        | `id` | UUID | Primary Key |
-        | `name` | VARCHAR(255) | Not Null |
-        | `ticker` | VARCHAR(10) | Optional, Uppercase |
-        | `industry_id` | UUID | Foreign Key |
-        | `position_factor` | DECIMAL(4,3) | -1.0 to 1.0 |
-        | `is_deleted` | BOOLEAN | Default: FALSE |
-        """)
-    
-    with tab3:
-        st.markdown("""
-        | Field | Type | Constraints |
-        |-------|------|-------------|
-        | `id` | UUID | Primary Key |
-        | `company_id` | UUID | Foreign Key |
-        | `assessment_type` | ENUM | screening, due_diligence, quarterly, exit_prep |
-        | `status` | ENUM | draft, in_progress, submitted, approved, superseded |
-        | `v_r_score` | DECIMAL(5,2) | 0-100, Optional |
-        """)
-    
-    with tab4:
-        st.markdown("""
-        | Field | Type | Constraints |
-        |-------|------|-------------|
-        | `id` | UUID | Primary Key |
-        | `assessment_id` | UUID | Foreign Key |
-        | `dimension` | ENUM | 7 dimension types |
-        | `score` | DECIMAL(5,2) | 0-100 |
-        | `weight` | DECIMAL(4,3) | 0-1, Auto-assigned |
-        """)
-    
-    st.markdown('<p class="section-header">⚖️ Dimension Weights</p>', unsafe_allow_html=True)
-    
-    st.markdown("""
-    The platform uses weighted dimensions to calculate the overall AI Readiness score.
-    Weights are automatically assigned based on dimension importance.
-    """)
-    
-    weights_data = {
-        "Dimension": [
-            "Data Infrastructure", 
-            "AI Governance", 
-            "Technology Stack",
-            "Talent & Skills", 
-            "Leadership Vision", 
-            "Use Case Portfolio", 
-            "Culture Change"
+    patterns = {
+        'business': [
+            r'Item\s*1\.\s*Business\.?\s*(.*?)(?=Item\s*1A\.|Item\s*1B\.|Item\s*2\.|Part\s*II|$)',
+            r'Item\s*1[\.\s]+Business(.*?)(?=Item\s*1A|Item\s*2|Part\s*II|$)',
         ],
-        "Code": [
-            "data_infrastructure",
-            "ai_governance", 
-            "technology_stack",
-            "talent_skills",
-            "leadership_vision",
-            "use_case_portfolio",
-            "culture_change"
+        'risk_factors': [
+            r'Item\s*1A\.\s*Risk\s*Factors\.?\s*(.*?)(?=Item\s*1B\.|Item\s*2\.|Part\s*II|$)',
+            r'Item\s*1A[\.\s]+Risk\s*Factors(.*?)(?=Item\s*1B|Item\s*2|Part\s*II|$)',
         ],
-        "Weight": [0.25, 0.20, 0.15, 0.15, 0.10, 0.10, 0.05],
-        "Percentage": ["25%", "20%", "15%", "15%", "10%", "10%", "5%"]
+        'mda': [
+            r'Item\s*7\.\s*Management.?s?\s*Discussion\s*and\s*Analysis.*?\.?\s*(.*?)(?=Item\s*7A\.|Item\s*8\.|Part\s*III|$)',
+            r'Item\s*7[\.\s]+Management.?s?\s*Discussion(.*?)(?=Item\s*7A|Item\s*8|Part\s*III|$)',
+        ],
     }
-    st.table(weights_data)
     
-    st.info("💡 **Note**: Weights must sum to 1.0 (100%). Data Infrastructure has the highest weight as it forms the foundation for AI readiness.")
+    section_patterns = patterns.get(section_name, [])
+    
+    for pattern in section_patterns:
+        match = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
+        if match:
+            content = match.group(1).strip()
+            content = re.sub(r'\s+', ' ', content)
+            if len(content) > 50:
+                return content[:max_chars] + ("..." if len(content) > max_chars else "")
+    
+    return ""
 
-# =============================================================================
-# PAGE: SNOWFLAKE SETUP
-# =============================================================================
+def extract_lines_containing(text: str, search_term: str, num_lines: int = 5, chars_per_line: int = 300) -> str:
+    """
+    Extract lines from text that contain the search term.
+    Returns the first num_lines matches with surrounding context.
+    """
+    if not text:
+        return ""
+    
+    results = []
+    search_lower = search_term.lower()
+    
+    # Find all positions where the search term appears
+    text_lower = text.lower()
+    pos = 0
+    while len(results) < num_lines:
+        idx = text_lower.find(search_lower, pos)
+        if idx == -1:
+            break
+        
+        # Extract context around the match
+        start = max(0, idx - 50)
+        end = min(len(text), idx + chars_per_line)
+        
+        # Try to start at a word boundary
+        while start > 0 and text[start] not in ' \n\t':
+            start -= 1
+        
+        snippet = text[start:end].strip()
+        snippet = re.sub(r'\s+', ' ', snippet)  # Normalize whitespace
+        
+        if snippet and len(snippet) > 20:
+            results.append(snippet)
+        
+        pos = idx + len(search_term) + 100  # Skip ahead to avoid duplicate matches
+    
+    return "\n\n---\n\n".join(results) if results else ""
 
-elif page == "❄️ Snowflake Setup":
-    st.markdown('<p class="main-header">❄️ Snowflake Setup</p>', unsafe_allow_html=True)
-
-    # Get project root for file paths
-    project_root = get_project_root()
-
-    # =========================================================================
-    # SECTION 1: SCHEMA MANAGEMENT
-    # =========================================================================
-    st.markdown('<p class="section-header">1. Schema Management</p>', unsafe_allow_html=True)
-
-    st.warning("⚠️ **Warning**: Creating the schema will DROP all existing tables and recreate them. All data will be lost!")
-
-    if st.button("🏗️ CREATE SCHEMA", key="create_schema", type="primary"):
-        with st.spinner("Creating schema..."):
-            try:
-                conn = get_streamlit_snowflake_connection()
-                cursor = conn.cursor()
-                all_results = []
-                has_errors = False
-
-                # Step 1: Drop tables in reverse FK order
-                st.text("Step 1: Dropping existing tables...")
-                drop_statements = [
-                    "DROP TABLE IF EXISTS dimension_scores",
-                    "DROP TABLE IF EXISTS assessments",
-                    "DROP TABLE IF EXISTS companies",
-                    "DROP TABLE IF EXISTS industries"
-                ]
-
-                for stmt in drop_statements:
-                    try:
-                        cursor.execute(stmt)
-                        all_results.append(f"✅ {stmt}")
-                    except Exception as e:
-                        all_results.append(f"❌ {stmt}: {str(e)}")
-                        has_errors = True
-
-                # Step 2: Create tables directly (not from file to avoid parsing issues)
-                st.text("Step 2: Creating tables...")
-
-                create_statements = [
-                    ("industries", """
-                        CREATE TABLE IF NOT EXISTS industries (
-                            id VARCHAR(36) PRIMARY KEY,
-                            name VARCHAR(255) NOT NULL UNIQUE,
-                            sector VARCHAR(100) NOT NULL,
-                            h_r_base DECIMAL(5,2),
-                            created_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
-                        )
-                    """),
-                    ("companies", """
-                        CREATE TABLE IF NOT EXISTS companies (
-                            id VARCHAR(36) PRIMARY KEY,
-                            name VARCHAR(255) NOT NULL,
-                            ticker VARCHAR(10),
-                            industry_id VARCHAR(36),
-                            position_factor DECIMAL(4,3) DEFAULT 0.0,
-                            is_deleted BOOLEAN DEFAULT FALSE,
-                            created_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
-                            updated_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
-                            FOREIGN KEY (industry_id) REFERENCES industries(id)
-                        )
-                    """),
-                    ("assessments", """
-                        CREATE TABLE IF NOT EXISTS assessments (
-                            id VARCHAR(36) PRIMARY KEY,
-                            company_id VARCHAR(36) NOT NULL,
-                            assessment_type VARCHAR(20) NOT NULL,
-                            assessment_date DATE NOT NULL,
-                            status VARCHAR(20) DEFAULT 'draft',
-                            primary_assessor VARCHAR(255),
-                            secondary_assessor VARCHAR(255),
-                            v_r_score DECIMAL(5,2),
-                            confidence_lower DECIMAL(5,2),
-                            confidence_upper DECIMAL(5,2),
-                            created_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
-                            FOREIGN KEY (company_id) REFERENCES companies(id)
-                        )
-                    """),
-                    ("dimension_scores", """
-                        CREATE TABLE IF NOT EXISTS dimension_scores (
-                            id VARCHAR(36) PRIMARY KEY,
-                            assessment_id VARCHAR(36) NOT NULL,
-                            dimension VARCHAR(30) NOT NULL,
-                            score DECIMAL(5,2) NOT NULL,
-                            weight DECIMAL(4,3),
-                            confidence DECIMAL(4,3) DEFAULT 0.8,
-                            evidence_count INT DEFAULT 0,
-                            created_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
-                            FOREIGN KEY (assessment_id) REFERENCES assessments(id),
-                            UNIQUE (assessment_id, dimension)
-                        )
-                    """),
-                ]
-
-                for table_name, create_sql in create_statements:
-                    try:
-                        cursor.execute(create_sql)
-                        all_results.append(f"✅ Created table: {table_name}")
-                    except Exception as e:
-                        all_results.append(f"❌ Failed to create {table_name}: {str(e)}")
-                        has_errors = True
-
-                # Step 3: Create stored procedures from schema.sql
-                st.text("Step 3: Creating stored procedures...")
-                schema_path = os.path.join(project_root, "app", "database", "schema.sql")
-                try:
-                    with open(schema_path, 'r') as f:
-                        schema_content = f.read()
-
-                    # Extract and execute stored procedures (between $$ delimiters)
-                    import re
-                    procedure_pattern = r'(CREATE OR REPLACE PROCEDURE[^;]*\$\$.*?\$\$)'
-                    procedures = re.findall(procedure_pattern, schema_content, re.DOTALL)
-
-                    for i, proc in enumerate(procedures):
-                        try:
-                            cursor.execute(proc)
-                            # Extract procedure name for logging
-                            proc_name_match = re.search(r'PROCEDURE\s+(\w+)', proc)
-                            proc_name = proc_name_match.group(1) if proc_name_match else f"procedure_{i+1}"
-                            all_results.append(f"✅ Created procedure: {proc_name}")
-                        except Exception as e:
-                            all_results.append(f"❌ Failed to create procedure: {str(e)[:100]}")
-                            has_errors = True
-                except Exception as e:
-                    all_results.append(f"⚠️ Could not create stored procedures: {str(e)}")
-
-                cursor.close()
-                conn.close()
-
-                if has_errors:
-                    st.error("❌ Schema creation completed with errors. Check details below.")
-                else:
-                    st.success("✅ Schema created successfully!")
-
-                with st.expander("📋 View Details", expanded=has_errors):
-                    for r in all_results:
-                        st.text(r)
-
-            except Exception as e:
-                st.error(f"❌ Connection error: {str(e)}")
-
-    # =========================================================================
-    # SECTION 2: DATA INGESTION
-    # =========================================================================
-    st.markdown('<p class="section-header">2. Data Ingestion</p>', unsafe_allow_html=True)
-
-    st.info("💡 Executes seed SQL files directly against Snowflake using stored procedures.")
-
-    if st.button("📥 INGEST DATA", key="ingest_sql", type="primary"):
-        seed_files = [
-            ("seed-industries.sql", "Industries"),
-            ("seed-companies.sql", "Companies"),
-            ("seed-assessments.sql", "Assessments"),
-            ("seed-dimension-scores.sql", "Dimension Scores")
-        ]
-
-        progress_bar = st.progress(0)
-        status_text = st.empty()
-        results_log = []
-
+def load_json_file_content(s3_key: str, ticker: str, filing_type: str, filing_date: str) -> Tuple[str, str]:
+    """
+    Try to load the full text content from S3.
+    """
+    # Try the exact s3_key first
+    keys_to_try = [
+        s3_key,
+        f"sec/parsed/{ticker}/{filing_type}/{filing_date}_full.json",
+        f"parsed/{ticker}/{filing_type}/{filing_date}_full.json",
+    ]
+    
+    for key in keys_to_try:
+        if not key:
+            continue
         try:
-            conn = get_streamlit_snowflake_connection()
-
-            for i, (filename, label) in enumerate(seed_files):
-                status_text.text(f"Ingesting {label}...")
-                progress_bar.progress((i + 1) / len(seed_files))
-
-                file_path = os.path.join(project_root, "app", "database", filename)
-                success, message, results = execute_sql_file(file_path, conn)
-
-                if success:
-                    results_log.append(f"✅ {label}: {message}")
+            content = fetch_from_s3(key)
+            if content:
+                # Parse JSON and extract text
+                if content.strip().startswith('{'):
+                    data = json.loads(content)
+                    # Try different keys where text might be stored
+                    text = (data.get('text', '') or 
+                            data.get('content', '') or 
+                            data.get('full_text', '') or 
+                            data.get('raw_text', '') or
+                            content)  # Fallback to raw JSON content
+                    return text, f"s3://{S3_BUCKET}/{key}"
                 else:
-                    results_log.append(f"❌ {label}: {message}")
-
-            conn.close()
-            status_text.text("Ingestion complete!")
-            st.success("✅ Data ingestion completed!")
-
-            with st.expander("📋 View Results"):
-                for log in results_log:
-                    st.text(log)
-
+                    return content, f"s3://{S3_BUCKET}/{key}"
         except Exception as e:
-            st.error(f"❌ Error: {str(e)}")
-
-    # -------------------------------------------------------------------------
-    # FastAPI Ingestion (COMMENTED OUT)
-    # -------------------------------------------------------------------------
-    # Note: FastAPI ingestion is disabled because:
-    # 1. API generates new UUIDs, breaking foreign key relationships
-    # 2. Seed files have hardcoded IDs that reference each other
-    # 3. Direct SQL preserves exact IDs from seed files
-    #
-    # To re-enable, uncomment the code below and add tabs back:
-    # tab_sql, tab_api = st.tabs(["Direct SQL", "Via FastAPI"])
-    # -------------------------------------------------------------------------
-    #
-    # with tab_api:
-    #     st.info("💡 Ingests data via FastAPI endpoints. Note: Industries must be ingested via SQL first (read-only in API).")
-    #
-    #     if st.button("📥 INGEST (FastAPI)", key="ingest_api", type="primary"):
-    #         progress_bar = st.progress(0)
-    #         status_text = st.empty()
-    #         results_log = []
-    #
-    #         # First, ingest industries via SQL (required)
-    #         status_text.text("Ingesting Industries via SQL (required)...")
-    #         progress_bar.progress(0.1)
-    #
-    #         try:
-    #             conn = get_streamlit_snowflake_connection()
-    #             file_path = os.path.join(project_root, "app", "database", "seed-industries.sql")
-    #             success, message, _ = execute_sql_file(file_path, conn)
-    #             conn.close()
-    #
-    #             if success:
-    #                 results_log.append(f"✅ Industries (SQL): {message}")
-    #             else:
-    #                 results_log.append(f"❌ Industries (SQL): {message}")
-    #         except Exception as e:
-    #             results_log.append(f"❌ Industries (SQL): {str(e)}")
-    #
-    #         # Companies via API
-    #         status_text.text("Ingesting Companies via API...")
-    #         progress_bar.progress(0.3)
-    #
-    #         companies_file = os.path.join(project_root, "app", "database", "seed-companies.sql")
-    #         companies = parse_seed_for_api(companies_file, "companies")
-    #         companies_success = 0
-    #         for company in companies:
-    #             company_data = {
-    #                 "name": company["name"],
-    #                 "industry_id": company["industry_id"],
-    #                 "position_factor": company["position_factor"]
-    #             }
-    #             if "ticker" in company:
-    #                 company_data["ticker"] = company["ticker"]
-    #
-    #             status_code, _ = make_api_request("POST", "/api/v1/companies", data=company_data)
-    #             if status_code == 201:
-    #                 companies_success += 1
-    #
-    #         results_log.append(f"✅ Companies (API): {companies_success}/{len(companies)} created")
-    #
-    #         # Assessments via API
-    #         status_text.text("Ingesting Assessments via API...")
-    #         progress_bar.progress(0.6)
-    #
-    #         assessments_file = os.path.join(project_root, "app", "database", "seed-assessments.sql")
-    #         assessments = parse_seed_for_api(assessments_file, "assessments")
-    #         assessments_success = 0
-    #         assessment_id_map = {}
-    #
-    #         for assessment in assessments:
-    #             assess_data = {
-    #                 "company_id": assessment["company_id"],
-    #                 "assessment_type": assessment["assessment_type"],
-    #                 "assessment_date": assessment["assessment_date"]
-    #             }
-    #             if "primary_assessor" in assessment:
-    #                 assess_data["primary_assessor"] = assessment["primary_assessor"]
-    #
-    #             status_code, response = make_api_request("POST", "/api/v1/assessments", data=assess_data)
-    #             if status_code == 201 and response:
-    #                 assessments_success += 1
-    #                 # Map old ID to new ID for dimension scores
-    #                 if "id" in response:
-    #                     assessment_id_map[assessment["id"]] = response["id"]
-    #
-    #         results_log.append(f"✅ Assessments (API): {assessments_success}/{len(assessments)} created")
-    #
-    #         # Dimension Scores via API
-    #         status_text.text("Ingesting Dimension Scores via API...")
-    #         progress_bar.progress(0.9)
-    #
-    #         scores_file = os.path.join(project_root, "app", "database", "seed-dimension-scores.sql")
-    #         scores = parse_seed_for_api(scores_file, "dimension_scores")
-    #         scores_success = 0
-    #
-    #         for score in scores:
-    #             # Use mapped assessment ID if available, otherwise use original
-    #             assess_id = assessment_id_map.get(score["assessment_id"], score["assessment_id"])
-    #
-    #             score_data = {
-    #                 "assessment_id": assess_id,
-    #                 "dimension": score["dimension"],
-    #                 "score": score["score"],
-    #                 "confidence": score["confidence"]
-    #             }
-    #
-    #             status_code, _ = make_api_request("POST", f"/api/v1/assessments/{assess_id}/scores", data=score_data)
-    #             if status_code == 201:
-    #                 scores_success += 1
-    #
-    #         results_log.append(f"✅ Dimension Scores (API): {scores_success}/{len(scores)} created")
-    #
-    #         progress_bar.progress(1.0)
-    #         status_text.text("Ingestion complete!")
-    #         st.success("✅ FastAPI ingestion completed!")
-    #
-    #         with st.expander("📋 View Results"):
-    #             for log in results_log:
-    #                 st.text(log)
-
-    # =========================================================================
-    # SECTION 3: DELETE TABLE
-    # =========================================================================
-    st.markdown('<p class="section-header">3. Delete Table</p>', unsafe_allow_html=True)
-
-    st.warning("⚠️ **Warning**: This will permanently DROP the selected table. Consider foreign key constraints when deleting.")
-
-    delete_table = st.selectbox(
-        "Select Table to Delete",
-        ["dimension_scores", "assessments", "companies", "industries"],
-        key="delete_table_select"
-    )
-
-    st.info("""
-    **Foreign Key Dependencies:**
-    - `dimension_scores` → depends on `assessments`
-    - `assessments` → depends on `companies`
-    - `companies` → depends on `industries`
-
-    Delete in reverse order: dimension_scores → assessments → companies → industries
-    """)
-
-    confirm_delete = st.checkbox("I understand this action is irreversible", key="confirm_delete_checkbox")
-
-    if st.button("🗑️ DELETE TABLE", key="delete_table_btn", type="secondary", disabled=not confirm_delete):
-        with st.spinner(f"Deleting {delete_table}..."):
-            try:
-                conn = get_streamlit_snowflake_connection()
-                cursor = conn.cursor()
-                cursor.execute(f"DROP TABLE IF EXISTS {delete_table}")
-                cursor.close()
-                conn.close()
-                st.success(f"✅ Table `{delete_table}` deleted successfully!")
-            except Exception as e:
-                st.error(f"❌ Error deleting table: {str(e)}")
-
-# =============================================================================
-# PAGE: DATA MANAGEMENT
-# =============================================================================
-
-elif page == "📋 Data Management":
-    st.markdown('<p class="main-header">📋 Data Management</p>', unsafe_allow_html=True)
-
-    # =========================================================================
-    # SECTION 1: CURRENT DATA IN SNOWFLAKE
-    # =========================================================================
-    st.markdown('<p class="section-header">1. Current Data in Snowflake</p>', unsafe_allow_html=True)
-
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        data_table = st.selectbox(
-            "Select Table",
-            ["Industries", "Companies", "Assessments", "Dimension Scores"],
-            key="data_view_table"
-        )
-    with col2:
-        st.markdown("<br>", unsafe_allow_html=True)
-        refresh_data = st.button("🔄 Refresh", key="refresh_data_table")
-
-    def show_table_not_found(table_name: str):
-        """Display a graceful message when table is not found."""
-        st.info(f"""
-        **{table_name} table not found**
-
-        The table may not exist yet. Go to **Snowflake Setup** to:
-        1. Click **CREATE SCHEMA** to create tables
-        2. Click **INGEST** to populate with seed data
-        """)
-
-    def show_api_error(status_code, response, table_name: str):
-        """Display graceful error message for API errors."""
-        error_msg = str(response) if response else "Unknown error"
-        # Check for common "table not found" patterns
-        if "does not exist" in error_msg.lower() or "not found" in error_msg.lower() or status_code == 500:
-            show_table_not_found(table_name)
-        else:
-            st.error(f"Error loading {table_name}: {error_msg}")
-
-    if data_table == "Industries":
-        status_code, response = make_api_request("GET", "/api/v1/industries")
-        if status_code == 200 and response and "items" in response:
-            industries = response["items"]
-            if industries:
-                df = pd.DataFrame(industries)
-                display_cols = ["id", "name", "sector", "h_r_base"]
-                available_cols = [c for c in display_cols if c in df.columns]
-                if available_cols:
-                    df = df[available_cols]
-                    col_names = {"id": "ID", "name": "Name", "sector": "Sector", "h_r_base": "H/R Base"}
-                    df.columns = [col_names.get(c, c) for c in available_cols]
-                st.dataframe(df, use_container_width=True, hide_index=True)
-                st.caption(f"Total: {len(industries)} industries")
-                display_cache_info(response)
-            else:
-                st.info("No industries found. Run **INGEST** on the Snowflake Setup page to add data.")
-        elif status_code:
-            show_api_error(status_code, response, "Industries")
-        else:
-            st.warning("Cannot connect to API. Make sure FastAPI is running: `uvicorn app.main:app --reload`")
-
-    elif data_table == "Companies":
-        status_code, response = make_api_request("GET", "/api/v1/companies", params={"page_size": 100})
-        if status_code == 200 and response and "items" in response:
-            companies = response["items"]
-            if companies:
-                df = pd.DataFrame(companies)
-                display_cols = ["id", "name", "ticker", "industry_id", "position_factor"]
-                available_cols = [c for c in display_cols if c in df.columns]
-                if available_cols:
-                    df = df[available_cols]
-                    col_names = {"id": "ID", "name": "Name", "ticker": "Ticker", "industry_id": "Industry ID", "position_factor": "Position Factor"}
-                    df.columns = [col_names.get(c, c) for c in available_cols]
-                st.dataframe(df, use_container_width=True, hide_index=True)
-                st.caption(f"Total: {response.get('total', len(companies))} companies")
-                display_cache_info(response)
-            else:
-                st.info("No companies found. Run **INGEST** on the Snowflake Setup page to add data.")
-        elif status_code:
-            show_api_error(status_code, response, "Companies")
-        else:
-            st.warning("Cannot connect to API. Make sure FastAPI is running: `uvicorn app.main:app --reload`")
-
-    elif data_table == "Assessments":
-        status_code, response = make_api_request("GET", "/api/v1/assessments", params={"page_size": 100})
-        if status_code == 200 and response and "items" in response:
-            assessments = response["items"]
-            if assessments:
-                df = pd.DataFrame(assessments)
-                display_cols = ["id", "company_id", "assessment_type", "assessment_date", "status"]
-                available_cols = [c for c in display_cols if c in df.columns]
-                if available_cols:
-                    df = df[available_cols]
-                    col_names = {"id": "ID", "company_id": "Company ID", "assessment_type": "Type", "assessment_date": "Date", "status": "Status"}
-                    df.columns = [col_names.get(c, c) for c in available_cols]
-                st.dataframe(df, use_container_width=True, hide_index=True)
-                st.caption(f"Total: {response.get('total', len(assessments))} assessments")
-            else:
-                st.info("No assessments found. Run **INGEST** on the Snowflake Setup page to add data.")
-        elif status_code:
-            show_api_error(status_code, response, "Assessments")
-        else:
-            st.warning("Cannot connect to API. Make sure FastAPI is running: `uvicorn app.main:app --reload`")
-
-    elif data_table == "Dimension Scores":
-        # Need to select an assessment first
-        status_code, assess_response = make_api_request("GET", "/api/v1/assessments", params={"page_size": 100})
-
-        if status_code != 200 or not assess_response:
-            show_api_error(status_code, assess_response, "Assessments")
-        elif "items" not in assess_response or not assess_response["items"]:
-            st.info("No assessments available. Create assessments first via **INGEST** on the Snowflake Setup page.")
-        else:
-            assessment_options = {}
-            for a in assess_response["items"]:
-                label = f"{a['id'][:8]}... ({a['assessment_type']} - {a['status']})"
-                assessment_options[label] = a["id"]
-
-            selected_label = st.selectbox("Select Assessment", list(assessment_options.keys()), key="score_assess_select")
-            selected_id = assessment_options[selected_label]
-
-            score_status, score_response = make_api_request("GET", f"/api/v1/assessments/{selected_id}/scores")
-            if score_status == 200:
-                if isinstance(score_response, list) and len(score_response) > 0:
-                    df = pd.DataFrame(score_response)
-                    display_cols = ["dimension", "score", "weight", "confidence", "evidence_count"]
-                    available_cols = [c for c in display_cols if c in df.columns]
-                    if available_cols:
-                        df = df[available_cols]
-                        col_names = {"dimension": "Dimension", "score": "Score", "weight": "Weight", "confidence": "Confidence", "evidence_count": "Evidence Count"}
-                        df.columns = [col_names.get(c, c) for c in available_cols]
-                    st.dataframe(df, use_container_width=True, hide_index=True)
-                else:
-                    st.info("No dimension scores recorded for this assessment yet. This assessment may be in draft status.")
-            elif score_status == 404:
-                st.info("No dimension scores found for this assessment.")
-            else:
-                st.warning(f"Could not load dimension scores. API returned status {score_status}.")
-
-    # =========================================================================
-    # SECTION 2: UPDATE RECORDS
-    # =========================================================================
-    st.markdown('<p class="section-header">2. Update Records</p>', unsafe_allow_html=True)
-
-    update_table = st.selectbox(
-        "Select Table to Update",
-        ["Companies", "Assessments", "Dimension Scores"],
-        key="update_table_select"
-    )
-
-    if update_table == "Companies":
-        status_code, comp_response = make_api_request("GET", "/api/v1/companies", params={"page_size": 100})
-        if status_code != 200 or not comp_response:
-            show_table_not_found("Companies")
-        elif "items" not in comp_response or not comp_response["items"]:
-            st.info("No companies available to update. Run **INGEST** on the Snowflake Setup page first.")
-        else:
-            company_options = {}
-            for c in comp_response["items"]:
-                label = f"{c['name']} ({c.get('ticker', 'N/A')})"
-                company_options[label] = c
-
-            selected_company_label = st.selectbox("Select Company", list(company_options.keys()), key="update_company_select")
-            selected_company = company_options[selected_company_label]
-
-            st.markdown("**Edit Fields:**")
-            col1, col2 = st.columns(2)
-            with col1:
-                new_name = st.text_input("Name", value=selected_company["name"], key="update_comp_name")
-                new_ticker = st.text_input("Ticker", value=selected_company.get("ticker", ""), key="update_comp_ticker")
-            with col2:
-                new_position = st.slider("Position Factor", -1.0, 1.0, float(selected_company.get("position_factor", 0)), 0.01, key="update_comp_pos")
-
-            if st.button("💾 UPDATE", key="update_company_btn"):
-                update_data = {
-                    "name": new_name,
-                    "position_factor": new_position
-                }
-                if new_ticker:
-                    update_data["ticker"] = new_ticker
-
-                status_code, response = make_api_request("PUT", f"/api/v1/companies/{selected_company['id']}", data=update_data)
-                if status_code == 200:
-                    st.success("✅ Company updated successfully!")
-                    st.json(response)
-                else:
-                    st.error(f"❌ Error: {response}")
-
-    elif update_table == "Assessments":
-        status_code, assess_response = make_api_request("GET", "/api/v1/assessments", params={"page_size": 100})
-        if status_code != 200 or not assess_response:
-            show_table_not_found("Assessments")
-        elif "items" not in assess_response or not assess_response["items"]:
-            st.info("No assessments available to update. Run **INGEST** on the Snowflake Setup page first.")
-        else:
-            assessment_options = {}
-            for a in assess_response["items"]:
-                label = f"{a['id'][:8]}... ({a['assessment_type']} - {a['status']})"
-                assessment_options[label] = a
-
-            selected_assess_label = st.selectbox("Select Assessment", list(assessment_options.keys()), key="update_assess_select")
-            selected_assess = assessment_options[selected_assess_label]
-
-            st.markdown("**Edit Status:**")
-            new_status = st.selectbox(
-                "Status",
-                ["draft", "in_progress", "submitted", "approved", "superseded"],
-                index=["draft", "in_progress", "submitted", "approved", "superseded"].index(selected_assess.get("status", "draft")),
-                key="update_assess_status"
-            )
-
-            if st.button("💾 UPDATE", key="update_assess_btn"):
-                status_code, response = make_api_request("PATCH", f"/api/v1/assessments/{selected_assess['id']}/status", data={"status": new_status})
-                if status_code == 200:
-                    st.success("✅ Assessment status updated successfully!")
-                    st.json(response)
-                else:
-                    st.error(f"❌ Error: {response}")
-
-    elif update_table == "Dimension Scores":
-        # First select assessment, then score
-        status_code, assess_response = make_api_request("GET", "/api/v1/assessments", params={"page_size": 100})
-        if status_code != 200 or not assess_response:
-            show_table_not_found("Assessments")
-        elif "items" not in assess_response or not assess_response["items"]:
-            st.info("No assessments available. Run **INGEST** on the Snowflake Setup page first.")
-        else:
-            assessment_options = {}
-            for a in assess_response["items"]:
-                label = f"{a['id'][:8]}... ({a['assessment_type']})"
-                assessment_options[label] = a["id"]
-            selected_assess_label = st.selectbox("Select Assessment", list(assessment_options.keys()), key="update_score_assess_select")
-            selected_assess_id = assessment_options[selected_assess_label]
-
-            status_code, scores_response = make_api_request("GET", f"/api/v1/assessments/{selected_assess_id}/scores")
-
-            if status_code == 200 and isinstance(scores_response, list) and len(scores_response) > 0:
-                score_options = {}
-                for s in scores_response:
-                    label = f"{s['dimension']} (Score: {s['score']})"
-                    score_options[label] = s
-
-                selected_score_label = st.selectbox("Select Dimension Score", list(score_options.keys()), key="update_score_select")
-                selected_score = score_options[selected_score_label]
-
-                st.markdown("**Edit Fields:**")
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    new_score = st.slider("Score", 0.0, 100.0, float(selected_score.get("score", 0)), 0.5, key="update_score_value")
-                with col2:
-                    new_confidence = st.slider("Confidence", 0.0, 1.0, float(selected_score.get("confidence", 0.8)), 0.01, key="update_score_confidence")
-                with col3:
-                    new_evidence = st.number_input("Evidence Count", min_value=0, value=int(selected_score.get("evidence_count", 0)), key="update_score_evidence")
-
-                if st.button("💾 UPDATE", key="update_score_btn"):
-                    update_data = {
-                        "score": new_score,
-                        "confidence": new_confidence,
-                        "evidence_count": new_evidence
-                    }
-
-                    update_status, response = make_api_request("PUT", f"/api/v1/scores/{selected_score['id']}", data=update_data)
-                    if update_status == 200:
-                        st.success("✅ Dimension score updated successfully!")
-                        st.json(response)
-                    else:
-                        st.error(f"❌ Error: {response}")
-            elif status_code == 200:
-                st.info("No dimension scores recorded for this assessment yet. Select an assessment that has been scored.")
-            else:
-                st.warning(f"Could not load dimension scores. Try selecting a different assessment.")
-
-# =============================================================================
-# PAGE: API EXPLORER
-# =============================================================================
-
-elif page == "🔌 API Explorer":
-    st.markdown('<p class="main-header">🔌 API Explorer</p>', unsafe_allow_html=True)
+            continue
     
-    api_healthy, _ = check_api_health()
-    if not api_healthy:
-        st.error("⚠️ FastAPI is not running. Start it with: `uvicorn app.main:app --reload`")
-    
-    api_category = st.selectbox(
-        "Select API Category",
-        ["Health", "Industries", "Companies", "Assessments", "Dimension Scores"]
-    )
-    
-    st.markdown("---")
-    
-    # =========================================================================
-    # HEALTH API
-    # =========================================================================
-    if api_category == "Health":
-        st.markdown("### 🏥 Health Check API")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            if st.button("🔍 GET /health", key="health_get"):
-                with st.spinner("Checking health..."):
-                    status_code, response = make_api_request("GET", "/health")
-                    if status_code:
-                        # st.success(f"✅ Status: {status_code}") if status_code == 200 else st.warning(f"⚠️ Status: {status_code}")
-                        st.json(response)
-                    else:
-                        st.error(f"❌ Error: {response}")
-        
-        with col2:
-            if st.button("📊 GET /health/cache/stats", key="cache_stats"):
-                with st.spinner("Fetching cache stats..."):
-                    status_code, response = make_api_request("GET", "/health/cache/stats")
-                    if status_code:
-                        st.info(f"Status: {status_code}")
-                        st.json(response)
-                    else:
-                        st.error(f"❌ Error: {response}")
-        
-        st.markdown("---")
-        
-        st.markdown("#### 🗑️ Flush Cache")
-        st.warning("⚠️ This will clear ALL cached data from Redis!")
-        
-        if st.button("🗑️ DELETE /health/cache/flush", key="cache_flush", type="secondary"):
-            with st.spinner("Flushing cache..."):
-                status_code, response = make_api_request("DELETE", "/health/cache/flush")
-                if status_code and response:
-                    if response.get("success"):
-                        st.success("✅ Cache flushed successfully!")
-                    else:
-                        st.error(f"❌ Failed: {response.get('error', 'Unknown error')}")
-                    st.json(response)
-                else:
-                    st.error(f"❌ Error: {response}")
-    
-    # =========================================================================
-    # INDUSTRIES API
-    # =========================================================================
-    elif api_category == "Industries":
-        st.markdown("### 🏭 Industries API")
-        st.info("💾 **Redis Caching**: Industries are cached for 1 hour (3600 seconds)")
+    return "", ""
 
-        # Data Table View
-        st.markdown("#### 📊 Current Data in Snowflake")
-        if st.button("🔄 Refresh Industries Table", key="refresh_industries"):
-            st.rerun()
-
-        status_code, response = make_api_request("GET", "/api/v1/industries")
-        if status_code == 200 and response and "items" in response:
-            industries = response["items"]
-            if industries:
-                df = pd.DataFrame(industries)
-                display_cols = ["id", "name", "sector", "h_r_base"]
-                available_cols = [c for c in display_cols if c in df.columns]
-                if available_cols:
-                    df = df[available_cols]
-                    col_names = {"id": "ID", "name": "Name", "sector": "Sector", "h_r_base": "H/R Base"}
-                    df.columns = [col_names.get(c, c) for c in available_cols]
-                st.dataframe(df, use_container_width=True, hide_index=True)
-                display_cache_info(response)
-            else:
-                st.warning("No industries found in database")
-        elif status_code:
-            st.error(f"Error fetching industries: {response}")
+def fetch_documents_table(base_url: str, ticker: Optional[str] = None) -> None:
+    try:
+        params = {"ticker": ticker, "limit": 100} if ticker else {"limit": 100}
+        data = get(api_url(base_url, "/api/v1/documents"), params=params)
+        docs = data.get("documents", [])
+        if docs:
+            st.subheader("📋 Documents Table (Snowflake)")
+            df = pd.DataFrame([{
+                "ID": d.get("id", "")[:12] + "...",
+                "Ticker": d.get("ticker"),
+                "Filing Type": d.get("filing_type"),
+                "Filing Date": str(d.get("filing_date", ""))[:10],
+                "Status": d.get("status"),
+                "S3 Key": (d.get("s3_key") or "")[:30] + "...",
+                "Words": d.get("word_count", 0),
+                "Chunks": d.get("chunk_count", 0)
+            } for d in docs])
+            st.dataframe(df, use_container_width=True, hide_index=True)
+            st.caption(f"Total: {data.get('count', len(docs))} documents")
         else:
-            st.warning("⚠️ Cannot connect to API")
+            st.info("No documents found in Snowflake")
+    except Exception as e:
+        st.error(f"❌ Error fetching documents: {e}")
 
-        st.markdown("---")
-
-        st.markdown("#### 🔍 Get Industry by ID")
-        industry_id = st.text_input("Industry UUID", value="550e8400-e29b-41d4-a716-446655440001", key="ind_id")
-
-        if st.button("GET /api/v1/industries/{id}", key="industry_get"):
-            if industry_id:
-                with st.spinner("Fetching industry..."):
-                    status_code, response = make_api_request("GET", f"/api/v1/industries/{industry_id}")
-                    if status_code:
-                        st.info(f"Status: {status_code}")
-                        display_cache_info(response)
-                        st.json(response)
-                    else:
-                        st.error(f"Error: {response}")
-            else:
-                st.warning("Please enter an Industry UUID")
-    
-    # =========================================================================
-    # COMPANIES API
-    # =========================================================================
-    elif api_category == "Companies":
-        st.markdown("### 🏢 Companies API")
-        st.info("💾 **Redis Caching**: Companies are cached for 5 minutes (300 seconds)")
-
-        # Data Table View
-        st.markdown("#### 📊 Current Data in Snowflake")
-        if st.button("🔄 Refresh Companies Table", key="refresh_companies"):
-            st.rerun()
-
-        status_code, response = make_api_request("GET", "/api/v1/companies", params={"page_size": 100})
-        if status_code == 200 and response and "items" in response:
-            companies = response["items"]
-            if companies:
-                df = pd.DataFrame(companies)
-                df = df[["id", "name", "ticker", "industry_id", "position_factor"]]
-                df.columns = ["ID", "Name", "Ticker", "Industry ID", "Position Factor"]
-                st.dataframe(df, use_container_width=True, hide_index=True)
-                st.caption(f"Total: {response.get('total', len(companies))} companies")
-                display_cache_info(response)
-            else:
-                st.warning("No companies found in database")
-        elif status_code:
-            st.error(f"Error fetching companies: {response}")
-        else:
-            st.warning("⚠️ Cannot connect to API")
-
-        st.markdown("---")
-
-        # CREATE COMPANY
-        st.markdown("#### ➕ Create Company")
+def fetch_chunks_table(base_url: str, ticker: Optional[str] = None) -> None:
+    try:
+        params = {"ticker": ticker, "limit": 50} if ticker else {"limit": 50}
+        doc_data = get(api_url(base_url, "/api/v1/documents"), params=params)
+        docs = doc_data.get("documents", [])
         
-        with st.form("create_company_form"):
-            new_comp_name = st.text_input("Company Name *")
-            new_comp_ticker = st.text_input("Ticker Symbol")
-            new_comp_industry = st.text_input("Industry ID (UUID) *", value="550e8400-e29b-41d4-a716-446655440001")
-            new_comp_position = st.slider("Position Factor", -1.0, 1.0, 0.0, 0.1)
-            
-            if st.form_submit_button("POST /api/v1/companies"):
-                if new_comp_name and new_comp_industry:
-                    data = {
-                        "name": new_comp_name,
-                        "industry_id": new_comp_industry,
-                        "position_factor": new_comp_position
-                    }
-                    if new_comp_ticker:
-                        data["ticker"] = new_comp_ticker
-                    
-                    with st.spinner("Creating company..."):
-                        status_code, response = make_api_request("POST", "/api/v1/companies", data=data)
-                        if status_code == 201:
-                            st.success(f"✅ Company created! Status: {status_code}")
-                            st.caption("🔄 Cache invalidated - list cache cleared")
-                        else:
-                            st.error(f"❌ Status: {status_code}")
-                        st.json(response)
-                else:
-                    st.warning("Please fill required fields (*)")
-        
-        st.markdown("---")
-        
-        # GET COMPANIES
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.markdown("#### 📋 List Companies")
-            page_num = st.number_input("Page", min_value=1, value=1, key="comp_page")
-            page_size = st.number_input("Page Size", min_value=1, max_value=100, value=20, key="comp_size")
-            
-            if st.button("GET /api/v1/companies", key="companies_list"):
-                with st.spinner("Fetching companies..."):
-                    status_code, response = make_api_request(
-                        "GET", "/api/v1/companies",
-                        params={"page": page_num, "page_size": page_size}
-                    )
-                    if status_code:
-                        st.info(f"Status: {status_code}")
-                        display_cache_info(response)
-                        st.json(response)
-                    else:
-                        st.error(f"Error: {response}")
-        
-        with col2:
-            st.markdown("#### 🔍 Get Company by ID")
-            company_id = st.text_input("Company UUID", key="comp_id")
-            
-            if st.button("GET /api/v1/companies/{id}", key="company_get"):
-                if company_id:
-                    with st.spinner("Fetching company..."):
-                        status_code, response = make_api_request("GET", f"/api/v1/companies/{company_id}")
-                        if status_code:
-                            st.info(f"Status: {status_code}")
-                            display_cache_info(response)
-                            st.json(response)
-                        else:
-                            st.error(f"Error: {response}")
-                else:
-                    st.warning("Please enter a Company UUID")
-        
-        st.markdown("---")
-        
-        # UPDATE COMPANY
-        st.markdown("#### 🔄 Update Company")
-        col1, col2 = st.columns(2)
-        with col1:
-            update_comp_id = st.text_input("Company ID to Update", key="update_comp_id")
-        with col2:
-            update_comp_name = st.text_input("New Company Name", key="update_comp_name")
-            update_comp_position = st.slider("New Position Factor", -1.0, 1.0, 0.0, 0.1, key="update_comp_pos")
-        
-        if st.button("PUT /api/v1/companies/{id}", key="company_update"):
-            if update_comp_id:
-                data = {}
-                if update_comp_name:
-                    data["name"] = update_comp_name
-                data["position_factor"] = update_comp_position
-                
-                with st.spinner("Updating company..."):
-                    status_code, response = make_api_request("PUT", f"/api/v1/companies/{update_comp_id}", data=data)
-                    if status_code == 200:
-                        st.success(f"✅ Company updated! Status: {status_code}")
-                        st.caption("🔄 Cache invalidated for this company")
-                    else:
-                        st.error(f"❌ Status: {status_code}")
-                    st.json(response)
-            else:
-                st.warning("Please enter a Company ID")
-        
-        st.markdown("---")
-        
-        # DELETE COMPANY
-        st.markdown("#### 🗑️ Delete Company")
-        delete_comp_id = st.text_input("Company UUID to Delete", key="delete_comp_id")
-        if st.button("DELETE /api/v1/companies/{id}", key="company_delete"):
-            if delete_comp_id:
-                with st.spinner("Deleting company..."):
-                    status_code, response = make_api_request("DELETE", f"/api/v1/companies/{delete_comp_id}")
-                    if status_code == 204:
-                        st.success(f"✅ Company deleted! Status: {status_code}")
-                        st.caption("🔄 Cache invalidated")
-                    else:
-                        st.error(f"❌ Status: {status_code}")
-                        if response:
-                            st.json(response)
-            else:
-                st.warning("Please enter a Company UUID")
-    
-    # =========================================================================
-    # ASSESSMENTS API
-    # =========================================================================
-    elif api_category == "Assessments":
-        st.markdown("### 📋 Assessments API")
-
-        # Data Table View
-        st.markdown("#### 📊 Current Data in Snowflake")
-        if st.button("🔄 Refresh Assessments Table", key="refresh_assessments"):
-            st.rerun()
-
-        status_code, response = make_api_request("GET", "/api/v1/assessments", params={"page_size": 100})
-        if status_code == 200 and response and "items" in response:
-            assessments = response["items"]
-            if assessments:
-                df = pd.DataFrame(assessments)
-                display_cols = ["id", "company_id", "assessment_type", "assessment_date", "status"]
-                df = df[[c for c in display_cols if c in df.columns]]
-                df.columns = ["ID", "Company ID", "Type", "Date", "Status"]
-                st.dataframe(df, use_container_width=True, hide_index=True)
-                st.caption(f"Total: {response.get('total', len(assessments))} assessments")
-            else:
-                st.warning("No assessments found in database")
-        elif status_code:
-            st.error(f"Error fetching assessments: {response}")
-        else:
-            st.warning("⚠️ Cannot connect to API")
-
-        st.markdown("---")
-
-        # CREATE ASSESSMENT
-        st.markdown("#### ➕ Create Assessment")
-        
-        with st.form("create_assessment_form"):
-            assess_company = st.text_input("Company ID (UUID) *")
-            assess_type = st.selectbox("Assessment Type *", ["screening", "due_diligence", "quarterly", "exit_prep"])
-            assess_date = st.date_input("Assessment Date *")
-            assess_primary = st.text_input("Primary Assessor")
-            
-            if st.form_submit_button("POST /api/v1/assessments"):
-                data = {
-                    "company_id": assess_company,
-                    "assessment_type": assess_type,
-                    "assessment_date": str(assess_date)
-                }
-                if assess_primary:
-                    data["primary_assessor"] = assess_primary
-                
-                with st.spinner("Creating assessment..."):
-                    status_code, response = make_api_request("POST", "/api/v1/assessments", data=data)
-                    if status_code == 201:
-                        st.success(f"✅ Assessment created! Status: {status_code}")
-                    else:
-                        st.error(f"❌ Status: {status_code}")
-                    st.json(response)
-        
-        st.markdown("---")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.markdown("#### 📋 List Assessments")
-            if st.button("GET /api/v1/assessments", key="assess_list"):
-                with st.spinner("Fetching assessments..."):
-                    status_code, response = make_api_request("GET", "/api/v1/assessments")
-                    if status_code:
-                        st.info(f"Status: {status_code}")
-                        st.json(response)
-                    else:
-                        st.error(f"Error: {response}")
-        
-        with col2:
-            st.markdown("#### 🔍 Get Assessment by ID")
-            assess_id = st.text_input("Assessment UUID", key="assess_id")
-            
-            if st.button("GET /api/v1/assessments/{id}", key="assess_get"):
-                if assess_id:
-                    with st.spinner("Fetching assessment..."):
-                        status_code, response = make_api_request("GET", f"/api/v1/assessments/{assess_id}")
-                        if status_code:
-                            st.info(f"Status: {status_code}")
-                            st.json(response)
-                        else:
-                            st.error(f"Error: {response}")
-    
-    # =========================================================================
-    # DIMENSION SCORES API
-    # =========================================================================
-    elif api_category == "Dimension Scores":
-        st.markdown("### 📊 Dimension Scores API")
-
-        # Data Table View - need assessment ID to fetch scores
-        st.markdown("#### 📊 View Scores by Assessment")
-
-        # First get assessments for dropdown
-        _, assess_response = make_api_request("GET", "/api/v1/assessments", params={"page_size": 100})
-        assessment_options = {}
-        if assess_response and "items" in assess_response:
-            for a in assess_response["items"]:
-                label = f"{a['id'][:8]}... ({a['assessment_type']} - {a['status']})"
-                assessment_options[label] = a["id"]
-
-        if assessment_options:
-            selected_assess_label = st.selectbox("Select Assessment", list(assessment_options.keys()), key="score_view_assess")
-            selected_assess_id = assessment_options[selected_assess_label]
-
-            if st.button("🔄 Load Scores", key="refresh_scores"):
-                pass  # Just triggers rerun with selection
-
-            status_code, response = make_api_request("GET", f"/api/v1/assessments/{selected_assess_id}/scores")
-            if status_code == 200 and response:
-                if isinstance(response, list) and len(response) > 0:
-                    df = pd.DataFrame(response)
-                    display_cols = ["dimension", "score", "weight", "confidence", "evidence_count"]
-                    df = df[[c for c in display_cols if c in df.columns]]
-                    df.columns = ["Dimension", "Score", "Weight", "Confidence", "Evidence Count"]
-                    st.dataframe(df, use_container_width=True, hide_index=True)
-                else:
-                    st.info("No scores found for this assessment")
-            elif status_code == 404:
-                st.info("No scores found for this assessment")
-            elif status_code:
-                st.error(f"Error: {response}")
-        else:
-            st.warning("No assessments available. Create an assessment first.")
-
-        st.markdown("---")
-
-        st.markdown("#### ➕ Add Dimension Score")
-        
-        with st.form("add_score_form"):
-            score_assess = st.text_input("Assessment ID (UUID) *")
-            score_dimension = st.selectbox("Dimension *", [
-                "data_infrastructure", "ai_governance", "technology_stack",
-                "talent_skills", "leadership_vision", "use_case_portfolio", "culture_change"
-            ])
-            score_value = st.slider("Score *", 0.0, 100.0, 75.0, 0.5)
-            score_confidence = st.slider("Confidence", 0.0, 1.0, 0.8, 0.05)
-            
-            if st.form_submit_button("POST /api/v1/assessments/{id}/scores"):
-                if score_assess:
-                    data = {
-                        "assessment_id": score_assess,
-                        "dimension": score_dimension,
-                        "score": score_value,
-                        "confidence": score_confidence
-                    }
-                    with st.spinner("Adding score..."):
-                        status_code, response = make_api_request(
-                            "POST", f"/api/v1/assessments/{score_assess}/scores", data=data
-                        )
-                        if status_code == 201:
-                            st.success(f"✅ Score added! Status: {status_code}")
-                        else:
-                            st.error(f"❌ Status: {status_code}")
-                        st.json(response)
-        
-        st.markdown("---")
-        
-        st.markdown("#### 📋 Get Scores for Assessment")
-        score_assess_id = st.text_input("Assessment UUID", key="score_assess_id")
-        
-        if st.button("GET /api/v1/assessments/{id}/scores", key="scores_get"):
-            if score_assess_id:
-                with st.spinner("Fetching scores..."):
-                    status_code, response = make_api_request("GET", f"/api/v1/assessments/{score_assess_id}/scores")
-                    if status_code:
-                        st.info(f"Status: {status_code}")
-                        st.json(response)
-                    else:
-                        st.error(f"Error: {response}")
-
-# =============================================================================
-# PAGE: TEST RUNNER
-# =============================================================================
-
-# =============================================================================
-# PAGE: TEST RUNNER (Beautified with All Features)
-# =============================================================================
-# Replace the entire "elif page == "🧪 Test Runner":" section in your app.py
-
-elif page == "🧪 Test Runner":
-    st.markdown('<p class="main-header">🧪 Test Runner</p>', unsafe_allow_html=True)
-    
-    # Additional CSS for test results
-    st.markdown("""
-    <style>
-        .metric-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 1rem;
-            border-radius: 0.75rem;
-            color: white;
-            text-align: center;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            margin-bottom: 0.5rem;
-        }
-        .metric-card-success {
-            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-        }
-        .metric-card-danger {
-            background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
-        }
-        .metric-card-warning {
-            background: linear-gradient(135deg, #f2994a 0%, #f2c94c 100%);
-        }
-        .metric-card-info {
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-        }
-        .metric-value {
-            font-size: 2rem;
-            font-weight: bold;
-            margin: 0;
-        }
-        .metric-label {
-            font-size: 0.85rem;
-            opacity: 0.9;
-            margin-top: 0.25rem;
-        }
-        .test-item-pass {
-            background-color: #d1fae5;
-            border-left: 4px solid #10b981;
-            padding: 0.4rem 0.75rem;
-            margin: 0.2rem 0;
-            border-radius: 0 0.25rem 0.25rem 0;
-            font-family: monospace;
-            font-size: 0.8rem;
-        }
-        .test-item-fail {
-            background-color: #fee2e2;
-            border-left: 4px solid #ef4444;
-            padding: 0.4rem 0.75rem;
-            margin: 0.2rem 0;
-            border-radius: 0 0.25rem 0.25rem 0;
-            font-family: monospace;
-            font-size: 0.8rem;
-        }
-        .test-item-skip {
-            background-color: #fef3c7;
-            border-left: 4px solid #f59e0b;
-            padding: 0.4rem 0.75rem;
-            margin: 0.2rem 0;
-            border-radius: 0 0.25rem 0.25rem 0;
-            font-family: monospace;
-            font-size: 0.8rem;
-        }
-        .warning-item {
-            background-color: #fef9c3;
-            border-left: 4px solid #eab308;
-            padding: 0.5rem 0.75rem;
-            margin: 0.3rem 0;
-            border-radius: 0 0.25rem 0.25rem 0;
-            font-size: 0.8rem;
-        }
-        .skip-reason {
-            color: #92400e;
-            font-style: italic;
-            margin-left: 0.5rem;
-        }
-        .warning-reason {
-            color: #854d0e;
-            font-size: 0.75rem;
-            margin-top: 0.25rem;
-        }
-    </style>
-    """, unsafe_allow_html=True)
-    
-    def parse_pytest_output(output: str) -> dict:
-        """Parse pytest output to extract test results."""
-        import re
-        
-        results = {
-            "passed": 0,
-            "failed": 0,
-            "skipped": 0,
-            "warnings": 0,
-            "errors": 0,
-            "total": 0,
-            "duration": "0.00s",
-            "test_cases": [],
-            "failed_tests": [],
-            "skipped_tests": [],
-            "warning_messages": [],
-            "collection_count": 0
-        }
-        
-        if not output:
-            return results
-        
-        lines = output.split('\n')
-        
-        # Track if we're in warnings section
-        in_warnings_section = False
-        current_warning = []
-        
-        for i, line in enumerate(lines):
-            line_stripped = line.strip()
-            
-            # Detect warnings section
-            if 'warnings summary' in line.lower():
-                in_warnings_section = True
-                continue
-            
-            if in_warnings_section:
-                if line_stripped.startswith('--') or 'passed' in line.lower() or 'failed' in line.lower():
-                    in_warnings_section = False
-                    if current_warning:
-                        results["warning_messages"].append('\n'.join(current_warning))
-                        current_warning = []
-                elif line_stripped and not line_stripped.startswith('='):
-                    # Check if this is a new warning (starts with a file path)
-                    if re.match(r'^[\w\\/:._-]+:\d+', line_stripped) or line_stripped.startswith('C:\\') or line_stripped.startswith('/'):
-                        if current_warning:
-                            results["warning_messages"].append('\n'.join(current_warning))
-                        current_warning = [line_stripped]
-                    elif current_warning:
-                        current_warning.append(line_stripped)
-            
-            # Detect test results
-            if '::' in line and ('PASSED' in line or 'FAILED' in line or 'SKIPPED' in line):
+        all_chunks = []
+        for doc in docs[:10]:
+            doc_id = doc.get("id")
+            if doc_id:
                 try:
-                    parts = line.split('::')
-                    if len(parts) >= 2:
-                        test_file = parts[0].split('/')[-1] if '/' in parts[0] else parts[0].split('\\')[-1]
-                        test_class = parts[1] if len(parts) > 2 else ""
-                        test_name = parts[-1].split()[0] if parts[-1] else ""
-                        
-                        status = "passed" if "PASSED" in line else "failed" if "FAILED" in line else "skipped"
-                        
-                        percentage_match = re.search(r'\[\s*(\d+)%\]', line)
-                        percentage = percentage_match.group(1) if percentage_match else ""
-                        
-                        test_info = {
-                            "file": test_file,
-                            "class": test_class,
-                            "name": test_name,
-                            "status": status,
-                            "percentage": percentage,
-                            "full_line": line_stripped,
-                            "reason": ""
-                        }
-                        
-                        # Look for skip reason
-                        if status == "skipped":
-                            skip_match = re.search(r'SKIPPED\s*(?:\[.*?\])?\s*[-:]?\s*(.*)', line)
-                            if skip_match:
-                                test_info["reason"] = skip_match.group(1).strip()
-                            results["skipped_tests"].append(test_info)
-                        
-                        results["test_cases"].append(test_info)
-                        
-                        if status == "failed":
-                            results["failed_tests"].append(f"{test_class}::{test_name}")
+                    chunk_data = get(api_url(base_url, f"/api/v1/documents/chunks/{doc_id}"))
+                    chunks = chunk_data.get("chunks", [])
+                    for c in chunks[:5]:
+                        all_chunks.append({
+                            "Chunk ID": c.get("id", "")[:12] + "...",
+                            "Document ID": doc_id[:12] + "...",
+                            "Ticker": doc.get("ticker"),
+                            "Index": c.get("chunk_index"),
+                            "Section": c.get("section"),
+                            "Words": c.get("word_count"),
+                            "Content Preview": (c.get("content") or "")[:80] + "..."
+                        })
                 except:
                     pass
-            
-            # Detect collection count
-            if 'collected' in line.lower():
-                match = re.search(r'collected\s+(\d+)\s+item', line)
-                if match:
-                    results["collection_count"] = int(match.group(1))
         
-        # Parse summary line
-        for line in lines:
-            if re.search(r'\d+\s+(passed|failed)', line) and ('in ' in line or 'second' in line):
-                passed_match = re.search(r'(\d+)\s+passed', line)
-                failed_match = re.search(r'(\d+)\s+failed', line)
-                skipped_match = re.search(r'(\d+)\s+skipped', line)
-                warning_match = re.search(r'(\d+)\s+warning', line)
-                error_match = re.search(r'(\d+)\s+error', line)
-                duration_match = re.search(r'in\s+([\d.]+\s*s)', line)
-                
-                if passed_match:
-                    results["passed"] = int(passed_match.group(1))
-                if failed_match:
-                    results["failed"] = int(failed_match.group(1))
-                if skipped_match:
-                    results["skipped"] = int(skipped_match.group(1))
-                if warning_match:
-                    results["warnings"] = int(warning_match.group(1))
-                if error_match:
-                    results["errors"] = int(error_match.group(1))
-                if duration_match:
-                    results["duration"] = duration_match.group(1)
-                break
-        
-        results["total"] = results["passed"] + results["failed"] + results["skipped"]
-        
-        return results
-    
-    def display_test_results(results: dict, test_type: str):
-        """Display beautiful test results."""
-        total = results["total"]
-        passed = results["passed"]
-        failed = results["failed"]
-        skipped = results["skipped"]
-        warnings = results["warnings"]
-        duration = results["duration"]
-        
-        if total == 0:
-            st.warning(f"No tests were executed for {test_type}")
-            return
-        
-        pass_rate = (passed / total * 100) if total > 0 else 0
-        
-        # Overall status banner
-        if failed == 0:
-            st.markdown(f"""
-            <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); 
-                        color: white; padding: 1.25rem; border-radius: 0.75rem; text-align: center; margin-bottom: 1rem;">
-                <h2 style="margin: 0; font-size: 1.5rem;">✅ All {total} Tests Passed!</h2>
-                <p style="margin: 0.5rem 0 0 0; opacity: 0.9;">Completed in {duration}</p>
-            </div>
-            """, unsafe_allow_html=True)
+        if all_chunks:
+            st.subheader("📦 Document Chunks Table (Snowflake)")
+            st.dataframe(pd.DataFrame(all_chunks), use_container_width=True, hide_index=True)
+            st.caption(f"Showing sample of chunks (limited for display)")
         else:
-            st.markdown(f"""
-            <div style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); 
-                        color: white; padding: 1.25rem; border-radius: 0.75rem; text-align: center; margin-bottom: 1rem;">
-                <h2 style="margin: 0; font-size: 1.5rem;">❌ {failed} Test{'s' if failed > 1 else ''} Failed</h2>
-                <p style="margin: 0.5rem 0 0 0; opacity: 0.9;">{passed} passed, {skipped} skipped in {duration}</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        # Metrics row
-        col1, col2, col3, col4, col5 = st.columns(5)
-        
-        with col1:
-            st.markdown(f"""
-            <div class="metric-card metric-card-info">
-                <p class="metric-value">{total}</p>
-                <p class="metric-label">Total</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col2:
-            st.markdown(f"""
-            <div class="metric-card metric-card-success">
-                <p class="metric-value">{passed}</p>
-                <p class="metric-label">Passed ✓</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col3:
-            st.markdown(f"""
-            <div class="metric-card metric-card-danger">
-                <p class="metric-value">{failed}</p>
-                <p class="metric-label">Failed ✗</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col4:
-            st.markdown(f"""
-            <div class="metric-card metric-card-warning">
-                <p class="metric-value">{skipped}</p>
-                <p class="metric-label">Skipped ⊘</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col5:
-            st.markdown(f"""
-            <div class="metric-card">
-                <p class="metric-value">{warnings}</p>
-                <p class="metric-label">Warnings ⚠</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        # Progress bar
-        st.markdown(f"""
-        <div style="margin: 1rem 0;">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                <span><strong>Pass Rate: {pass_rate:.1f}%</strong></span>
-                <span style="color: #6b7280;">⏱️ {duration}</span>
-            </div>
-            <div style="background: #e5e7eb; border-radius: 0.5rem; height: 1.25rem; overflow: hidden; display: flex;">
-                <div style="width: {passed/total*100 if total else 0}%; background: #10b981; height: 100%;"></div>
-                <div style="width: {failed/total*100 if total else 0}%; background: #ef4444; height: 100%;"></div>
-                <div style="width: {skipped/total*100 if total else 0}%; background: #f59e0b; height: 100%;"></div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # Failed tests with details
-        if results["failed_tests"]:
-            st.markdown("#### ❌ Failed Tests")
-            for test in results["failed_tests"]:
-                st.markdown(f'<div class="test-item-fail"><strong>FAILED:</strong> {test}</div>', unsafe_allow_html=True)
-        
-        # Skipped tests with reasons
-        if results["skipped_tests"]:
-            st.markdown("#### ⊘ Skipped Tests")
-            for test in results["skipped_tests"]:
-                reason = test.get("reason", "No reason provided")
-                st.markdown(f'''
-                <div class="test-item-skip">
-                    <strong>SKIPPED:</strong> {test["class"]}::{test["name"]}
-                    <span class="skip-reason">→ {reason if reason else "No reason provided"}</span>
-                </div>
-                ''', unsafe_allow_html=True)
-        
-        # Warnings with details
-        if results["warning_messages"]:
-            st.markdown("#### ⚠️ Warnings")
-            # Group similar warnings
-            warning_counts = {}
-            for warn in results["warning_messages"]:
-                # Extract the main warning type
-                if 'DeprecationWarning' in warn:
-                    key = "DeprecationWarning"
-                elif 'PydanticDeprecatedSince20' in warn:
-                    key = "Pydantic V2 Migration Warning"
-                else:
-                    key = warn[:80] + "..." if len(warn) > 80 else warn
-                
-                if key not in warning_counts:
-                    warning_counts[key] = {"count": 0, "details": warn}
-                warning_counts[key]["count"] += 1
-            
-            for warn_type, info in warning_counts.items():
-                with st.expander(f"⚠️ {warn_type} ({info['count']}x)"):
-                    st.code(info["details"], language="text")
-        
-        # Test results grouped by class
-        if results["test_cases"]:
-            st.markdown("#### 📋 Test Results by Class")
-            
-            test_groups = {}
-            for test in results["test_cases"]:
-                class_name = test["class"] or "Other"
-                if class_name not in test_groups:
-                    test_groups[class_name] = []
-                test_groups[class_name].append(test)
-            
-            for class_name, tests in test_groups.items():
-                passed_in_group = sum(1 for t in tests if t["status"] == "passed")
-                failed_in_group = sum(1 for t in tests if t["status"] == "failed")
-                skipped_in_group = sum(1 for t in tests if t["status"] == "skipped")
-                total_in_group = len(tests)
-                
-                status_emoji = "✅" if failed_in_group == 0 else "❌"
-                
-                with st.expander(f"{status_emoji} {class_name} ({passed_in_group}/{total_in_group} passed)"):
-                    for test in tests:
-                        if test["status"] == "passed":
-                            st.markdown(f'<div class="test-item-pass">✓ {test["name"]}</div>', unsafe_allow_html=True)
-                        elif test["status"] == "failed":
-                            st.markdown(f'<div class="test-item-fail">✗ {test["name"]}</div>', unsafe_allow_html=True)
-                        else:
-                            reason = test.get("reason", "")
-                            st.markdown(f'<div class="test-item-skip">⊘ {test["name"]} <span class="skip-reason">{reason}</span></div>', unsafe_allow_html=True)
-    
-    # Store test results in session state
-    if "test_results" not in st.session_state:
-        st.session_state.test_results = {}
-    
-    st.markdown("""
-    Run automated tests for the PE Org-AI-R Platform. Tests validate Pydantic models and FastAPI endpoints.
-    """)
-    
-    st.markdown('<p class="section-header">🎯 Run Tests</p>', unsafe_allow_html=True)
-    
-    # Three column layout for test buttons
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.markdown("### 📦 Model Tests")
-        st.markdown("""
-        Tests Pydantic model validations:
-        - Dimension Score validation
-        - Industry validation
-        - Company validation
-        - Assessment validation
-        - Enum & Weight tests
-        """)
-        
-        if st.button("▶️ Run Model Tests", key="run_models", use_container_width=True):
-            with st.spinner("Running model tests..."):
-                success, stdout, stderr = run_pytest("tests/test_models.py")
-                st.session_state.test_results["models"] = {
-                    "success": success,
-                    "stdout": stdout,
-                    "stderr": stderr,
-                    "parsed": parse_pytest_output(stdout)
-                }
-    
-    with col2:
-        st.markdown("### 🔌 API Tests")
-        st.markdown("""
-        Tests FastAPI endpoints:
-        - Health endpoint
-        - Company endpoints
-        - Assessment endpoints
-        - Dimension Score endpoints
-        - Error responses
-        """)
-        
-        if st.button("▶️ Run API Tests", key="run_api", use_container_width=True):
-            with st.spinner("Running API tests..."):
-                success, stdout, stderr = run_pytest("tests/test_api.py")
-                st.session_state.test_results["api"] = {
-                    "success": success,
-                    "stdout": stdout,
-                    "stderr": stderr,
-                    "parsed": parse_pytest_output(stdout)
-                }
-    
-    with col3:
-        st.markdown("### 🚀 All Tests")
-        st.markdown("""
-        Run complete test suite:
-        - All model tests
-        - All API tests
-        - Full coverage
-        """)
-        
-        if st.button("▶️ Run All Tests", key="run_all", type="primary", use_container_width=True):
-            with st.spinner("Running all tests..."):
-                success, stdout, stderr = run_pytest()
-                st.session_state.test_results["all"] = {
-                    "success": success,
-                    "stdout": stdout,
-                    "stderr": stderr,
-                    "parsed": parse_pytest_output(stdout)
-                }
-                if success:
-                    st.balloons()
-    
-    # Display results if available
-    st.markdown('<p class="section-header">📊 Test Results</p>', unsafe_allow_html=True)
-    
-    if "models" in st.session_state.test_results:
-        with st.expander("📦 Model Test Results", expanded=True):
-            results = st.session_state.test_results["models"]
-            display_test_results(results["parsed"], "Model Tests")
-            with st.expander("📜 Raw Output"):
-                st.code(results["stdout"] or results["stderr"] or "No output", language="text")
-    
-    if "api" in st.session_state.test_results:
-        with st.expander("🔌 API Test Results", expanded=True):
-            results = st.session_state.test_results["api"]
-            display_test_results(results["parsed"], "API Tests")
-            with st.expander("📜 Raw Output"):
-                st.code(results["stdout"] or results["stderr"] or "No output", language="text")
-    
-    if "all" in st.session_state.test_results:
-        with st.expander("🚀 All Test Results", expanded=True):
-            results = st.session_state.test_results["all"]
-            display_test_results(results["parsed"], "All Tests")
-            with st.expander("📜 Raw Output"):
-                st.code(results["stdout"] or results["stderr"] or "No output", language="text")
-    
-    if not st.session_state.test_results:
-        st.info("👆 Click one of the buttons above to run tests and see results here.")
-    
-    # Test coverage summary table
-    st.markdown('<p class="section-header">📋 Test Coverage Summary</p>', unsafe_allow_html=True)
-    
-    test_summary = pd.DataFrame({
-        "Category": [
-            "🔢 Enumerations",
-            "⚖️ Dimension Weights",
-            "📊 Dimension Score Model",
-            "🏭 Industry Model",
-            "🏢 Company Model",
-            "📋 Assessment Model",
-            "🏥 Health API",
-            "🏢 Company API",
-            "📋 Assessment API",
-            "📊 Dimension Score API"
-        ],
-        "Tests": [6, 4, 10, 7, 8, 10, 9, 8, 9, 6],
-        "Type": ["Model", "Model", "Model", "Model", "Model", "Model", "API", "API", "API", "API"],
-        "Status": ["✅", "✅", "✅", "✅", "✅", "✅", "✅", "✅", "✅", "✅"]
-    })
-    
-    col1, col2 = st.columns([3, 1])
-    
-    with col1:
-        st.dataframe(
-            test_summary,
-            column_config={
-                "Category": st.column_config.TextColumn("Category", width="medium"),
-                "Tests": st.column_config.NumberColumn("# Tests", width="small"),
-                "Type": st.column_config.TextColumn("Type", width="small"),
-                "Status": st.column_config.TextColumn("Status", width="small")
-            },
-            hide_index=True,
-            use_container_width=True
-        )
-    
-    with col2:
-        total_tests = test_summary["Tests"].sum()
-        model_tests = test_summary[test_summary["Type"] == "Model"]["Tests"].sum()
-        api_tests = test_summary[test_summary["Type"] == "API"]["Tests"].sum()
-        
-        st.metric("Total Tests", total_tests)
-        st.metric("Model Tests", model_tests)
-        st.metric("API Tests", api_tests)
-
-elif page == "SEC EDGAR Pipeline":
-   # =============================================================================
-# Add this section to your Snowflake Setup page in app.py
-# Place it AFTER the "Delete Table" section (Section 3)
-# =============================================================================
-
-# =============================================================================
-# Add this section to your Snowflake Setup page in app.py
-# Place it AFTER the "Delete Table" section (Section 3)
-# =============================================================================
-
-    # =========================================================================
-    # SECTION 4: SEC EDGAR PIPELINE SCHEMA
-    # =========================================================================
-    st.markdown('<p class="section-header">4. SEC EDGAR Pipeline Schema</p>', unsafe_allow_html=True)
-    
-    # Ensure project_root is defined
-    project_root = get_project_root()
-
-    st.info("""
-    📄 **Pipeline 1: Document Collection**
-    
-    This creates the database tables needed for the SEC EDGAR document pipeline:
-    - `documents` - Stores metadata for each SEC filing (10-K, 10-Q, 8-K, DEF 14A)
-    - `document_chunks` - Stores text chunks for LLM processing
-    """)
-
-    # Show target companies
-    with st.expander("📋 Target Companies for Evidence Collection"):
-        target_companies = pd.DataFrame({
-            "Ticker": ["CAT", "DE", "UNH", "HCA", "ADP", "PAYX", "WMT", "TGT", "JPM", "GS"],
-            "Company": [
-                "Caterpillar Inc.", "Deere & Company", "UnitedHealth Group", "HCA Healthcare",
-                "Automatic Data Processing", "Paychex Inc.", "Walmart Inc.", "Target Corporation",
-                "JPMorgan Chase", "Goldman Sachs"
-            ],
-            "Sector": [
-                "Industrials", "Industrials", "Healthcare", "Healthcare",
-                "Services", "Services", "Consumer", "Consumer",
-                "Financial", "Financial"
-            ],
-            "Industry": [
-                "Manufacturing", "Manufacturing", "Healthcare Services", "Healthcare Services",
-                "Business Services", "Business Services", "Retail", "Retail",
-                "Financial Services", "Financial Services"
-            ]
-        })
-        st.dataframe(target_companies, use_container_width=True, hide_index=True)
-
-    # Show filing types
-    with st.expander("📑 SEC Filing Types"):
-        filing_types = pd.DataFrame({
-            "Form": ["10-K", "10-Q", "8-K", "DEF 14A"],
-            "Frequency": ["Annual", "Quarterly", "As needed", "Annual"],
-            "AI-Relevant Sections": [
-                "Item 1 (Business), Item 1A (Risk Factors), Item 7 (MD&A)",
-                "Item 2 (MD&A), Item 1A (Risk Factors updates)",
-                "Item 8.01 (Other Events) - AI announcements",
-                "Executive comp tied to technology metrics"
-            ]
-        })
-        st.dataframe(filing_types, use_container_width=True, hide_index=True)
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        st.markdown("#### 🏗️ Create Document Schema")
-        st.warning("⚠️ This will create `documents` and `document_chunks` tables.")
-        
-        if st.button("🏗️ CREATE DOCUMENT SCHEMA", key="create_doc_schema", type="primary"):
-            with st.spinner("Creating document schema..."):
-                try:
-                    conn = get_streamlit_snowflake_connection()
-                    cursor = conn.cursor()
-                    results = []
-                    
-                    # =========================================================
-                    # STEP 1: Setup
-                    # =========================================================
-                    setup_statements = [
-                        ("USE WAREHOUSE", "USE WAREHOUSE PE_ORGAIR_WH"),
-                        ("USE DATABASE", "USE DATABASE PE_ORGAIR_DB"),
-                        ("USE SCHEMA", "USE SCHEMA PLATFORM"),
-                    ]
-                    
-                    for name, sql in setup_statements:
-                        try:
-                            cursor.execute(sql)
-                            results.append(f"✅ {name}")
-                        except Exception as e:
-                            results.append(f"❌ {name}: {str(e)[:80]}")
-                    
-                    # =========================================================
-                    # STEP 2: Drop existing tables (in correct order)
-                    # =========================================================
-                    drop_statements = [
-                        ("DROP document_chunks", "DROP TABLE IF EXISTS document_chunks"),
-                        ("DROP documents", "DROP TABLE IF EXISTS documents"),
-                    ]
-                    
-                    for name, sql in drop_statements:
-                        try:
-                            cursor.execute(sql)
-                            results.append(f"✅ {name}")
-                        except Exception as e:
-                            results.append(f"❌ {name}: {str(e)[:80]}")
-                    
-                    # =========================================================
-                    # STEP 3: Create documents table (exactly as per assignment)
-                    # =========================================================
-                    try:
-                        cursor.execute("""
-                            CREATE TABLE IF NOT EXISTS documents (
-                                id VARCHAR(36) PRIMARY KEY,
-                                company_id VARCHAR(36) NOT NULL REFERENCES companies(id),
-                                ticker VARCHAR(10) NOT NULL,
-                                filing_type VARCHAR(20) NOT NULL,
-                                filing_date DATE NOT NULL,
-                                source_url VARCHAR(500),
-                                local_path VARCHAR(500),
-                                s3_key VARCHAR(500),
-                                content_hash VARCHAR(64),
-                                word_count INT,
-                                chunk_count INT,
-                                status VARCHAR(20) DEFAULT 'pending',
-                                error_message VARCHAR(1000),
-                                created_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
-                                processed_at TIMESTAMP_NTZ
-                            )
-                        """)
-                        results.append("✅ CREATE TABLE documents")
-                    except Exception as e:
-                        results.append(f"❌ CREATE TABLE documents: {str(e)[:80]}")
-                    
-                    # =========================================================
-                    # STEP 4: Create document_chunks table (exactly as per assignment)
-                    # =========================================================
-                    try:
-                        cursor.execute("""
-                            CREATE TABLE IF NOT EXISTS document_chunks (
-                                id VARCHAR(36) PRIMARY KEY,
-                                document_id VARCHAR(36) NOT NULL REFERENCES documents(id),
-                                chunk_index INT NOT NULL,
-                                content TEXT NOT NULL,
-                                section VARCHAR(50),
-                                start_char INT,
-                                end_char INT,
-                                word_count INT,
-                                created_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
-                                UNIQUE (document_id, chunk_index)
-                            )
-                        """)
-                        results.append("✅ CREATE TABLE document_chunks")
-                    except Exception as e:
-                        results.append(f"❌ CREATE TABLE document_chunks: {str(e)[:80]}")
-                    
-                    cursor.close()
-                    conn.close()
-                    
-                    # Count successes and failures
-                    success_count = sum(1 for r in results if r.startswith("✅"))
-                    fail_count = sum(1 for r in results if r.startswith("❌"))
-                    
-                    if fail_count == 0:
-                        st.success(f"✅ Document schema created successfully! ({success_count} items)")
-                    else:
-                        st.warning(f"⚠️ Schema created with {fail_count} errors. Check details below.")
-                    
-                    with st.expander("📋 View Details", expanded=(fail_count > 0)):
-                        for r in results:
-                            st.text(r)
-                                
-                except Exception as e:
-                    st.error(f"❌ Connection error: {str(e)}")
-
-    with col2:
-        st.markdown("#### 📥 Seed Sample Documents")
-        st.info("💡 Adds 10 target companies and sample SEC filings.")
-        
-        if st.button("📥 SEED DOCUMENTS", key="seed_documents", type="primary"):
-            with st.spinner("Seeding sample documents..."):
-                try:
-                    conn = get_streamlit_snowflake_connection()
-                    cursor = conn.cursor()
-                    results = []
-                    
-                    # =========================================================
-                    # Insert 10 target companies (if not exist)
-                    # =========================================================
-                    companies = [
-                        ('comp-cat-001', 'Caterpillar Inc.', 'CAT', '550e8400-e29b-41d4-a716-446655440002', 0.15),
-                        ('comp-de-002', 'Deere & Company', 'DE', '550e8400-e29b-41d4-a716-446655440002', 0.12),
-                        ('comp-unh-003', 'UnitedHealth Group', 'UNH', '550e8400-e29b-41d4-a716-446655440003', 0.20),
-                        ('comp-hca-004', 'HCA Healthcare', 'HCA', '550e8400-e29b-41d4-a716-446655440003', 0.08),
-                        ('comp-adp-005', 'Automatic Data Processing', 'ADP', '550e8400-e29b-41d4-a716-446655440001', 0.25),
-                        ('comp-payx-006', 'Paychex Inc.', 'PAYX', '550e8400-e29b-41d4-a716-446655440001', 0.10),
-                        ('comp-wmt-007', 'Walmart Inc.', 'WMT', '550e8400-e29b-41d4-a716-446655440004', 0.30),
-                        ('comp-tgt-008', 'Target Corporation', 'TGT', '550e8400-e29b-41d4-a716-446655440004', 0.18),
-                        ('comp-jpm-009', 'JPMorgan Chase', 'JPM', '550e8400-e29b-41d4-a716-446655440005', 0.35),
-                        ('comp-gs-010', 'Goldman Sachs', 'GS', '550e8400-e29b-41d4-a716-446655440005', 0.28),
-                    ]
-                    
-                    for comp in companies:
-                        try:
-                            cursor.execute(f"SELECT COUNT(*) FROM companies WHERE ticker = '{comp[2]}'")
-                            exists = cursor.fetchone()[0] > 0
-                            
-                            if not exists:
-                                cursor.execute(f"""
-                                    INSERT INTO companies (id, name, ticker, industry_id, position_factor)
-                                    VALUES ('{comp[0]}', '{comp[1]}', '{comp[2]}', '{comp[3]}', {comp[4]})
-                                """)
-                                results.append(f"✅ Company: {comp[2]}")
-                            else:
-                                results.append(f"⏭️ Company: {comp[2]} (exists)")
-                        except Exception as e:
-                            results.append(f"❌ Company {comp[2]}: {str(e)[:50]}")
-                    
-                    # =========================================================
-                    # Insert sample documents using direct INSERT
-                    # =========================================================
-                    documents = [
-                        ('doc-cat-10k-2024', 'comp-cat-001', 'CAT', '10-K', '2024-02-15', 'https://sec.gov/cat-10k', 'data/raw/sec/CAT/10-K/filing.txt', 'raw/sec/CAT/10-K/filing.txt', 'hash123abc', 45230, 52, 'indexed'),
-                        ('doc-cat-10q-2024', 'comp-cat-001', 'CAT', '10-Q', '2024-05-02', 'https://sec.gov/cat-10q', 'data/raw/sec/CAT/10-Q/filing.txt', 'raw/sec/CAT/10-Q/filing.txt', 'hash456def', 18500, 22, 'indexed'),
-                        ('doc-jpm-10k-2024', 'comp-jpm-009', 'JPM', '10-K', '2024-02-20', 'https://sec.gov/jpm-10k', 'data/raw/sec/JPM/10-K/filing.txt', 'raw/sec/JPM/10-K/filing.txt', 'hash789ghi', 125000, 145, 'indexed'),
-                        ('doc-jpm-8k-2024', 'comp-jpm-009', 'JPM', '8-K', '2024-03-15', 'https://sec.gov/jpm-8k', 'data/raw/sec/JPM/8-K/filing.txt', 'raw/sec/JPM/8-K/filing.txt', 'hashjkl012', 3200, 5, 'indexed'),
-                        ('doc-wmt-10k-2024', 'comp-wmt-007', 'WMT', '10-K', '2024-03-28', 'https://sec.gov/wmt-10k', 'data/raw/sec/WMT/10-K/filing.txt', 'raw/sec/WMT/10-K/filing.txt', 'hashmno345', 98500, 112, 'indexed'),
-                        ('doc-unh-10k-2024', 'comp-unh-003', 'UNH', '10-K', '2024-02-22', 'https://sec.gov/unh-10k', 'data/raw/sec/UNH/10-K/filing.txt', 'raw/sec/UNH/10-K/filing.txt', 'hashpqr678', 78000, 89, 'indexed'),
-                    ]
-                    
-                    for doc in documents:
-                        try:
-                            cursor.execute(f"SELECT COUNT(*) FROM documents WHERE id = '{doc[0]}'")
-                            exists = cursor.fetchone()[0] > 0
-                            
-                            if not exists:
-                                cursor.execute(f"""
-                                    INSERT INTO documents (
-                                        id, company_id, ticker, filing_type, filing_date,
-                                        source_url, local_path, s3_key, content_hash,
-                                        word_count, chunk_count, status
-                                    ) VALUES (
-                                        '{doc[0]}', '{doc[1]}', '{doc[2]}', '{doc[3]}', '{doc[4]}',
-                                        '{doc[5]}', '{doc[6]}', '{doc[7]}', '{doc[8]}',
-                                        {doc[9]}, {doc[10]}, '{doc[11]}'
-                                    )
-                                """)
-                                results.append(f"✅ Document: {doc[2]} {doc[3]}")
-                            else:
-                                results.append(f"⏭️ Document: {doc[2]} {doc[3]} (exists)")
-                        except Exception as e:
-                            results.append(f"❌ Document {doc[2]} {doc[3]}: {str(e)[:50]}")
-                    
-                    # =========================================================
-                    # Insert sample chunks using direct INSERT
-                    # =========================================================
-                    chunks = [
-                        ('chunk-cat-001', 'doc-cat-10k-2024', 0, 'item_1', 'Item 1. Business. Caterpillar Inc. is the worlds leading manufacturer of construction and mining equipment.', 0, 105, 16),
-                        ('chunk-cat-002', 'doc-cat-10k-2024', 1, 'item_1', 'We are investing significantly in artificial intelligence and machine learning technologies.', 106, 197, 12),
-                        ('chunk-cat-003', 'doc-cat-10k-2024', 2, 'item_1a', 'Item 1A. Risk Factors. Our business involves various risks related to technology investments.', 198, 291, 13),
-                        ('chunk-cat-004', 'doc-cat-10k-2024', 3, 'item_7', 'Item 7. MD and A. During fiscal year 2023, we advanced our digital and AI initiatives.', 292, 374, 14),
-                    ]
-                    
-                    for chunk in chunks:
-                        try:
-                            cursor.execute(f"SELECT COUNT(*) FROM document_chunks WHERE id = '{chunk[0]}'")
-                            exists = cursor.fetchone()[0] > 0
-                            
-                            if not exists:
-                                content_escaped = chunk[4].replace("'", "''")
-                                cursor.execute(f"""
-                                    INSERT INTO document_chunks (
-                                        id, document_id, chunk_index, section, content,
-                                        start_char, end_char, word_count
-                                    ) VALUES (
-                                        '{chunk[0]}', '{chunk[1]}', {chunk[2]}, '{chunk[3]}',
-                                        '{content_escaped}', {chunk[5]}, {chunk[6]}, {chunk[7]}
-                                    )
-                                """)
-                                results.append(f"✅ Chunk: {chunk[0]}")
-                            else:
-                                results.append(f"⏭️ Chunk: {chunk[0]} (exists)")
-                        except Exception as e:
-                            results.append(f"❌ Chunk {chunk[0]}: {str(e)[:50]}")
-                    
-                    cursor.close()
-                    conn.close()
-                    
-                    success_count = sum(1 for r in results if r.startswith("✅"))
-                    skip_count = sum(1 for r in results if r.startswith("⏭️"))
-                    fail_count = sum(1 for r in results if r.startswith("❌"))
-                    
-                    if fail_count == 0:
-                        st.success(f"✅ Sample data seeded! ({success_count} new, {skip_count} skipped)")
-                    else:
-                        st.warning(f"⚠️ Seeding completed with {fail_count} errors.")
-                    
-                    with st.expander("📋 View Details", expanded=(fail_count > 0)):
-                        for r in results:
-                            st.text(r)
-                                
-                except Exception as e:
-                    st.error(f"❌ Connection error: {str(e)}")
-
-    # =========================================================================
-    # View current documents
-    # =========================================================================
-    st.markdown("#### 📊 Current Documents in Database")
-    
-    if st.button("🔄 Refresh Document Data", key="refresh_documents"):
-        st.rerun()
-
-    try:
-        conn = get_streamlit_snowflake_connection()
-        cursor = conn.cursor()
-        
-        # Check if documents table exists
-        cursor.execute("""
-            SELECT COUNT(*) FROM information_schema.tables 
-            WHERE table_schema = 'PLATFORM' AND table_name = 'DOCUMENTS'
-        """)
-        table_exists = cursor.fetchone()[0] > 0
-        
-        if table_exists:
-            # Get document summary
-            cursor.execute("""
-                SELECT 
-                    ticker,
-                    filing_type,
-                    status,
-                    COUNT(*) as count,
-                    SUM(COALESCE(word_count, 0)) as total_words,
-                    SUM(COALESCE(chunk_count, 0)) as total_chunks
-                FROM documents
-                GROUP BY ticker, filing_type, status
-                ORDER BY ticker, filing_type
-            """)
-            rows = cursor.fetchall()
-            
-            if rows:
-                df = pd.DataFrame(rows, columns=["Ticker", "Filing Type", "Status", "Count", "Words", "Chunks"])
-                st.dataframe(df, use_container_width=True, hide_index=True)
-                
-                # Summary metrics
-                cursor.execute("SELECT COUNT(*), SUM(COALESCE(chunk_count, 0)) FROM documents")
-                total_docs, total_chunks = cursor.fetchone()
-                
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    st.metric("Total Documents", total_docs or 0)
-                with col2:
-                    st.metric("Total Chunks", int(total_chunks or 0))
-                with col3:
-                    cursor.execute("SELECT COUNT(DISTINCT ticker) FROM documents")
-                    unique_tickers = cursor.fetchone()[0]
-                    st.metric("Companies", unique_tickers or 0)
-            else:
-                st.info("No documents found. Click **SEED DOCUMENTS** to add sample data.")
-        else:
-            st.warning("📋 `documents` table does not exist. Click **CREATE DOCUMENT SCHEMA** first.")
-        
-        cursor.close()
-        conn.close()
-        
+            st.info("No chunks found")
     except Exception as e:
-        st.warning(f"Could not fetch document data: {str(e)}")
+        st.error(f"❌ Error fetching chunks: {e}")
 
-    # =========================================================================
-    # Pipeline status view
-    # =========================================================================
-    st.markdown("#### 📈 Pipeline Status")
-    
-    try:
-        conn = get_streamlit_snowflake_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute("""
-            SELECT COUNT(*) FROM information_schema.tables 
-            WHERE table_schema = 'PLATFORM' AND table_name = 'DOCUMENTS'
-        """)
-        table_exists = cursor.fetchone()[0] > 0
-        
-        if table_exists:
-            cursor.execute("""
-                SELECT 
-                    status,
-                    COUNT(*) as document_count,
-                    COUNT(DISTINCT ticker) as company_count
-                FROM documents
-                GROUP BY status
-                ORDER BY 
-                    CASE status 
-                        WHEN 'pending' THEN 1
-                        WHEN 'downloaded' THEN 2
-                        WHEN 'parsed' THEN 3
-                        WHEN 'chunked' THEN 4
-                        WHEN 'indexed' THEN 5
-                        WHEN 'failed' THEN 6
-                    END
-            """)
-            rows = cursor.fetchall()
-            
-            if rows:
-                status_colors = {
-                    "pending": "🟡",
-                    "downloaded": "🔵", 
-                    "parsed": "🟣",
-                    "chunked": "🟠",
-                    "indexed": "🟢",
-                    "failed": "🔴"
-                }
-                
-                cols = st.columns(len(rows))
-                for i, (status, doc_count, company_count) in enumerate(rows):
-                    with cols[i]:
-                        emoji = status_colors.get(status, "⚪")
-                        st.markdown(f"""
-                        <div style="text-align: center; padding: 1rem; border-radius: 0.5rem; background: #f8fafc;">
-                            <div style="font-size: 1.5rem;">{emoji}</div>
-                            <div style="font-size: 1.25rem; font-weight: bold;">{doc_count}</div>
-                            <div style="font-size: 0.8rem; color: #64748b;">{status.upper()}</div>
-                        </div>
-                        """, unsafe_allow_html=True)
-        
-        cursor.close()
-        conn.close()
-        
-    except Exception as e:
-        pass
+# Sidebar Navigation
+st.sidebar.title("📊 SEC Pipeline")
+st.sidebar.divider()
 
-    # =========================================================================
-    # Delete document tables
-    # =========================================================================
-    st.markdown("---")
-    st.markdown("#### 🗑️ Delete Document Tables")
-    st.warning("⚠️ This will permanently DROP the document tables and all data!")
-    
-    delete_doc_table = st.selectbox(
-        "Select Table to Delete",
-        ["document_chunks", "documents"],
-        key="delete_doc_table_select"
+main_section = st.sidebar.selectbox("Select Section", ["SEC Filings", "Signals"], index=0)
+
+if main_section == "SEC Filings":
+    sub_page = st.sidebar.radio(
+        "Pipeline Step",
+        ["1. Download Filings", "2. Parsing", "3. PDF Parsing", "4. De-duplication", "5. Chunking", "📊 Reports"],
+        index=0
     )
-    
-    st.info("**Note:** Delete `document_chunks` first (it references `documents`).")
-    
-    confirm_doc_delete = st.checkbox("I understand this action is irreversible", key="confirm_doc_delete")
-    
-    if st.button("🗑️ DELETE DOCUMENT TABLE", key="delete_doc_table_btn", type="secondary", disabled=not confirm_doc_delete):
-        with st.spinner(f"Deleting {delete_doc_table}..."):
-            try:
-                conn = get_streamlit_snowflake_connection()
-                cursor = conn.cursor()
-                cursor.execute(f"DROP TABLE IF EXISTS {delete_doc_table}")
-                cursor.close()
-                conn.close()
-                st.success(f"✅ Table `{delete_doc_table}` deleted successfully!")
-            except Exception as e:
-                st.error(f"❌ Error deleting table: {str(e)}")
-# FOOTER
-# =============================================================================
+else:
+    sub_page = st.sidebar.radio("Signal Type", ["Leadership Score"], index=0)
 
-st.sidebar.markdown("---")
-st.sidebar.markdown("### 📚 Quick Links")
-st.sidebar.markdown(f"- [Swagger UI]({API_BASE_URL}/docs)")
-st.sidebar.markdown(f"- [ReDoc]({API_BASE_URL}/redoc)")
-st.sidebar.markdown("---")
-st.sidebar.markdown("*PE Org-AI-R Platform v1.0.0*")
+st.sidebar.divider()
+st.sidebar.subheader("⚙️ API Settings")
+base_url = st.sidebar.text_input("FastAPI URL", value=st.session_state["base_url"])
+st.session_state["base_url"] = base_url
+
+if st.sidebar.button("🔍 Health Check", use_container_width=True):
+    try:
+        get(api_url(base_url, "/health"))
+        st.sidebar.success("✅ API Connected")
+    except Exception as e:
+        st.sidebar.error(f"❌ {str(e)[:50]}")
+
+# SEC Filings Section
+if main_section == "SEC Filings":
+    st.title("📄 SEC Filings Pipeline")
+    
+    # Page 1: Download Filings
+    if sub_page == "1. Download Filings":
+        st.header("Step 1: Download SEC Filings")
+        
+        st.warning("⚠️ We already have data present in the backend, so please delete a company first and then proceed with the downloading of the filings.")
+        
+        with st.expander("🗑️ Delete Existing Data", expanded=False):
+            del_ticker = st.text_input("Ticker to Delete", value=st.session_state["last_ticker"], key="del_ticker").upper().strip()
+            
+            del_col1, del_col2 = st.columns(2)
+            with del_col1:
+                if st.button("🗑️ Delete ALL Data", type="secondary", use_container_width=True, key="del_all"):
+                    if del_ticker:
+                        try:
+                            with st.spinner(f"Deleting all data for {del_ticker}..."):
+                                resp = requests.delete(api_url(base_url, f"/api/v1/documents/reset/{del_ticker}"), timeout=120)
+                            if resp.status_code < 400:
+                                st.success(f"✅ All data deleted for {del_ticker}")
+                                st.json(safe_json(resp))
+                            else:
+                                st.error(f"❌ Error: {safe_json(resp).get('detail', safe_json(resp))}")
+                        except Exception as e:
+                            st.error(f"❌ Error: {e}")
+                
+                if st.button("🗑️ Delete RAW Files Only", type="secondary", use_container_width=True, key="del_raw"):
+                    if del_ticker:
+                        try:
+                            with st.spinner(f"Deleting raw files for {del_ticker}..."):
+                                resp = requests.delete(api_url(base_url, f"/api/v1/documents/reset/{del_ticker}/raw"), timeout=120)
+                            if resp.status_code < 400:
+                                st.success(f"✅ Raw files deleted for {del_ticker}")
+                                st.json(safe_json(resp))
+                            else:
+                                st.error(f"❌ Error: {safe_json(resp).get('detail', safe_json(resp))}")
+                        except Exception as e:
+                            st.error(f"❌ Error: {e}")
+            
+            with del_col2:
+                if st.button("🗑️ Delete PARSED Files Only", type="secondary", use_container_width=True, key="del_parsed"):
+                    if del_ticker:
+                        try:
+                            with st.spinner(f"Deleting parsed files for {del_ticker}..."):
+                                resp = requests.delete(api_url(base_url, f"/api/v1/documents/reset/{del_ticker}/parsed"), timeout=120)
+                            if resp.status_code < 400:
+                                st.success(f"✅ Parsed files deleted for {del_ticker}")
+                                st.json(safe_json(resp))
+                            else:
+                                st.error(f"❌ Error: {safe_json(resp).get('detail', safe_json(resp))}")
+                        except Exception as e:
+                            st.error(f"❌ Error: {e}")
+                
+                if st.button("🗑️ Delete CHUNKS Only", type="secondary", use_container_width=True, key="del_chunks"):
+                    if del_ticker:
+                        try:
+                            with st.spinner(f"Deleting chunks for {del_ticker}..."):
+                                resp = requests.delete(api_url(base_url, f"/api/v1/documents/reset/{del_ticker}/chunks"), timeout=120)
+                            if resp.status_code < 400:
+                                st.success(f"✅ Chunks deleted for {del_ticker}")
+                                st.json(safe_json(resp))
+                            else:
+                                st.error(f"❌ Error: {safe_json(resp).get('detail', safe_json(resp))}")
+                        except Exception as e:
+                            st.error(f"❌ Error: {e}")
+        
+        st.divider()
+        st.info("📥 Downloads filings from SEC EDGAR → Uploads to S3 → Saves metadata to Snowflake")
+        
+        # Download by Ticker
+        st.subheader("Option 1: Download by Ticker")
+        with st.form("collect_form"):
+            c1, c2 = st.columns(2)
+            with c1:
+                ticker = st.text_input("Ticker Symbol", value=st.session_state["last_ticker"]).upper().strip()
+                filing_types = st.multiselect("Filing Types", ["10-K", "10-Q", "8-K", "DEF 14A"], default=["10-K", "10-Q", "8-K", "DEF 14A"])
+            with c2:
+                years_back = st.slider("Years Back", 1, 10, 3)
+            submitted = st.form_submit_button("📥 Download Filings", use_container_width=True, type="primary")
+        
+        if submitted and ticker and filing_types:
+            st.session_state["last_ticker"] = ticker
+            try:
+                with st.spinner(f"Collecting filings for {ticker}..."):
+                    data = post_json(api_url(base_url, "/api/v1/documents/collect"),
+                        {"ticker": ticker, "filing_types": filing_types, "years_back": years_back})
+                st.success("✅ Collection Complete!")
+                render_kpis([("Found", data.get("documents_found", 0)), ("Uploaded", data.get("documents_uploaded", 0)),
+                             ("Skipped", data.get("documents_skipped", 0)), ("Failed", data.get("documents_failed", 0))])
+                
+                summary = data.get("summary", {})
+                if summary:
+                    st.markdown("#### Summary by Filing Type")
+                    st.dataframe(pd.DataFrame([{"Filing Type": k, "Count": v} for k, v in summary.items()]), use_container_width=True, hide_index=True)
+                
+                show_json("Raw JSON Response", data)
+                st.divider()
+                fetch_documents_table(base_url, ticker)
+            except Exception as e:
+                st.error(f"❌ Error: {e}")
+        
+        st.divider()
+        
+        # Download ALL Companies
+        st.subheader("Option 2: Download ALL Companies")
+        st.error("⚠️ **NOT RECOMMENDED**: Downloading all 10 companies at once may exceed the SEC EDGAR rate limit (0.1 - 10 requests/second). Use Option 1 for individual tickers instead.")
+        
+        with st.form("collect_all_form"):
+            c1, c2 = st.columns(2)
+            with c1:
+                all_filing_types = st.multiselect("Filing Types", ["10-K", "10-Q", "8-K", "DEF 14A"], 
+                    default=["10-K", "10-Q", "8-K", "DEF 14A"], key="all_filing_types")
+            with c2:
+                all_years_back = st.slider("Years Back", 1, 10, 3, key="all_years_back")
+            submitted_all = st.form_submit_button("📥 Download ALL Companies (Not Recommended)", use_container_width=True)
+        
+        if submitted_all:
+            try:
+                with st.spinner("Collecting filings for ALL companies... This may take several minutes..."):
+                    query_str = "&".join([f"filing_types={ft}" for ft in all_filing_types])
+                    full_url = f"{api_url(base_url, '/api/v1/documents/collect/all')}?{query_str}&years_back={all_years_back}"
+                    resp = requests.post(full_url, timeout=600)
+                    data = safe_json(resp)
+                
+                if resp.status_code < 400:
+                    st.success("✅ Collection Complete for ALL Companies!")
+                    if isinstance(data, list):
+                        for company_data in data:
+                            st.markdown(f"**{company_data.get('ticker', 'Unknown')}**: {company_data.get('documents_uploaded', 0)} uploaded")
+                    show_json("Raw JSON Response", data)
+                    st.divider()
+                    fetch_documents_table(base_url)
+                else:
+                    st.error(f"❌ Error: {data.get('detail', data)}")
+            except Exception as e:
+                st.error(f"❌ Error: {e}")
+    
+    # Page 2: Parsing
+    elif sub_page == "2. Parsing":
+        st.header("Step 2: Parse Documents")
+        st.info("📄 Downloads from S3 → Extracts text/tables → Identifies sections (Items 1, 1A, 7) → Updates Snowflake")
+        
+        st.subheader("Option 1: Parse by Ticker")
+        c1, c2 = st.columns([2, 1])
+        with c1:
+            ticker = st.text_input("Ticker", value=st.session_state["last_ticker"]).upper().strip()
+        
+        if st.button("📄 Parse Documents", type="primary", use_container_width=True):
+            if ticker:
+                st.session_state["last_ticker"] = ticker
+                try:
+                    with st.spinner(f"Parsing documents for {ticker}..."):
+                        data = post(api_url(base_url, f"/api/v1/documents/parse/{ticker}"))
+                    st.success("✅ Parsing Complete!")
+                    
+                    render_kpis([("Total", data.get("total_documents", 0)), ("Parsed", data.get("parsed", 0)),
+                                 ("Skipped", data.get("skipped", 0)), ("Failed", data.get("failed", 0))])
+                    
+                    results = data.get("results", [])
+                    if results:
+                        st.subheader("Parsed Documents Summary")
+                        df = pd.DataFrame([{
+                            "Document ID": r.get("document_id", "")[:20] + "...",
+                            "Filing Type": r.get("filing_type"),
+                            "Filing Date": r.get("filing_date"),
+                            "Format": r.get("source_format"),
+                            "Words": r.get("word_count", 0),
+                            "Tables": r.get("table_count", 0),
+                            "Sections": ", ".join(r.get("sections_found", [])[:3])
+                        } for r in results])
+                        st.dataframe(df, use_container_width=True, hide_index=True)
+                        
+                        st.divider()
+                        st.subheader("📊 RAW vs PARSED Content Comparison (10-K Document)")
+                        st.caption("Showing 10-K document which contains Items 1, 1A, and 7")
+                        
+                        # Find a 10-K document (which has Items 1, 1A, 7)
+                        doc_10k = None
+                        for r in results:
+                            if r.get("filing_type") == "10-K":
+                                doc_10k = r
+                                break
+                        
+                        # Fallback to first document if no 10-K found
+                        if not doc_10k:
+                            doc_10k = results[0]
+                            st.warning(f"⚠️ No 10-K document found. Showing {doc_10k.get('filing_type')} instead. Items 1, 1A, 7 are only in 10-K filings.")
+                        
+                        doc_id = doc_10k.get("document_id")
+                        if doc_id:
+                            try:
+                                parsed_content = get(api_url(base_url, f"/api/v1/documents/parsed/{doc_id}"))
+                                
+                                st.markdown(f"**Document: {doc_10k.get('filing_type')} - {doc_10k.get('filing_date')}** | Words: {parsed_content.get('word_count', 0):,} | Tables: {parsed_content.get('table_count', 0)}")
+                                
+                                col1, col2 = st.columns(2)
+                                
+                                with col1:
+                                    st.markdown("##### 📁 RAW Content")
+                                    st.markdown(f"**S3 Key:** `{parsed_content.get('s3_key', 'N/A')}`")
+                                    
+                                    # Show raw text preview
+                                    raw_text = parsed_content.get('text_preview', '')
+                                    
+                                    if raw_text:
+                                        # Try to find and highlight sections in raw text
+                                        st.markdown("**Raw Text (showing key sections if found):**")
+                                        
+                                        section_previews = []
+                                        
+                                        # Item 1 - Business
+                                        item1_match = re.search(r'(item\s*1[.\s]+business.{0,500})', raw_text, re.IGNORECASE | re.DOTALL)
+                                        if item1_match:
+                                            section_previews.append(("Item 1 - Business", item1_match.group(1)[:400]))
+                                        
+                                        # Item 1A - Risk Factors
+                                        item1a_match = re.search(r'(item\s*1a[.\s]+risk\s*factors.{0,500})', raw_text, re.IGNORECASE | re.DOTALL)
+                                        if item1a_match:
+                                            section_previews.append(("Item 1A - Risk Factors", item1a_match.group(1)[:400]))
+                                        
+                                        # Item 7 - MD&A
+                                        item7_match = re.search(r'(item\s*7[.\s]+management.{0,500})', raw_text, re.IGNORECASE | re.DOTALL)
+                                        if item7_match:
+                                            section_previews.append(("Item 7 - MD&A", item7_match.group(1)[:400]))
+                                        
+                                        if section_previews:
+                                            for section_name, preview in section_previews:
+                                                with st.expander(f"📄 {section_name}", expanded=True):
+                                                    st.text(preview + "...")
+                                        else:
+                                            st.text_area("Raw Text Content", value=raw_text[:2500], height=300, disabled=True, key="raw_text_parse")
+                                    
+                                    # Show HTML table structure sample
+                                    tables = parsed_content.get('tables', [])
+                                    if tables:
+                                        with st.expander(f"📋 Raw HTML Table Structure ({len(tables)} tables)"):
+                                            html_preview = ""
+                                            for idx, table in enumerate(tables[:2]):
+                                                if isinstance(table, dict):
+                                                    headers = table.get('headers', [])
+                                                    rows = table.get('rows', [])
+                                                    html_preview += f"<table id='table_{idx+1}'>\n  <thead><tr>\n"
+                                                    for h in headers[:5]:
+                                                        html_preview += f"    <th>{str(h)[:25]}</th>\n"
+                                                    html_preview += "  </tr></thead>\n  <tbody>\n"
+                                                    for row in rows[:3]:
+                                                        html_preview += "    <tr>"
+                                                        for cell in row[:5]:
+                                                            html_preview += f"<td>{str(cell)[:20]}</td>"
+                                                        html_preview += "</tr>\n"
+                                                    html_preview += "  </tbody>\n</table>\n\n"
+                                            st.code(html_preview, language="html")
+                                
+                                with col2:
+                                    st.markdown("##### 📄 PARSED Content")
+                                    
+                                    # Show extracted sections (Items 1, 1A, 7)
+                                    sections_list = parsed_content.get('sections', [])
+                                    st.markdown(f"**Sections Found:** {', '.join(sections_list) if sections_list else 'None'}")
+                                    
+                                    # Key SEC Filing Sections
+                                    st.markdown("---")
+                                    st.markdown("**📑 Key SEC Filing Sections (10-K only):**")
+                                    
+                                    # Load full text from S3
+                                    s3_key = parsed_content.get('s3_key', '')
+                                    full_text, loaded_path = load_json_file_content(
+                                        s3_key, 
+                                        ticker, 
+                                        doc_10k.get('filing_type', '10-K'),
+                                        doc_10k.get('filing_date', '')
+                                    )
+                                    
+                                    if loaded_path:
+                                        st.success(f"📂 Loaded from: `{loaded_path}`")
+                                        st.caption(f"📄 Total text length: {len(full_text):,} characters")
+                                    else:
+                                        st.warning(f"⚠️ Could not load JSON file from S3. Tried key: `{s3_key}`")
+                                        # Fallback to text_preview from API
+                                        full_text = parsed_content.get('text_preview', '') or parsed_content.get('text', '') or ''
+                                        if full_text:
+                                            st.info(f"Using text_preview from API ({len(full_text):,} chars)")
+                                    
+                                    # Extract lines containing "Item 1" (but not Item 1A)
+                                    st.markdown("**✅ Item 1 - Business (lines containing 'Item 1. Business'):**")
+                                    item1_lines = extract_lines_containing(full_text, "Item 1. Business", num_lines=3, chars_per_line=400)
+                                    if not item1_lines:
+                                        item1_lines = extract_lines_containing(full_text, "Item 1 Business", num_lines=3, chars_per_line=400)
+                                    if item1_lines:
+                                        st.text_area("Item 1 Content", value=item1_lines, height=180, disabled=True, key="item1_content")
+                                    else:
+                                        st.info("No lines found containing 'Item 1. Business'")
+                                    
+                                    # Extract lines containing "Item 1A"
+                                    st.markdown("**✅ Item 1A - Risk Factors (lines containing 'Item 1A'):**")
+                                    item1a_lines = extract_lines_containing(full_text, "Item 1A", num_lines=3, chars_per_line=400)
+                                    if item1a_lines:
+                                        st.text_area("Item 1A Content", value=item1a_lines, height=180, disabled=True, key="item1a_content")
+                                    else:
+                                        st.info("No lines found containing 'Item 1A'")
+                                    
+                                    # Extract lines containing "Item 7"
+                                    st.markdown("**✅ Item 7 - MD&A (lines containing 'Item 7'):**")
+                                    item7_lines = extract_lines_containing(full_text, "Item 7", num_lines=3, chars_per_line=400)
+                                    if item7_lines:
+                                        st.text_area("Item 7 Content", value=item7_lines, height=180, disabled=True, key="item7_content")
+                                    else:
+                                        st.info("No lines found containing 'Item 7'")
+                                    
+                                    # Show parsed tables
+                                    tables = parsed_content.get('tables', [])
+                                    st.markdown("---")
+                                    st.markdown(f"**📊 Parsed Tables ({len(tables)} total):**")
+                                    
+                                    if tables:
+                                        # Show first 3 quality tables
+                                        shown = 0
+                                        for idx, table in enumerate(tables):
+                                            if shown >= 3:
+                                                break
+                                            if isinstance(table, dict):
+                                                headers = table.get('headers', [])
+                                                rows = table.get('rows', [])
+                                                if rows and len(rows) >= 2 and headers:
+                                                    st.markdown(f"**Table {idx + 1}:**")
+                                                    num_cols = len(headers)
+                                                    norm_rows = []
+                                                    for row in rows[:8]:
+                                                        if isinstance(row, list):
+                                                            norm_row = row[:num_cols] + [''] * (num_cols - len(row))
+                                                            norm_rows.append(norm_row[:num_cols])
+                                                    if norm_rows:
+                                                        st.dataframe(pd.DataFrame(norm_rows, columns=headers[:num_cols]), use_container_width=True, hide_index=True, height=150)
+                                                        shown += 1
+                                        
+                                        if len(tables) > 3:
+                                            st.caption(f"... and {len(tables) - 3} more tables")
+                                    else:
+                                        st.info("No tables extracted")
+                                
+                            except Exception as e:
+                                st.warning(f"Could not fetch parsed content: {e}")
+                    
+                    show_json("Raw JSON Response", data)
+                except Exception as e:
+                    st.error(f"❌ Error: {e}")
+        
+        st.divider()
+        
+        st.subheader("Option 2: Parse ALL Companies")
+        st.error("⚠️ **NOT RECOMMENDED**: Parsing all companies at once may exceed the rate limit (0.1 - 10 requests/second). Use Option 1 instead.")
+        
+        if st.button("📄 Parse ALL Companies (Not Recommended)", use_container_width=True):
+            try:
+                with st.spinner("Parsing documents for ALL companies..."):
+                    data = post(api_url(base_url, "/api/v1/documents/parse"), timeout_s=600)
+                st.success("✅ Parsing Complete for ALL Companies!")
+                render_kpis([("Total Parsed", data.get("total_parsed", 0)), ("Skipped", data.get("total_skipped", 0)), ("Failed", data.get("total_failed", 0))])
+                by_company = data.get("by_company", [])
+                if by_company:
+                    st.dataframe(pd.DataFrame(by_company), use_container_width=True, hide_index=True)
+                show_json("Raw JSON Response", data)
+            except Exception as e:
+                st.error(f"❌ Error: {e}")
+    
+    # Page 3: PDF Parsing
+    elif sub_page == "3. PDF Parsing":
+        st.header("Step 3: PDF Parsing (Sample)")
+        st.info("📄 Parse a sample 10-K PDF file from `data/sample_10k/` folder")
+        
+        ticker = st.text_input("Ticker Symbol", value="AAPL", help="Company ticker symbol for the PDF")
+        st.caption("**Note**: Place PDF in `data/sample_10k/` folder")
+        
+        if st.button("📄 Parse PDF", type="primary", use_container_width=True):
+            try:
+                with st.spinner("Parsing PDF..."):
+                    resp = requests.get(api_url(base_url, "/api/v1/sec/parse-pdf"), params={"ticker": ticker, "upload_to_s3": False}, timeout=300)
+                    data = safe_json(resp)
+                
+                if resp.status_code < 400:
+                    st.success(f"✅ {data.get('message', 'PDF Parsing Complete!')}")
+                    
+                    render_kpis([("Pages", data.get('page_count', 0)), ("Words", f"{data.get('word_count', 0):,}"), ("Tables", data.get('table_count', 0))])
+                    
+                    st.markdown(f"**File**: `{data.get('pdf_file', 'N/A')}` | **Hash**: `{data.get('content_hash', 'N/A')}`")
+                    
+                    st.divider()
+                    st.subheader("📊 RAW PDF vs PARSED Tables Comparison")
+                    
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.markdown("##### 📁 RAW PDF Content")
+                        content_preview = data.get('content_preview', '')
+                        if content_preview:
+                            st.code(content_preview, language="text")
+                        
+                        local_files = data.get('local_files', {})
+                        if local_files:
+                            with st.expander("📂 Local Files Saved"):
+                                for key, path in local_files.items():
+                                    if path:
+                                        st.markdown(f"- **{key}**: `{path}`")
+                    
+                    with col2:
+                        st.markdown("##### 📊 PARSED Tables")
+                        st.markdown(f"**Total Tables Found**: {data.get('table_count', 0)}")
+                        
+                        # Try to load full tables from the saved JSON file
+                        local_files = data.get('local_files', {})
+                        tables_json_path = local_files.get('tables_json')
+                        
+                        full_tables = []
+                        if tables_json_path:
+                            try:
+                                import os
+                                if os.path.exists(tables_json_path):
+                                    with open(tables_json_path, 'r', encoding='utf-8') as f:
+                                        tables_data = json.load(f)
+                                        full_tables = tables_data.get('tables', [])
+                                    st.caption(f"📂 Loaded {len(full_tables)} tables from: `{tables_json_path}`")
+                            except Exception as e:
+                                st.warning(f"Could not load tables file: {e}")
+                        
+                        if full_tables:
+                            # Filter for good quality tables
+                            good_tables = []
+                            for table in full_tables:
+                                row_count = table.get('row_count', len(table.get('rows', [])))
+                                col_count = table.get('col_count', len(table.get('headers', [])))
+                                headers = table.get('headers', [])
+                                rows = table.get('rows', [])
+                                
+                                # Check if table has meaningful content
+                                if row_count >= 2 and col_count >= 2 and rows:
+                                    meaningful_headers = [h for h in headers if h and len(str(h).strip()) > 1]
+                                    if len(meaningful_headers) >= 2:
+                                        good_tables.append(table)
+                            
+                            st.markdown(f"**Quality Tables (with data)**: {len(good_tables)}")
+                            st.divider()
+                            
+                            # Show top 5 good tables
+                            tables_to_show = good_tables[:5] if good_tables else full_tables[:5]
+                            
+                            for idx, table in enumerate(tables_to_show):
+                                table_num = table.get('table_index', idx) + 1
+                                page_num = table.get('page', 'N/A')
+                                rows = table.get('rows', [])
+                                headers = table.get('headers', [])
+                                
+                                st.markdown(f"**Table {table_num}** | Page {page_num} | {len(rows)} rows × {len(headers)} cols")
+                                
+                                if rows:
+                                    if not headers:
+                                        headers = [f"Col_{i+1}" for i in range(len(rows[0]))]
+                                    num_cols = len(headers)
+                                    norm_rows = []
+                                    for row in rows[:10]:
+                                        if isinstance(row, list):
+                                            norm_row = row[:num_cols] + [''] * (num_cols - len(row))
+                                            norm_rows.append(norm_row[:num_cols])
+                                    if norm_rows:
+                                        df = pd.DataFrame(norm_rows, columns=headers[:num_cols])
+                                        st.dataframe(df, use_container_width=True, hide_index=True, height=200)
+                                else:
+                                    st.caption(f"Headers: {', '.join(headers[:5])}{'...' if len(headers) > 5 else ''}")
+                                
+                                st.markdown("---")
+                            
+                            remaining = len(good_tables) - 5 if len(good_tables) > 5 else len(full_tables) - 5
+                            if remaining > 0:
+                                st.caption(f"... and {remaining} more tables available in the JSON file")
+                        else:
+                            # Fallback to tables_summary if can't load full tables
+                            tables_summary = data.get('tables_summary', [])
+                            if tables_summary:
+                                st.warning("⚠️ Full table data not available. Showing summary only.")
+                                for idx, table in enumerate(tables_summary[:5]):
+                                    st.markdown(f"**Table {table.get('table_index', idx) + 1}** (Page {table.get('page', 'N/A')})")
+                                    st.caption(f"Rows: {table.get('row_count', 0)} | Cols: {table.get('col_count', 0)}")
+                                    st.markdown(f"Headers: {', '.join(table.get('headers', []))}")
+                                    st.markdown("---")
+                            else:
+                                st.info("No tables extracted from PDF")
+                    
+                    show_json("Raw JSON Response", data)
+                else:
+                    st.error(f"❌ Error: {data.get('detail', data)}")
+            except Exception as e:
+                st.error(f"❌ Error: {e}")
+    
+    # Page 4: De-duplication
+    elif sub_page == "4. De-duplication":
+        st.header("Step 4: De-duplication")
+        st.info("De-duplication happens automatically during collection via content hash checking")
+        
+        st.markdown("""
+        ### How De-duplication Works
+        1. **Content Hash**: Each document's content is hashed using SHA-256
+        2. **Duplicate Check**: Before uploading, the hash is compared against existing records
+        3. **Skip Duplicates**: Documents with matching hashes are skipped
+        """)
+        
+        ticker = st.text_input("Ticker to Check", value=st.session_state["last_ticker"]).upper().strip()
+        
+        if st.button("🔍 Check Documents", use_container_width=True):
+            if ticker:
+                fetch_documents_table(base_url, ticker)
+    
+    # Page 5: Chunking
+    elif sub_page == "5. Chunking":
+        st.header("Step 5: Chunk Documents")
+        st.info("📦 Splits parsed documents into overlapping chunks for LLM processing")
+        
+        st.subheader("Option 1: Chunk by Ticker")
+        with st.form("chunk_form"):
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                ticker = st.text_input("Ticker", value=st.session_state["last_ticker"]).upper().strip()
+            with c2:
+                chunk_size = st.number_input("Chunk Size (words)", 100, 2000, 750, 50)
+            with c3:
+                chunk_overlap = st.number_input("Overlap (words)", 0, 200, 50, 10)
+            submitted = st.form_submit_button("📦 Chunk Documents", type="primary", use_container_width=True)
+        
+        if submitted and ticker:
+            st.session_state["last_ticker"] = ticker
+            try:
+                with st.spinner(f"Chunking documents for {ticker}..."):
+                    data = post(api_url(base_url, f"/api/v1/documents/chunk/{ticker}"), params={"chunk_size": chunk_size, "chunk_overlap": chunk_overlap})
+                st.success("✅ Chunking Complete!")
+                render_kpis([("Documents", data.get("total_documents", 0)), ("Chunked", data.get("chunked", 0)), ("Total Chunks", data.get("total_chunks", 0)), ("Failed", data.get("failed", 0))])
+                
+                show_json("Raw JSON Response", data)
+                
+                st.divider()
+                st.subheader("📊 RAW vs CHUNKED Content Comparison (First Document)")
+                st.caption("Showing how a document is split into chunks")
+                
+                # Get documents for this ticker to show comparison
+                try:
+                    doc_data = get(api_url(base_url, "/api/v1/documents"), params={"ticker": ticker, "limit": 10})
+                    docs = doc_data.get("documents", [])
+                    
+                    # Find a document with chunks
+                    doc_with_chunks = None
+                    for doc in docs:
+                        if doc.get("chunk_count", 0) > 0:
+                            doc_with_chunks = doc
+                            break
+                    
+                    if doc_with_chunks:
+                        doc_id = doc_with_chunks.get("id")
+                        st.markdown(f"**Document:** {doc_with_chunks.get('filing_type')} - {doc_with_chunks.get('filing_date')} | Chunks: {doc_with_chunks.get('chunk_count', 0)}")
+                        
+                        col1, col2 = st.columns(2)
+                        
+                        with col1:
+                            st.markdown("##### 📁 RAW/PARSED Content")
+                            
+                            # Try to get parsed content
+                            try:
+                                parsed_content = get(api_url(base_url, f"/api/v1/documents/parsed/{doc_id}"))
+                                
+                                st.markdown(f"**Word Count:** {parsed_content.get('word_count', 0):,}")
+                                sections = parsed_content.get('sections', [])
+                                st.markdown(f"**Sections:** {', '.join(sections) if sections else 'None'}")
+                                
+                                # Show key sections status
+                                st.markdown("---")
+                                st.markdown("**📑 Key SEC Sections:**")
+                                key_sections = {'business': 'Item 1', 'risk_factors': 'Item 1A', 'mda': 'Item 7'}
+                                for section_key, section_name in key_sections.items():
+                                    if section_key in sections:
+                                        st.success(f"✅ {section_name}")
+                                    else:
+                                        st.caption(f"⚪ {section_name}")
+                                
+                                # Show text preview
+                                raw_text = parsed_content.get('text_preview', '')
+                                if raw_text:
+                                    st.markdown("---")
+                                    st.markdown("**Text Preview:**")
+                                    st.text_area("Full Document Text", value=raw_text[:2500], height=250, disabled=True, key="raw_chunk_text")
+                                
+                            except Exception as e:
+                                st.warning(f"Could not load parsed content: {e}")
+                        
+                        with col2:
+                            st.markdown("##### 📦 CHUNKED Content")
+                            
+                            # Get chunks for this document
+                            try:
+                                chunk_data = get(api_url(base_url, f"/api/v1/documents/chunks/{doc_id}"))
+                                chunks = chunk_data.get("chunks", [])
+                                
+                                st.markdown(f"**Total Chunks:** {len(chunks)}")
+                                st.markdown(f"**Chunk Size:** {chunk_size} words | **Overlap:** {chunk_overlap} words")
+                                
+                                if chunks:
+                                    st.markdown("---")
+                                    st.markdown("**Sample Chunks:**")
+                                    
+                                    # Show first 3 chunks
+                                    for idx, chunk in enumerate(chunks[:3]):
+                                        section = chunk.get('section', 'N/A')
+                                        word_count = chunk.get('word_count', 0)
+                                        content = chunk.get('content', '')
+                                        
+                                        with st.expander(f"Chunk {chunk.get('chunk_index', idx)} | Section: {section} | {word_count} words", expanded=(idx == 0)):
+                                            st.text_area(f"Content", value=content[:800] + ("..." if len(content) > 800 else ""), height=150, disabled=True, key=f"chunk_{idx}")
+                                    
+                                    if len(chunks) > 3:
+                                        st.caption(f"... and {len(chunks) - 3} more chunks")
+                                    
+                                    # Show chunks by section
+                                    st.markdown("---")
+                                    st.markdown("**Chunks by Section:**")
+                                    section_counts = {}
+                                    for chunk in chunks:
+                                        sec = chunk.get('section') or 'unknown'
+                                        section_counts[sec] = section_counts.get(sec, 0) + 1
+                                    
+                                    for sec, count in section_counts.items():
+                                        st.caption(f"• {sec}: {count} chunks")
+                                
+                            except Exception as e:
+                                st.warning(f"Could not load chunks: {e}")
+                    else:
+                        st.info("No documents with chunks found. Make sure parsing was completed first.")
+                        
+                except Exception as e:
+                    st.warning(f"Could not load document comparison: {e}")
+                
+                st.divider()
+                fetch_chunks_table(base_url, ticker)
+            except Exception as e:
+                st.error(f"❌ Error: {e}")
+        
+        st.divider()
+        
+        st.subheader("Option 2: Chunk ALL Companies")
+        st.error("⚠️ **NOT RECOMMENDED**: Chunking all companies at once may exceed the rate limit (0.1 - 10 requests/second).")
+        
+        with st.form("chunk_all_form"):
+            c1, c2 = st.columns(2)
+            with c1:
+                all_chunk_size = st.number_input("Chunk Size", 100, 2000, 750, 50, key="all_cs")
+            with c2:
+                all_chunk_overlap = st.number_input("Overlap", 0, 200, 50, 10, key="all_co")
+            submitted_all = st.form_submit_button("📦 Chunk ALL (Not Recommended)", use_container_width=True)
+        
+        if submitted_all:
+            try:
+                with st.spinner("Chunking ALL companies..."):
+                    data = post(api_url(base_url, "/api/v1/documents/chunk"), params={"chunk_size": all_chunk_size, "chunk_overlap": all_chunk_overlap}, timeout_s=600)
+                st.success("✅ Chunking Complete!")
+                render_kpis([("Documents", data.get("total_documents_chunked", 0)), ("Chunks", data.get("total_chunks_created", 0))])
+                show_json("Raw JSON Response", data)
+                fetch_chunks_table(base_url)
+            except Exception as e:
+                st.error(f"❌ Error: {e}")
+    
+    # Reports Page
+    elif sub_page == "📊 Reports":
+        st.header("📊 Evidence Collection Report")
+        
+        if st.button("🔄 Load Report", type="primary", use_container_width=True):
+            try:
+                with st.spinner("Loading report..."):
+                    data = get(api_url(base_url, "/api/v1/documents/report/table"))
+                st.success("✅ Report Loaded!")
+                
+                summary = data.get("summary_table", {})
+                if summary.get("rows"):
+                    kpis = [(str(r[0]), r[1]) for r in summary["rows"][:5] if len(r) >= 2]
+                    if kpis:
+                        render_kpis(kpis)
+                    st.subheader("Summary Statistics")
+                    st.table(df_from_table(summary.get("headers", []), summary.get("rows", [])))
+                
+                company = data.get("company_table", {})
+                if company.get("rows"):
+                    st.subheader("Documents by Company")
+                    st.dataframe(df_from_table(company.get("headers", []), company.get("rows", [])), use_container_width=True, hide_index=True)
+                
+                show_json("Raw JSON Response", data)
+            except Exception as e:
+                st.error(f"❌ Error: {e}")
+
+# Signals Section
+else:
+    st.title("📈 Signals")
+    
+    if sub_page == "Leadership Score":
+        st.header("Leadership Score Signal")
+        
+        ticker = st.text_input("Ticker Symbol", value=st.session_state["last_ticker"]).upper().strip()
+        
+        if st.button("🎯 Get Leadership Score", type="primary", use_container_width=True):
+            if ticker:
+                st.session_state["last_ticker"] = ticker
+                try:
+                    with st.spinner(f"Fetching leadership score for {ticker}..."):
+                        data = get(api_url(base_url, f"/api/v1/signals/leadership/{ticker}"))
+                    st.success("✅ Signal Retrieved!")
+                    
+                    if isinstance(data, dict):
+                        score = data.get("score") or data.get("leadership_score")
+                        if score is not None:
+                            st.metric("Leadership Score", f"{score:.2f}" if isinstance(score, (int, float)) else score)
+                        st.dataframe(pd.DataFrame([{"Field": k, "Value": str(v)[:100]} for k, v in data.items()]), use_container_width=True, hide_index=True)
+                    
+                    show_json("Raw JSON Response", data)
+                except Exception as e:
+                    st.error(f"❌ Error: {e}")
+
+st.sidebar.divider()
+st.sidebar.caption("SEC Filings & Signals Pipeline v1.0")
