@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from typing import List, Optional
 
 import snowflake.connector
+from dotenv import load_dotenv
 
 from app.pipelines.chunking import DocumentChunk
 
@@ -19,6 +20,9 @@ def get_snowflake_connection():
     Backward-compatible Snowflake connection factory.
     Used by repositories via dependency injection.
     """
+    # Load environment variables from .env file
+    load_dotenv()
+    
     return snowflake.connector.connect(
         account=os.getenv("SNOWFLAKE_ACCOUNT"),
         user=os.getenv("SNOWFLAKE_USER"),

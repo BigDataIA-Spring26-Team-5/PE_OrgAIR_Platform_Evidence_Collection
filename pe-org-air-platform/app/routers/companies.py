@@ -13,7 +13,7 @@ from uuid import UUID, uuid4
 from fastapi import APIRouter, Depends, Query, Request, status
 from fastapi.exceptions import HTTPException, RequestValidationError
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, root_validator
 
 from app.core.dependencies import get_company_repository, get_industry_repository
 from app.repositories.company_repository import CompanyRepository
@@ -147,10 +147,12 @@ class CompanyBase(BaseModel):
     industry_id: Optional[UUID] = None
     position_factor: float = Field(default=0.0, ge=-1.0, le=1.0)
 
-    @field_validator("ticker", mode="before")
+    @root_validator(pre=True)
     @classmethod
-    def uppercase_ticker(cls, v: Optional[str]) -> Optional[str]:
-        return v.upper() if v else None
+    def uppercase_ticker(cls, values):
+        if 'ticker' in values and values['ticker']:
+            values['ticker'] = values['ticker'].upper()
+        return values
 
 
 class CompanyCreate(CompanyBase):

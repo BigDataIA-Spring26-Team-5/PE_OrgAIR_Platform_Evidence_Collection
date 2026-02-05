@@ -12,144 +12,177 @@ from __future__ import annotations
 
 import asyncio
 import json
-import math
+import logging
 import os
+import re
 from collections import defaultdict
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import List, Optional, Set
+from dataclasses import dataclass, asdict
+from uuid import uuid4
 
 import httpx
 from dotenv import load_dotenv
 
 from app.pipelines.pipeline2_state import Pipeline2State
-from app.pipelines.keywords import PATENT_AI_KEYWORDS, AI_KEYWORDS
-from app.models.patent_signals import Patent
+from app.pipelines.utils import clean_nan, safe_filename
+from app.models.signal import SignalCategory, SignalSource, ExternalSignal
 
 # Load environment variables from .env file
 load_dotenv()
 
-# PatentsView PatentSearch API configuration (new API as of 2024)
-# Docs: https://search.patentsview.org/docs/docs/Search%20API/SearchAPIReference/
+logger = logging.getLogger(__name__)
+
+# PatentsView PatentSearch API configuration
 PATENTSVIEW_API_URL = os.getenv("PATENTSVIEW_API_URL", "https://search.patentsview.org/api/v1/patent/")
 PATENTSVIEW_REQUEST_DELAY = 1.5  # Rate limiting (45 req/min = 1.33s minimum)
 PATENTSVIEW_API_KEY = os.getenv("PATENTSVIEW_API_KEY")
 
 
-def _clean_nan(value: Any) -> Any:
-    """Convert NaN values to None for Pydantic compatibility."""
-    if value is None:
-        return None
-    try:
-        if isinstance(value, float) and math.isnan(value):
-            return None
-    except (TypeError, ValueError):
-        pass
-    if str(value) in ('nan', 'NaN', 'NaT', ''):
-        return None
-    return value
+@dataclass
+class Patent:
+    """A patent record."""
+    patent_number: str
+    title: str
+    abstract: str
+    filing_date: datetime
+    grant_date: datetime | None
+    inventors: list[str]
+    assignee: str
+    is_ai_related: bool = False
+    ai_categories: list[str] = None
+    
+    def __post_init__(self):
+        if self.ai_categories is None:
+            self.ai_categories = []
 
 
-def step1_init_patent_collection(state: Pipeline2State) -> Pipeline2State:
-    """Initialize patent collection step."""
-    # Create output directory
-    Path(state.output_dir).mkdir(parents=True, exist_ok=True)
-
-    print("Step 1: Patent collection initialized")
-    print(f"  Output directory: {state.output_dir}")
-    return state
-
-
-async def step2_fetch_patents(
-    state: Pipeline2State,
-    *,
-    years_back: int = 5,
-    results_per_company: int = 100,
-    api_key: Optional[str] = None,
-) -> Pipeline2State:
-    """
-    Fetch patents for each company using PatentsView PatentSearch API.
-
-    Args:
-        state: Pipeline state
-        years_back: How many years back to search (default: 5)
-        results_per_company: Max results per company (max 1000)
-        api_key: PatentsView API key (or set PATENTSVIEW_API_KEY env var)
-    """
-    # Get API key from parameter, module constant, or environment
-    api_key = api_key or PATENTSVIEW_API_KEY
-    if api_key:
-        print(f"  [info] Using PatentsView API key: {api_key[:8]}...")
-    else:
-        print("  [warning] No API key provided. Set PATENTSVIEW_API_KEY in .env or pass --api-key")
-        print("  [info] Get free API key at: https://patentsview.org/apis/keyrequest")
-        print("  [info] Proceeding without API key (may have rate limits)...")
-
-    # Calculate date range (past N years)
-    end_date = datetime.now()
-    start_date = end_date - timedelta(days=years_back * 365)
-    start_date_str = start_date.strftime("%Y-%m-%d")
-
-    # Build headers
-    headers = {"Content-Type": "application/json"}
-    if api_key:
-        headers["X-Api-Key"] = api_key
-
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        for company in state.companies:
-            company_id = company.get("id", "")
-            company_name = company.get("name", "")
-
-            if not company_name:
-                continue
-
-            # Rate limiting (45 req/min with key, stricter without)
-            await asyncio.sleep(max(state.request_delay, PATENTSVIEW_REQUEST_DELAY))
-
+class PatentSignalCollector:
+    """Collect patent signals for AI innovation."""
+    
+    # AI Patent Keywords
+    AI_PATENT_KEYWORDS = [
+        "machine learning", "neural network", "deep learning",
+        "artificial intelligence", "natural language processing",
+        "computer vision", "reinforcement learning",
+        "predictive model", "classification algorithm",
+        "convolutional neural", "recurrent neural",
+        "transformer", "attention mechanism",
+        "generative adversarial", "large language model",
+        "llm", "gpt", "bert", "transformer",
+        "object detection", "semantic segmentation",
+        "speech recognition", "sentiment analysis",
+        "recommendation system", "anomaly detection"
+    ]
+    
+    # AI Patent Categories
+    AI_PATENT_CATEGORIES = {
+        "deep_learning": ["neural network", "deep learning", "convolutional", "recurrent", "transformer"],
+        "nlp": ["natural language", "language model", "llm", "gpt", "bert", "sentiment"],
+        "computer_vision": ["computer vision", "image", "object detection", "segmentation"],
+        "predictive_analytics": ["predictive", "forecast", "anomaly detection"],
+        "reinforcement": ["reinforcement learning"],
+        "generative": ["generative adversarial", "generative ai"]
+    }
+    
+    def __init__(self, api_key: Optional[str] = None):
+        self.api_key = api_key or PATENTSVIEW_API_KEY
+        self.headers = {"Content-Type": "application/json"}
+        if self.api_key:
+            self.headers["X-Api-Key"] = self.api_key
+        
+        # Pre-compile regex patterns for more accurate matching
+        self.keyword_patterns = {
+            keyword: re.compile(r'\b' + re.escape(keyword) + r'\b', re.IGNORECASE)
+            for keyword in self.AI_PATENT_KEYWORDS
+        }
+        
+        # Pre-compile category patterns
+        self.category_patterns = {}
+        for category, keywords in self.AI_PATENT_CATEGORIES.items():
+            patterns = [re.compile(r'\b' + re.escape(kw) + r'\b', re.IGNORECASE) for kw in keywords]
+            self.category_patterns[category] = patterns
+    
+    async def fetch_patents(
+        self,
+        company_name: str,
+        years_back: int = 5,
+        max_results: int = 100
+    ) -> List[Patent]:
+        """
+        Fetch patents for a company from PatentsView API.
+        
+        Args:
+            company_name: Company name to search for
+            years_back: How many years back to search
+            max_results: Maximum number of patents to fetch
+            
+        Returns:
+            List of Patent objects
+        """
+        # Calculate date range
+        end_date = datetime.now(timezone.utc)
+        start_date = end_date - timedelta(days=years_back * 365)
+        start_date_str = start_date.strftime("%Y-%m-%d")
+        
+        # Build query for PatentsView API - use _and to combine conditions
+        query_obj = {
+            "_and": [
+                {"_text_phrase": {"assignees.assignee_organization": company_name}},
+                {"_gte": {"patent_date": start_date_str}}
+            ]
+        }
+        
+        # Fields to return - simplified to essential fields
+        fields = [
+            "patent_id",
+            "patent_title",
+            "patent_abstract",
+            "patent_date",
+            "patent_type",
+            "assignees.assignee_organization",
+            "inventors.inventor_first_name",
+            "inventors.inventor_last_name"
+        ]
+        
+        # Build URL with query params
+        params = {
+            "q": json.dumps(query_obj),
+            "f": json.dumps(fields),
+            "s": json.dumps([{"patent_date": "desc"}]),
+            "o": json.dumps({"size": min(max_results, 1000)})
+        }
+        
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            await asyncio.sleep(PATENTSVIEW_REQUEST_DELAY)
+            
             try:
-                print(f"  Fetching patents for: {company_name}...")
-
-                # Build PatentSearch API query (new format)
-                # Docs: https://search.patentsview.org/docs/docs/Search%20API/SearchAPIReference/
-                query_obj = {
-                    "_and": [
-                        {"_contains": {"assignees.assignee_organization": company_name}},
-                        {"_gte": {"patent_date": start_date_str}}
-                    ]
-                }
-
-                # Fields to return
-                fields = [
-                    "patent_id",
-                    "patent_title",
-                    "patent_abstract",
-                    "patent_date",
-                    "patent_type",
-                    "assignees.assignee_organization",
-                    "inventors.inventor_first_name",
-                    "inventors.inventor_last_name",
-                    "cpc_current.cpc_group_id"
-                ]
-
-                # Build URL with query params
-                params = {
-                    "q": json.dumps(query_obj),
-                    "f": json.dumps(fields),
-                    "s": json.dumps([{"patent_date": "desc"}]),
-                    "o": json.dumps({"size": min(results_per_company, 1000)})
-                }
-
+                # Make the request
                 response = await client.get(
                     PATENTSVIEW_API_URL,
                     params=params,
-                    headers=headers
+                    headers=self.headers
                 )
-                response.raise_for_status()
+                
+                # Log the response for debugging
+                logger.debug(f"API Response Status: {response.status_code}")
+                
+                # Check for errors
+                if response.status_code != 200:
+                    logger.error(f"API Error {response.status_code}: {response.text}")
+                    return []
+                
                 data = response.json()
-
+                
+                # Check for API errors in response (error: true indicates failure)
+                if data.get("error") is True:
+                    logger.error(f"API Error: {data}")
+                    return []
+                
                 patents_data = data.get("patents", []) or []
-                postings = []
-
+                patents = []
+                
                 for patent_data in patents_data:
                     # Extract assignee names
                     assignees = patent_data.get("assignees") or []
@@ -157,199 +190,142 @@ async def step2_fetch_patents(
                         a.get("assignee_organization", "")
                         for a in assignees if a.get("assignee_organization")
                     ]
-
+                    
                     # Extract inventor names
                     inventors = patent_data.get("inventors") or []
                     inventor_names = [
                         f"{inv.get('inventor_first_name', '')} {inv.get('inventor_last_name', '')}".strip()
                         for inv in inventors
                     ]
-
-                    # Extract CPC codes
-                    cpcs = patent_data.get("cpc_current") or []
-                    cpc_codes = [c.get("cpc_group_id", "") for c in cpcs if c.get("cpc_group_id")]
-
-                    # Parse date
-                    patent_date_str = _clean_nan(patent_data.get("patent_date"))
-                    patent_date = None
-                    if patent_date_str:
-                        try:
-                            patent_date = datetime.strptime(patent_date_str, "%Y-%m-%d")
-                        except ValueError:
-                            pass
-
+                    
+                    # Parse patent date
+                    patent_date_str = clean_nan(patent_data.get("patent_date"))
+                    filing_date = None
+                    
+                    try:
+                        if patent_date_str:
+                            # Parse the date and ensure it's timezone-aware
+                            parsed = datetime.fromisoformat(patent_date_str.replace("Z", "+00:00"))
+                            # If naive (no timezone), assume UTC
+                            if parsed.tzinfo is None:
+                                filing_date = parsed.replace(tzinfo=timezone.utc)
+                            else:
+                                filing_date = parsed
+                        else:
+                            # If no date, use current date as fallback
+                            filing_date = datetime.now(timezone.utc)
+                    except (ValueError, AttributeError) as e:
+                        logger.warning(f"Could not parse date '{patent_date_str}': {e}")
+                        filing_date = datetime.now(timezone.utc)
+                    
+                    # Use first assignee as primary assignee
+                    primary_assignee = assignee_names[0] if assignee_names else company_name
+                    
                     patent = Patent(
-                        company_id=company_id,
-                        company_name=company_name,
-                        patent_id=str(patent_data.get("patent_id", "")),
-                        patent_number=str(patent_data.get("patent_id", "")),  # patent_id is the number in new API
+                        patent_number=str(patent_data.get("patent_id", "")),
                         title=str(patent_data.get("patent_title", "")),
                         abstract=str(patent_data.get("patent_abstract", "") or ""),
-                        patent_date=patent_date,
-                        patent_type=str(patent_data.get("patent_type", "")),
-                        assignees=assignee_names,
+                        filing_date=filing_date,
+                        grant_date=None,  # Grant date not available in basic API response
                         inventors=inventor_names,
-                        cpc_codes=cpc_codes,
+                        assignee=primary_assignee,
+                        is_ai_related=False,
+                        ai_categories=[]
                     )
-                    postings.append(patent)
-
-                state.patents.extend([p.model_dump() for p in postings])
-                state.summary["patents_collected"] = state.summary.get("patents_collected", 0) + len(postings)
-                print(f"    [fetched] {company_name}: {len(postings)} patents")
-
+                    
+                    patents.append(patent)
+                
+                logger.info(f"Fetched {len(patents)} patents for {company_name}")
+                return patents
+                
             except httpx.HTTPStatusError as e:
-                error_msg = f"HTTP {e.response.status_code}: {e.response.text[:200]}"
-                state.add_error("patent_fetch", company_id, error_msg)
-                print(f"    [error] {company_name}: {error_msg}")
+                logger.error(f"HTTP error fetching patents for {company_name}: {e.response.status_code} - {e.response.text[:200]}")
+                return []
             except Exception as e:
-                state.add_error("patent_fetch", company_id, str(e))
-                print(f"    [error] {company_name}: {e}")
+                logger.error(f"Error fetching patents for {company_name}: {str(e)}")
+                return []
 
-    print(f"Step 2: Collected {len(state.patents)} patents total")
-    return state
+    def classify_patent(self, patent: Patent) -> Patent:
+        """Classify a patent as AI-related."""
+        text = f"{patent.title} {patent.abstract}".lower()
 
-
-def step3_classify_ai_patents(state: Pipeline2State) -> Pipeline2State:
-    """Classify patents as AI-related using PATENT_AI_KEYWORDS and AI_KEYWORDS."""
-
-    # Combine patent-specific and general AI keywords
-    all_ai_keywords = PATENT_AI_KEYWORDS | AI_KEYWORDS
-
-    for patent in state.patents:
-        text = f"{patent.get('title', '')} {patent.get('abstract', '')}".lower()
-
-        # Find matching AI keywords
+        # Check for AI keywords
         ai_keywords_found = []
-        for keyword in all_ai_keywords:
-            if keyword in text:
+        for keyword, pattern in self.keyword_patterns.items():
+            if pattern.search(text):
                 ai_keywords_found.append(keyword)
 
-        patent["ai_keywords_found"] = ai_keywords_found
-        patent["is_ai_patent"] = len(ai_keywords_found) >= 1  # At least 1 keyword for patents
+        # Determine AI categories
+        ai_categories = []
+        for category, patterns in self.category_patterns.items():
+            for pattern in patterns:
+                if pattern.search(text):
+                    ai_categories.append(category)
+                    break  # Found one keyword from this category
 
-        # Calculate AI score (0-100)
-        patent["ai_score"] = min(100.0, len(ai_keywords_found) * 20.0)
+        patent.is_ai_related = len(ai_keywords_found) > 0 or len(ai_categories) > 0
+        patent.ai_categories = list(set(ai_categories))  # Remove duplicates
 
-    ai_count = sum(1 for p in state.patents if p.get("is_ai_patent"))
-    print(f"Step 3: Classified {ai_count} AI-related patents out of {len(state.patents)}")
-    return state
+        return patent
 
+    def analyze_patents(
+        self,
+        company_id: str,
+        company_name: str,
+        patents: List[Patent],
+        years: int = 5
+    ) -> ExternalSignal:
+        """Analyze patent portfolio for AI innovation."""
 
-def step4_score_patent_portfolio(state: Pipeline2State) -> Pipeline2State:
-    """
-    Calculate patent portfolio score for each company.
+        cutoff = datetime.now(timezone.utc) - timedelta(days=years * 365)
+        recent_patents = [p for p in patents if p.filing_date > cutoff]
+        ai_patents = [p for p in recent_patents if p.is_ai_related]
 
-    Scoring algorithm:
-    - Base: (AI patents / Total patents) * 40
-    - Volume bonus: min(30, AI_patent_count * 2)
-    - Recency bonus: (patents in last 2 years / total) * 20
-    - Keyword diversity: (unique AI keywords / 10) * 10
-    """
+        # Last year cutoff for recency bonus
+        last_year = datetime.now(timezone.utc) - timedelta(days=365)
+        recent_ai = [p for p in ai_patents if p.filing_date > last_year]
 
-    company_patents = defaultdict(list)
-    for patent in state.patents:
-        company_patents[patent["company_id"]].append(patent)
-
-    two_years_ago = datetime.now() - timedelta(days=730)
-
-    for company_id, patents in company_patents.items():
-        if not patents:
-            state.patent_scores[company_id] = 0.0
-            continue
-
-        ai_patents = [p for p in patents if p.get("is_ai_patent")]
-        total_patents = len(patents)
-        ai_count = len(ai_patents)
-
-        # Ratio component (0-40 points)
-        ratio_score = (ai_count / total_patents * 40) if total_patents > 0 else 0
-
-        # Volume bonus (0-30 points)
-        volume_bonus = min(30, ai_count * 2)
-
-        # Recency bonus (0-20 points)
-        recent_patents = 0
+        # Collect all AI categories
+        categories = set()
         for p in ai_patents:
-            patent_date = p.get("patent_date")
-            if patent_date:
-                if isinstance(patent_date, str):
-                    try:
-                        patent_date = datetime.fromisoformat(patent_date.replace("Z", "+00:00"))
-                    except ValueError:
-                        continue
-                if patent_date.replace(tzinfo=None) > two_years_ago:
-                    recent_patents += 1
-        recency_score = (recent_patents / ai_count * 20) if ai_count > 0 else 0
+            categories.update(p.ai_categories)
 
-        # Keyword diversity (0-10 points)
-        all_keywords = set()
-        for patent in ai_patents:
-            all_keywords.update(patent.get("ai_keywords_found", []))
-        diversity_score = min(10, len(all_keywords))
+        # Scoring algorithm from pseudocode:
+        # - AI patent count: 5 points each (max 50)
+        # - Recency bonus: +2 per patent filed in last year (max 20)
+        # - Category diversity: 10 points per category (max 30)
 
-        final_score = min(100.0, ratio_score + volume_bonus + recency_score + diversity_score)
-        state.patent_scores[company_id] = round(final_score, 2)
+        score = (
+            min(len(ai_patents) * 5, 50) +
+            min(len(recent_ai) * 2, 20) +
+            min(len(categories) * 10, 30)
+        )
 
-    print(f"Step 4: Scored patent portfolio for {len(state.patent_scores)} companies")
-    return state
+        # Ensure score is between 0 and 100
+        normalized_score = min(100.0, max(0.0, float(score)))
 
+        # Create ExternalSignal
+        signal = ExternalSignal(
+            company_id=company_id,
+            company_name=company_name,
+            category=SignalCategory.INNOVATION_ACTIVITY,
+            source=SignalSource.USPTO,
+            signal_date=datetime.now(timezone.utc),
+            raw_value=f"{len(ai_patents)} AI patents in {years} years",
+            normalized_score=round(normalized_score, 1),
+            confidence=0.90,
+            metadata={
+                "total_patents": len(patents),
+                "recent_patents": len(recent_patents),
+                "ai_patents": len(ai_patents),
+                "recent_ai_patents": len(recent_ai),
+                "ai_categories": list(categories),
+                "years_analyzed": years,
+                "analysis_date": datetime.now(timezone.utc).isoformat()
+            }
+        )
 
-def step5_save_patent_results(state: Pipeline2State) -> Pipeline2State:
-    """Save patent results to JSON files."""
-
-    output_dir = Path(state.output_dir)
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-
-    # Save all patents
-    all_patents_file = output_dir / f"all_patents_{timestamp}.json"
-    with open(all_patents_file, "w", encoding="utf-8") as f:
-        json.dump(state.patents, f, indent=2, default=str)
-    print(f"  Saved all patents to: {all_patents_file}")
-
-    # Save AI-related patents only
-    ai_patents = [p for p in state.patents if p.get("is_ai_patent")]
-    ai_patents_file = output_dir / f"ai_patents_{timestamp}.json"
-    with open(ai_patents_file, "w", encoding="utf-8") as f:
-        json.dump(ai_patents, f, indent=2, default=str)
-    print(f"  Saved AI patents to: {ai_patents_file}")
-
-    # Save per-company results
-    company_patents = defaultdict(list)
-    for patent in state.patents:
-        company_patents[patent["company_id"]].append(patent)
-
-    for company_id, patents in company_patents.items():
-        # Get company name for filename
-        company_name = patents[0].get("company_name", company_id) if patents else company_id
-        safe_name = "".join(c if c.isalnum() else "_" for c in company_name)
-
-        company_file = output_dir / f"{safe_name}_patents_{timestamp}.json"
-        company_data = {
-            "company_id": company_id,
-            "company_name": company_name,
-            "total_patents": len(patents),
-            "ai_patents": sum(1 for p in patents if p.get("is_ai_patent")),
-            "patent_portfolio_score": state.patent_scores.get(company_id, 0),
-            "patents": patents
-        }
-        with open(company_file, "w", encoding="utf-8") as f:
-            json.dump(company_data, f, indent=2, default=str)
-
-    # Save summary
-    summary_file = output_dir / f"patent_summary_{timestamp}.json"
-    summary_data = {
-        "patents_collected": len(state.patents),
-        "ai_patents_found": len(ai_patents),
-        "patent_scores": state.patent_scores,
-        "companies": [c.get("name", c.get("id")) for c in state.companies],
-        "errors": state.summary.get("errors", []),
-    }
-    with open(summary_file, "w", encoding="utf-8") as f:
-        json.dump(summary_data, f, indent=2, default=str)
-    print(f"  Saved summary to: {summary_file}")
-
-    print(f"Step 5: Saved patent results to {output_dir}")
-    return state
+        return signal
 
 
 async def run_patent_signals(
@@ -357,27 +333,108 @@ async def run_patent_signals(
     years_back: int = 5,
     results_per_company: int = 100,
     api_key: Optional[str] = None,
+    skip_storage: bool = False,
 ) -> Pipeline2State:
     """
-    Run the complete patent signals collection pipeline.
-
+    Run the patent signals collection pipeline.
+    
     Args:
         state: Pipeline state with companies loaded
         years_back: How many years back to search (default: 5)
         results_per_company: Max patents per company
         api_key: PatentsView API key (optional, or set PATENTSVIEW_API_KEY env var)
-
+        skip_storage: If True, skip all storage steps
+    
     Returns:
-        Updated pipeline state with patents and scores
+        Updated pipeline state with patents, classifications, and scores
     """
-    state = step1_init_patent_collection(state)
-    state = await step2_fetch_patents(
-        state,
+    logger.info("-" * 60)
+    logger.info("📊 PATENT SIGNALS PIPELINE")
+    logger.info("-" * 60)
+    
+    collector = PatentSignalCollector(api_key=api_key)
+    
+    all_patents = []
+    patent_signals = {}
+    
+    for company in state.companies:
+        company_id = company.get("id", "")
+        company_name = company.get("name", "")
+        
+        if not company_name:
+            continue
+        
+        logger.info(f"Processing {company_name}...")
+        
+        # Fetch patents
+        patents = await collector.fetch_patents(
+            company_name=company_name,
+            years_back=years_back,
+            max_results=results_per_company
+        )
+        
+        if not patents:
+            logger.warning(f"No patents found for {company_name}")
+            continue
+        
+        # Classify each patent
+        classified_patents = []
+        for patent in patents:
+            classified_patent = collector.classify_patent(patent)
+            classified_patents.append(classified_patent)
+        
+        # Analyze patent portfolio
+        signal = collector.analyze_patents(
+            company_id=company_id,
+            company_name=company_name,
+            patents=classified_patents,
+            years=years_back
+        )
+        
+        # Store in state
+        all_patents.extend([asdict(p) for p in classified_patents])
+        patent_signals[company_id] = signal
+        
+        # Update state
+        state.patents.extend([asdict(p) for p in classified_patents])
+        state.patent_scores[company_id] = signal.normalized_score
+        
+        logger.info(f"  ✓ {company_name}: {signal.normalized_score}/100 "
+                   f"({len([p for p in classified_patents if p.is_ai_related])} AI patents)")
+    
+    # Store aggregated results in state
+    state.summary["patents_collected"] = len(all_patents)
+    state.summary["ai_patents"] = sum(1 for p in all_patents if p.get("is_ai_related", False))
+    state.summary["patent_signals"] = {
+        company_id: {
+            "score": signal.normalized_score,
+            "ai_patents": signal.metadata.get("ai_patents", 0),
+            "total_patents": signal.metadata.get("total_patents", 0)
+        }
+        for company_id, signal in patent_signals.items()
+    }
+    
+    logger.info(f"\n✅ Patent pipeline complete:")
+    logger.info(f"   • Total patents collected: {len(all_patents)}")
+    logger.info(f"   • AI-related patents: {sum(1 for p in all_patents if p.get('is_ai_related', False))}")
+    logger.info(f"   • Companies processed: {len(patent_signals)}")
+    
+    return state
+
+
+# Legacy function for backward compatibility
+async def run_patent_signals_legacy(
+    state: Pipeline2State,
+    years_back: int = 5,
+    results_per_company: int = 100,
+    api_key: Optional[str] = None,
+    skip_storage: bool = False,
+) -> Pipeline2State:
+    """Legacy wrapper for backward compatibility."""
+    return await run_patent_signals(
+        state=state,
         years_back=years_back,
         results_per_company=results_per_company,
         api_key=api_key,
+        skip_storage=skip_storage
     )
-    state = step3_classify_ai_patents(state)
-    state = step4_score_patent_portfolio(state)
-    state = step5_save_patent_results(state)
-    return state

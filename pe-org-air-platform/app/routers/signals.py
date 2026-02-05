@@ -1,448 +1,479 @@
-from fastapi import APIRouter, HTTPException, Query
-from typing import List, Optional
+"""
+Signals API Router
+app/routers/signals.py
+
+Endpoints:
+- POST /api/v1/signals/collect         - Trigger signal collection for a company
+- GET  /api/v1/signals                 - List signals (filterable)
+- GET  /api/v1/companies/{id}/signals  - Get signal summary for company
+- GET  /api/v1/companies/{id}/signals/{category} - Get signals by category
+"""
+
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
+from pydantic import BaseModel, Field
+from typing import Optional, List, Dict, Any
+from uuid import uuid4
 from datetime import datetime, timezone
+from enum import Enum
 import logging
+
 from app.services.leadership_service import get_leadership_service
+from app.services.job_signal_service import get_job_signal_service
+from app.services.tech_signal_service import get_tech_signal_service
+from app.services.patent_signal_service import get_patent_signal_service
 from app.repositories.signal_repository import get_signal_repository
 from app.repositories.company_repository import CompanyRepository
-import json
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(
-    prefix="/api/v1/signals",
-    # tags=["Signals"],
-)
+# In-memory task status store (in production, use Redis or database)
+_task_store: Dict[str, Dict[str, Any]] = {}
 
 
-# ============================================================
-# SECTION 1: LEADERSHIP SIGNALS (From DEF 14A)
-# ============================================================
+# =============================================================================
+# Enums and Models
+# =============================================================================
+
+class SignalCategory(str, Enum):
+    """Signal category types."""
+    TECHNOLOGY_HIRING = "technology_hiring"
+    INNOVATION_ACTIVITY = "innovation_activity"
+    DIGITAL_PRESENCE = "digital_presence"
+    LEADERSHIP_SIGNALS = "leadership_signals"
+
+
+class CollectionRequest(BaseModel):
+    """Request model for signal collection."""
+    company_id: str = Field(..., description="Company ID or ticker symbol")
+    categories: List[str] = Field(
+        default=["technology_hiring", "innovation_activity", "digital_presence", "leadership_signals"],
+        description="Signal categories to collect"
+    )
+    years_back: int = Field(default=5, ge=1, le=10, description="Years back for patent search")
+    force_refresh: bool = Field(default=False, description="Force refresh cached data")
+
+
+class CollectionResponse(BaseModel):
+    """Response model for signal collection."""
+    task_id: str
+    status: str
+    message: str
+
+
+class TaskStatusResponse(BaseModel):
+    """Response model for task status."""
+    task_id: str
+    status: str
+    started_at: Optional[str] = None
+    completed_at: Optional[str] = None
+    progress: Optional[Dict[str, Any]] = None
+    result: Optional[Dict[str, Any]] = None
+    error: Optional[str] = None
+
+
+class SignalSummary(BaseModel):
+    """Signal summary for a company."""
+    company_id: str
+    company_name: Optional[str] = None
+    ticker: Optional[str] = None
+    technology_hiring_score: Optional[float] = None
+    innovation_activity_score: Optional[float] = None
+    digital_presence_score: Optional[float] = None
+    leadership_signals_score: Optional[float] = None
+    composite_score: Optional[float] = None
+    signal_count: int = 0
+    last_updated: Optional[str] = None
+
+
+class SignalDetail(BaseModel):
+    """Detailed signal record."""
+    signal_id: str
+    company_id: str
+    category: str
+    source: Optional[str] = None
+    normalized_score: Optional[float] = None
+    confidence: Optional[float] = None
+    evidence_count: int = 0
+    signal_date: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
+
+
+# =============================================================================
+# Routers
+# =============================================================================
+
+# Main signals router
+router = APIRouter(prefix="/api/v1", tags=["Signals"])
+
+
+# =============================================================================
+# POST /api/v1/signals/collect - Trigger signal collection
+# =============================================================================
 
 @router.post(
-    "/leadership/{ticker}",
-    tags=["1. Leadership Signals"],
-    summary="Analyze leadership signals for a company",
+    "/signals/collect",
+    response_model=CollectionResponse,
+    summary="Trigger signal collection for a company",
     description="""
-    Extract leadership signals from DEF 14A (proxy statement) filings.
-    
-    **Analyzes:**
-    - Tech Executive Presence (CTO, CDO, Chief AI Officer, etc.)
-    - AI/Tech Keywords in Compensation Discussion
-    - Tech-Linked Performance Metrics
-    - Board Tech Expertise
-    
-    **Scoring (0-100):**
-    - Tech Exec Presence: 30 pts max
-    - AI/Tech Keywords: 30 pts max
-    - Performance Metrics: 25 pts max
-    - Board Expertise: 15 pts max
-    
-    Results are stored in `external_signals` and `company_signal_summaries` tables.
+    Trigger signal collection for a company. Runs asynchronously in the background.
+
+    **Categories:**
+    - `technology_hiring` - Job posting analysis (LinkedIn, Indeed, etc.)
+    - `innovation_activity` - Patent analysis (PatentsView API)
+    - `digital_presence` - Tech stack analysis (from job descriptions)
+    - `leadership_signals` - Leadership analysis (DEF 14A SEC filings)
+
+    Returns a task_id to check status via GET /api/v1/signals/tasks/{task_id}
     """
 )
-async def analyze_leadership_signals(ticker: str):
-    """Analyze DEF 14A filings for leadership signals."""
-    logger.info(f"🎯 Leadership analysis request for: {ticker}")
-    
-    try:
-        service = get_leadership_service()
-        result = service.analyze_company(ticker)
-        return {
-            "status": "success",
-            "ticker": ticker,
-            "result": result
-        }
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except Exception as e:
-        logger.error(f"Leadership analysis failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+async def collect_signals(
+    request: CollectionRequest,
+    background_tasks: BackgroundTasks
+):
+    """Trigger signal collection for a company."""
+    # Generate task ID
+    task_id = str(uuid4())
 
+    # Initialize task status
+    _task_store[task_id] = {
+        "task_id": task_id,
+        "status": "queued",
+        "started_at": datetime.now(timezone.utc).isoformat(),
+        "completed_at": None,
+        "progress": {
+            "total_categories": len(request.categories),
+            "completed_categories": 0,
+            "current_category": None
+        },
+        "result": None,
+        "error": None
+    }
 
-@router.post(
-    "/leadership",
-    tags=["1. Leadership Signals"],
-    summary="Analyze leadership signals for all companies"
-)
-async def analyze_all_leadership_signals():
-    """Analyze DEF 14A filings for all 10 target companies."""
-    logger.info("🎯 Leadership analysis request for ALL companies")
-    
-    try:
-        service = get_leadership_service()
-        result = service.analyze_all_companies()
-        return result
-    except Exception as e:
-        logger.error(f"Batch leadership analysis failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    # Add to background tasks
+    background_tasks.add_task(
+        run_signal_collection,
+        task_id=task_id,
+        company_id=request.company_id,
+        categories=request.categories,
+        years_back=request.years_back,
+        force_refresh=request.force_refresh
+    )
 
+    logger.info(f"Signal collection queued: task_id={task_id}, company={request.company_id}")
 
-# ============================================================
-# SECTION 2: SIGNAL QUERIES
-# ============================================================
+    return CollectionResponse(
+        task_id=task_id,
+        status="queued",
+        message=f"Signal collection started for company {request.company_id}"
+    )
+
 
 @router.get(
-    "/{ticker}",
-    tags=["2. Signal Queries"],
-    summary="Get all signals for a company"
+    "/signals/tasks/{task_id}",
+    response_model=TaskStatusResponse,
+    summary="Get task status",
+    description="Check the status of a signal collection task."
 )
-async def get_company_signals(
-    ticker: str,
-    category: Optional[str] = Query(None, description="Filter by category")
+async def get_task_status(task_id: str):
+    """Get the status of a signal collection task."""
+    if task_id not in _task_store:
+        raise HTTPException(status_code=404, detail=f"Task not found: {task_id}")
+
+    return TaskStatusResponse(**_task_store[task_id])
+
+
+# =============================================================================
+# GET /api/v1/signals - List signals (filterable)
+# =============================================================================
+
+@router.get(
+    "/signals",
+    summary="List signals (filterable)",
+    description="""
+    List all signals with optional filters.
+
+    **Filters:**
+    - `category` - Filter by signal category
+    - `ticker` - Filter by company ticker
+    - `min_score` - Minimum normalized score
+    - `limit` - Maximum results to return
+    """
+)
+async def list_signals(
+    category: Optional[str] = Query(None, description="Filter by category"),
+    ticker: Optional[str] = Query(None, description="Filter by company ticker"),
+    min_score: Optional[float] = Query(None, ge=0, le=100, description="Minimum score"),
+    limit: int = Query(100, ge=1, le=1000, description="Max results")
 ):
-    """Get all signals for a company, optionally filtered by category."""
+    """List signals with optional filters."""
     repo = get_signal_repository()
     company_repo = CompanyRepository()
-    
-    company = company_repo.get_by_ticker(ticker.upper())
-    if not company:
-        raise HTTPException(status_code=404, detail=f"Company not found: {ticker}")
-    
-    if category:
-        signals = repo.get_signals_by_category(str(company['id']), category)
+
+    results = []
+
+    if ticker:
+        # Get signals for specific company
+        company = company_repo.get_by_ticker(ticker.upper())
+        if not company:
+            raise HTTPException(status_code=404, detail=f"Company not found: {ticker}")
+
+        company_id = str(company['id'])
+        if category:
+            signals = repo.get_signals_by_category(company_id, category)
+        else:
+            signals = repo.get_signals_by_company(company_id)
+
+        results = signals
     else:
-        signals = repo.get_signals_by_company(str(company['id']))
-    
+        # Get signals for all companies
+        companies = company_repo.get_all()
+        for company in companies:
+            company_id = str(company.get('id'))
+            if category:
+                signals = repo.get_signals_by_category(company_id, category)
+            else:
+                signals = repo.get_signals_by_company(company_id)
+            results.extend(signals)
+
+    # Apply min_score filter
+    if min_score is not None:
+        results = [s for s in results if (s.get('normalized_score') or 0) >= min_score]
+
+    # Apply limit
+    results = results[:limit]
+
     return {
-        "ticker": ticker.upper(),
-        "signal_count": len(signals),
-        "signals": signals
+        "total": len(results),
+        "filters": {
+            "category": category,
+            "ticker": ticker,
+            "min_score": min_score
+        },
+        "signals": results
     }
 
 
-@router.get(
-    "/summary/{ticker}",
-    tags=["2. Signal Queries"],
-    summary="Get signal summary for a company"
-)
-async def get_company_signal_summary(ticker: str):
-    """Get the aggregated signal summary for a company."""
-    repo = get_signal_repository()
-    
-    summary = repo.get_summary_by_ticker(ticker.upper())
-    
-    if not summary:
-        raise HTTPException(status_code=404, detail=f"No signal summary found for: {ticker}")
-    
-    return summary
-
-
-# ============================================================
-# SECTION 3: SIGNAL REPORTS
-# ============================================================
-
-# @router.get(
-#     "/report/summary",
-#     tags=["3. Signal Reports"],
-#     summary="Get signal summary table for all companies",
-#     description="Returns the Signal Scores by Company table with leadership details"
-# )
-# async def get_signal_summary_report():
-#     """Get signal summary for all companies in table format."""
-#     repo = get_signal_repository()
-    
-#     summaries = repo.get_all_summaries()
-#     target_tickers = ["CAT", "DE", "UNH", "HCA", "ADP", "PAYX", "WMT", "TGT", "JPM", "GS"]
-    
-#     # Build table format
-#     table = {
-#         "headers": ["Ticker", "Hiring", "Innovation", "Tech", "Leadership", "Composite"],
-#         "rows": []
-#     }
-    
-#     # Build detailed company signals
-#     company_signals = []
-    
-#     for ticker in target_tickers:
-#         # Get summary for this ticker
-#         summary = next((s for s in summaries if s["ticker"] == ticker), None)
-        
-#         # Add to table
-#         if summary:
-#             table["rows"].append([
-#                 ticker,
-#                 summary.get("technology_hiring_score") or "-",
-#                 summary.get("innovation_activity_score") or "-",
-#                 summary.get("digital_presence_score") or "-",
-#                 summary.get("leadership_signals_score") or "-",
-#                 round(summary["composite_score"], 1) if summary.get("composite_score") else "-"
-#             ])
-#         else:
-#             table["rows"].append([ticker, "-", "-", "-", "-", "-"])
-        
-#         # Get detailed leadership signals for this company
-#         signals = repo.get_signals_by_ticker(ticker)
-#         leadership_signals = [s for s in signals if s.get('category') == 'leadership_signals']
-        
-#         if leadership_signals:
-#             # Aggregate metadata across all filings
-#             all_tech_execs = []
-#             all_keyword_counts = {}
-#             all_filing_dates = []
-#             total_score = 0
-            
-#             for sig in leadership_signals:
-#                 metadata = sig.get('metadata', {})
-#                 if isinstance(metadata, str):
-#                     try:
-#                         metadata = json.loads(metadata)
-#                     except:
-#                         metadata = {}
-                
-#                 # Collect tech execs
-#                 all_tech_execs.extend(metadata.get('tech_execs_found', []))
-                
-#                 # Aggregate keyword counts
-#                 for kw, count in metadata.get('keyword_counts', {}).items():
-#                     all_keyword_counts[kw] = all_keyword_counts.get(kw, 0) + count
-                
-#                 # Collect filing dates
-#                 if metadata.get('filing_date'):
-#                     all_filing_dates.append(metadata['filing_date'])
-                
-#                 total_score += sig.get('normalized_score', 0)
-            
-#             avg_score = total_score / len(leadership_signals) if leadership_signals else 0
-#             avg_confidence = sum(s.get('confidence', 0) for s in leadership_signals) / len(leadership_signals)
-            
-#             company_signals.append({
-#                 "ticker": ticker,
-#                 "company_id": leadership_signals[0].get('company_id'),
-#                 "category": "leadership_signals",
-#                 "source": "sec_filing",
-#                 "normalized_score": round(avg_score, 2),
-#                 "confidence": round(avg_confidence, 3),
-#                 "signal_count": len(leadership_signals),
-#                 "metadata": {
-#                     "tech_execs_found": list(set(all_tech_execs)),
-#                     "keyword_counts": all_keyword_counts,
-#                     "filing_dates": all_filing_dates
-#                 }
-#             })
-#         else:
-#             company_signals.append({
-#                 "ticker": ticker,
-#                 "company_id": None,
-#                 "category": "leadership_signals",
-#                 "source": None,
-#                 "normalized_score": None,
-#                 "confidence": None,
-#                 "signal_count": 0,
-#                 "metadata": None
-#             })
-    
-#     return {
-#         "report_generated_at": datetime.now(timezone.utc).isoformat(),
-#         "companies_count": len(summaries),
-#         "table": table,
-#         "company_signals": company_signals
-#     }
-
+# =============================================================================
+# GET /api/v1/companies/{id}/signals - Get signal summary for company
+# =============================================================================
 
 @router.get(
-    "/report/summary/{ticker}",
-    tags=["3. Signal Reports"],
-    summary="Get signal summary for a specific company",
-    description="Returns detailed signal information for one company"
+    "/companies/{company_id}/signals",
+    summary="Get signal summary for company",
+    description="""
+    Get aggregated signal summary for a company.
+
+    The company_id can be either:
+    - Company UUID/ID
+    - Ticker symbol (e.g., "AAPL", "MSFT")
+    """
 )
-async def get_company_signal_summary_report(ticker: str):
-    """Get detailed signal summary for a specific company."""
-    ticker = ticker.upper()
+async def get_company_signals(company_id: str):
+    """Get signal summary for a company."""
     repo = get_signal_repository()
     company_repo = CompanyRepository()
-    
-    # Get company
-    company = company_repo.get_by_ticker(ticker)
+
+    # Try to find company by ticker first, then by ID
+    company = company_repo.get_by_ticker(company_id.upper())
     if not company:
-        raise HTTPException(status_code=404, detail=f"Company not found: {ticker}")
-    
-    company_id = str(company['id'])
-    
+        # Try as company ID
+        companies = company_repo.get_all()
+        company = next((c for c in companies if str(c.get('id')) == company_id), None)
+
+    if not company:
+        raise HTTPException(status_code=404, detail=f"Company not found: {company_id}")
+
+    ticker = company.get('ticker')
+    db_company_id = str(company.get('id'))
+
     # Get summary
-    summary = repo.get_summary_by_ticker(ticker)
-    
+    summary = repo.get_summary_by_ticker(ticker) if ticker else None
+
     # Get all signals for this company
-    signals = repo.get_signals_by_ticker(ticker)
-    leadership_signals = [s for s in signals if s.get('category') == 'leadership_signals']
-    
-    # Build response
-    leadership_detail = None
-    if leadership_signals:
-        all_tech_execs = []
-        all_keyword_counts = {}
-        all_filing_dates = []
-        all_board_indicators = []
-        total_tech_exec_score = 0
-        total_keyword_score = 0
-        total_perf_score = 0
-        total_board_score = 0
-        
-        for sig in leadership_signals:
-            metadata = sig.get('metadata', {})
-            if isinstance(metadata, str):
-                try:
-                    metadata = json.loads(metadata)
-                except:
-                    metadata = {}
-            
-            all_tech_execs.extend(metadata.get('tech_execs_found', []))
-            all_board_indicators.extend(metadata.get('board_indicators', []))
-            
-            for kw, count in metadata.get('keyword_counts', {}).items():
-                all_keyword_counts[kw] = all_keyword_counts.get(kw, 0) + count
-            
-            if metadata.get('filing_date'):
-                all_filing_dates.append(metadata['filing_date'])
-            
-            total_tech_exec_score += metadata.get('tech_exec_score', 0)
-            total_keyword_score += metadata.get('keyword_score', 0)
-            total_perf_score += metadata.get('performance_metric_score', 0)
-            total_board_score += metadata.get('board_tech_score', 0)
-        
-        n = len(leadership_signals)
-        avg_score = sum(s.get('normalized_score', 0) for s in leadership_signals) / n
-        avg_confidence = sum(s.get('confidence', 0) for s in leadership_signals) / n
-        
-        leadership_detail = {
-            "company_id": company_id,
-            "category": "leadership_signals",
-            "source": "sec_filing",
-            "normalized_score": round(avg_score, 2),
-            "confidence": round(avg_confidence, 3),
-            "signal_count": n,
-            "score_breakdown": {
-                "tech_exec_score": round(total_tech_exec_score / n, 1),
-                "keyword_score": round(total_keyword_score / n, 1),
-                "performance_metric_score": round(total_perf_score / n, 1),
-                "board_tech_score": round(total_board_score / n, 1)
-            },
-            "metadata": {
-                "tech_execs_found": list(set(all_tech_execs)),
-                "keyword_counts": all_keyword_counts,
-                "board_indicators": list(set(all_board_indicators)),
-                "filing_dates": all_filing_dates
-            }
-        }
-    
+    signals = repo.get_signals_by_company(db_company_id)
+
+    # Group signals by category
+    signals_by_category = {}
+    for signal in signals:
+        cat = signal.get('category', 'unknown')
+        if cat not in signals_by_category:
+            signals_by_category[cat] = []
+        signals_by_category[cat].append(signal)
+
     return {
-        "ticker": ticker,
-        "company_id": company_id,
+        "company_id": db_company_id,
         "company_name": company.get('name'),
+        "ticker": ticker,
         "summary": {
             "technology_hiring_score": summary.get("technology_hiring_score") if summary else None,
             "innovation_activity_score": summary.get("innovation_activity_score") if summary else None,
             "digital_presence_score": summary.get("digital_presence_score") if summary else None,
             "leadership_signals_score": summary.get("leadership_signals_score") if summary else None,
             "composite_score": summary.get("composite_score") if summary else None,
-            "signal_count": summary.get("signal_count") if summary else 0
+            "signal_count": len(signals),
+            "last_updated": summary.get("updated_at") if summary else None
         },
-        "leadership_signals": leadership_detail,
-        "hiring_signals": None,  # Placeholder for future
-        "innovation_signals": None,  # Placeholder for future
-        "tech_signals": None  # Placeholder for future
+        "categories": {
+            cat: {
+                "count": len(sigs),
+                "latest_score": sigs[0].get('normalized_score') if sigs else None
+            }
+            for cat, sigs in signals_by_category.items()
+        }
     }
 
 
-# @router.get(
-#     "/report/leadership",
-#     tags=["3. Signal Reports"],
-#     summary="Get detailed leadership signals report"
-# )
-# async def get_leadership_report():
-#     """Get detailed leadership signal breakdown for all companies."""
-#     repo = get_signal_repository()
-    
-#     # Get all leadership signals
-#     all_signals = []
-#     target_tickers = ["CAT", "DE", "UNH", "HCA", "ADP", "PAYX", "WMT", "TGT", "JPM", "GS"]
-    
-#     for ticker in target_tickers:
-#         signals = repo.get_signals_by_ticker(ticker)
-#         leadership_signals = [s for s in signals if s.get('category') == 'leadership_signals']
-        
-#         if leadership_signals:
-#             # Get the most recent signal for summary
-#             latest = leadership_signals[0]
-#             all_signals.append({
-#                 "ticker": ticker,
-#                 "score": latest.get("normalized_score"),
-#                 "confidence": latest.get("confidence"),
-#                 "signal_count": len(leadership_signals),
-#                 "latest_filing": str(latest.get("signal_date"))
-#             })
-#         else:
-#             all_signals.append({
-#                 "ticker": ticker,
-#                 "score": None,
-#                 "confidence": None,
-#                 "signal_count": 0,
-#                 "latest_filing": None
-#             })
-    
-#     # Build table
-#     table = {
-#         "headers": ["Ticker", "Leadership Score", "Confidence", "Filings Analyzed", "Latest Filing"],
-#         "rows": [[
-#             s["ticker"],
-#             s["score"] or "-",
-#             f"{s['confidence']:.2f}" if s["confidence"] else "-",
-#             s["signal_count"],
-#             s["latest_filing"] or "-"
-#         ] for s in all_signals]
-#     }
-    
-#     return {
-#         "report_generated_at": datetime.now(timezone.utc).isoformat(),
-#         "table": table,
-#         "details": all_signals
-#     }
+# =============================================================================
+# GET /api/v1/companies/{id}/signals/{category} - Get signals by category
+# =============================================================================
 
+@router.get(
+    "/companies/{company_id}/signals/{category}",
+    summary="Get signals by category",
+    description="""
+    Get detailed signals for a company filtered by category.
 
-# ============================================================
-# SECTION 4: PLACEHOLDER FOR FUTURE SIGNALS
-# ============================================================
-
-@router.post(
-    "/hiring/{ticker}",
-    tags=["4. Future Signals (Placeholder)"],
-    summary="[PLACEHOLDER] Analyze hiring signals",
-    description="This endpoint will be implemented when job posting APIs are integrated."
+    **Categories:**
+    - `technology_hiring` - Job posting/hiring signals
+    - `innovation_activity` - Patent/innovation signals
+    - `digital_presence` - Tech stack signals
+    - `leadership_signals` - Leadership/executive signals
+    """
 )
-async def analyze_hiring_signals(ticker: str):
-    """Placeholder for hiring signal analysis."""
+async def get_company_signals_by_category(company_id: str, category: str):
+    """Get signals for a company filtered by category."""
+    repo = get_signal_repository()
+    company_repo = CompanyRepository()
+
+    # Validate category
+    valid_categories = ["technology_hiring", "innovation_activity", "digital_presence", "leadership_signals"]
+    if category not in valid_categories:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid category: {category}. Valid categories: {valid_categories}"
+        )
+
+    # Try to find company by ticker first, then by ID
+    company = company_repo.get_by_ticker(company_id.upper())
+    if not company:
+        companies = company_repo.get_all()
+        company = next((c for c in companies if str(c.get('id')) == company_id), None)
+
+    if not company:
+        raise HTTPException(status_code=404, detail=f"Company not found: {company_id}")
+
+    ticker = company.get('ticker')
+    db_company_id = str(company.get('id'))
+
+    # Get signals for this category
+    signals = repo.get_signals_by_category(db_company_id, category)
+
+    # Calculate aggregate stats
+    scores = [s.get('normalized_score') for s in signals if s.get('normalized_score') is not None]
+    avg_score = sum(scores) / len(scores) if scores else None
+
     return {
-        "status": "not_implemented",
-        "message": "Hiring signals require integration with LinkedIn/Indeed APIs. To be implemented in future case study.",
-        "ticker": ticker
+        "company_id": db_company_id,
+        "company_name": company.get('name'),
+        "ticker": ticker,
+        "category": category,
+        "signal_count": len(signals),
+        "average_score": round(avg_score, 2) if avg_score else None,
+        "signals": signals
     }
 
 
-@router.post(
-    "/innovation/{ticker}",
-    tags=["4. Future Signals (Placeholder)"],
-    summary="[PLACEHOLDER] Analyze innovation signals",
-    description="This endpoint will be implemented when USPTO patent API is integrated."
-)
-async def analyze_innovation_signals(ticker: str):
-    """Placeholder for innovation signal analysis."""
-    return {
-        "status": "not_implemented",
-        "message": "Innovation signals require integration with USPTO patent API. To be implemented in future case study.",
-        "ticker": ticker
+# =============================================================================
+# Background Task Implementation
+# =============================================================================
+
+async def run_signal_collection(
+    task_id: str,
+    company_id: str,
+    categories: List[str],
+    years_back: int,
+    force_refresh: bool
+):
+    """Background task for signal collection."""
+    logger.info(f"Starting signal collection: task_id={task_id}, company={company_id}")
+
+    # Update status to running
+    _task_store[task_id]["status"] = "running"
+
+    # Get company info
+    company_repo = CompanyRepository()
+    company = company_repo.get_by_ticker(company_id.upper())
+    if not company:
+        companies = company_repo.get_all()
+        company = next((c for c in companies if str(c.get('id')) == company_id), None)
+
+    if not company:
+        _task_store[task_id]["status"] = "failed"
+        _task_store[task_id]["error"] = f"Company not found: {company_id}"
+        _task_store[task_id]["completed_at"] = datetime.now(timezone.utc).isoformat()
+        return
+
+    ticker = company.get('ticker')
+    result = {
+        "company_id": str(company.get('id')),
+        "company_name": company.get('name'),
+        "ticker": ticker,
+        "signals": {},
+        "errors": []
     }
 
+    # Process each category
+    for i, category in enumerate(categories):
+        _task_store[task_id]["progress"]["current_category"] = category
 
-@router.post(
-    "/tech/{ticker}",
-    tags=["4. Future Signals (Placeholder)"],
-    summary="[PLACEHOLDER] Analyze tech stack signals",
-    description="This endpoint will be implemented when BuiltWith API is integrated."
-)
-async def analyze_tech_signals(ticker: str):
-    """Placeholder for tech stack signal analysis."""
-    return {
-        "status": "not_implemented",
-        "message": "Tech stack signals require integration with BuiltWith API. To be implemented in future case study.",
-        "ticker": ticker
-    }
+        try:
+            if category == "technology_hiring":
+                service = get_job_signal_service()
+                signal_result = await service.analyze_company(ticker, force_refresh=force_refresh)
+                result["signals"]["technology_hiring"] = {
+                    "status": "success",
+                    "score": signal_result.get("normalized_score"),
+                    "details": signal_result
+                }
+
+            elif category == "innovation_activity":
+                service = get_patent_signal_service()
+                signal_result = await service.analyze_company(ticker, years_back=years_back)
+                result["signals"]["innovation_activity"] = {
+                    "status": "success",
+                    "score": signal_result.get("normalized_score"),
+                    "details": signal_result
+                }
+
+            elif category == "digital_presence":
+                service = get_tech_signal_service()
+                signal_result = await service.analyze_company(ticker, force_refresh=force_refresh)
+                result["signals"]["digital_presence"] = {
+                    "status": "success",
+                    "score": signal_result.get("normalized_score"),
+                    "details": signal_result
+                }
+
+            elif category == "leadership_signals":
+                service = get_leadership_service()
+                signal_result = await service.analyze_company(ticker)
+                result["signals"]["leadership_signals"] = {
+                    "status": "success",
+                    "score": signal_result.get("normalized_score"),
+                    "details": signal_result
+                }
+
+        except Exception as e:
+            logger.error(f"Error collecting {category} signals: {e}")
+            result["signals"][category] = {"status": "failed", "error": str(e)}
+            result["errors"].append(f"{category}: {str(e)}")
+
+        _task_store[task_id]["progress"]["completed_categories"] = i + 1
+
+    # Update task status
+    _task_store[task_id]["status"] = "completed" if not result["errors"] else "completed_with_errors"
+    _task_store[task_id]["completed_at"] = datetime.now(timezone.utc).isoformat()
+    _task_store[task_id]["result"] = result
+    _task_store[task_id]["progress"]["current_category"] = None
+
+    logger.info(f"Signal collection completed: task_id={task_id}")

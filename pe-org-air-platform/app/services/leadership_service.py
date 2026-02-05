@@ -31,7 +31,7 @@ class LeadershipSignalService:
         clean_filing_type = filing_type.replace(" ", "")
         return f"sec/parsed/{ticker}/{clean_filing_type}/{filing_date}_full.json"
     
-    def analyze_company(self, ticker: str) -> Dict:
+    async def analyze_company(self, ticker: str) -> Dict:
         """
         Analyze all DEF 14A filings for a company and create leadership signals.
         """
@@ -168,7 +168,7 @@ class LeadershipSignalService:
             ticker=ticker,
             leadership_score=round(weighted_score, 2)
         )
-        
+
         # Summary
         logger.info("=" * 60)
         logger.info(f"📊 LEADERSHIP ANALYSIS COMPLETE FOR: {ticker}")
@@ -177,7 +177,7 @@ class LeadershipSignalService:
         logger.info(f"   Average Score: {weighted_score:.1f}/100")
         logger.info(f"   Tech Execs Found: {all_tech_execs}")
         logger.info("=" * 60)
-        
+
         return {
             "ticker": ticker,
             "company_id": company_id,
@@ -199,7 +199,7 @@ class LeadershipSignalService:
             "filing_dates": filing_dates
         }
     
-    def analyze_all_companies(self) -> Dict:
+    async def analyze_all_companies(self) -> Dict:
         """Analyze leadership signals for all 10 target companies."""
         target_tickers = ["CAT", "DE", "UNH", "HCA", "ADP", "PAYX", "WMT", "TGT", "JPM", "GS"]
         
@@ -213,7 +213,7 @@ class LeadershipSignalService:
         
         for ticker in target_tickers:
             try:
-                result = self.analyze_company(ticker)
+                result = await self.analyze_company(ticker)
                 results.append({
                     "ticker": ticker,
                     "status": "success",

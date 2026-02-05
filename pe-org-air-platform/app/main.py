@@ -52,6 +52,36 @@ async def root():
 
 
 # SHUTDOWN EVENT
+        "docs": "/docs",
+        "redoc": "/redoc",
+    }
+
+
+# REGISTER ROUTERS
+app.include_router(documents_router)
+app.include_router(health_router)
+app.include_router(companies_router)
+app.include_router(industries_router)  # NEW: Separate industries router
+app.include_router(assessments_router)
+app.include_router(dimension_scores_router)
+app.include_router(signals_router)  # NEW: Signals router for job postings, patents, tech stacks
+
+
+# STARTUP & SHUTDOWN EVENTS
+@app.on_event("startup")
+async def startup_event():
+    """
+    Runs when the application starts.
+
+    Use this for:
+    - Database connection initialization
+    - Loading configuration
+    - Validating environment variables
+    """
+    print("Starting PE Org-AI-R Platform Foundation API...")
+    print("Swagger UI available at: http://localhost:8000/docs")
+
+
 @app.on_event("shutdown")
 async def shutdown_event():
     print("Shutting down PE Org-AI-R Platform Foundation API...")
