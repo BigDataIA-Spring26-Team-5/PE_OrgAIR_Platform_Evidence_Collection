@@ -59,11 +59,37 @@ class TechSignalService:
             # Get job data (collect fresh if needed)
             logger.info("📊 Getting job data for tech stack analysis...")
             job_data = await self.job_data_service.collect_job_data(ticker, force_refresh=force_refresh)
-            
+
             if not job_data or "job_postings" not in job_data:
                 raise ValueError(f"No job data available for {ticker}")
-            
-            # Analyze tech stack from the shared job data
+
+            # Store raw tech stack data to S3 BEFORE analysis
+            logger.info("💾 Storing raw tech stack data to S3...")
+            try:
+                # Extract tech keywords from job postings for raw storage
+                all_tech_keywords = []
+                for posting in job_data.get("job_postings", []):
+                    all_tech_keywords.extend(posting.get("techstack_keywords_found", []))
+
+                raw_techstack_data = {
+                    "company_id": company_id,
+                    "company_name": company_name,
+                    "ticker": ticker,
+                    "total_jobs": len(job_data.get("job_postings", [])),
+                    "raw_tech_keywords": list(set(all_tech_keywords)),
+                    "data_collected_at": job_data.get("collected_at"),
+                    "stored_at": datetime.now(timezone.utc).isoformat()
+                }
+                self.s3_service.store_signal_data(
+                    signal_type="techstack",
+                    ticker=ticker,
+                    data=raw_techstack_data
+                )
+                logger.info(f"  📤 Stored raw tech stack data to S3 for {ticker}")
+            except Exception as e:
+                logger.warning(f"  ⚠️ Failed to store raw tech stack data to S3: {e}")
+
+            # Analyze tech stack from the shared job data (AFTER storing raw data)
             logger.info("🔧 Analyzing tech stack...")
             analysis_result = self.job_data_service.analyze_tech_stack(job_data)
             

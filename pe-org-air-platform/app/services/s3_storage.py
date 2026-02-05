@@ -481,6 +481,47 @@ class S3StorageService:
         content = json.dumps(data, indent=2, default=str)
         return self.upload_content(content, s3_key, content_type="application/json")
 
+    def store_signal_data(
+        self,
+        signal_type: str,
+        ticker: str,
+        data: dict,
+        timestamp: str = None
+    ) -> str:
+        """
+        Store signal data to S3 with standardized path structure.
+
+        Common method for all signal types to ensure consistent storage patterns.
+
+        Args:
+            signal_type: Type of signal ('jobs', 'patents', 'techstack')
+            ticker: Company ticker symbol
+            data: Dictionary containing signal data
+            timestamp: Optional timestamp string (defaults to current UTC time)
+
+        Returns:
+            s3_key on success
+
+        S3 Path Structure:
+            signals/{signal_type}/{ticker}/{timestamp}.json
+
+        Examples:
+            signals/jobs/AAPL/20240115_143052.json
+            signals/patents/MSFT/20240115_143052.json
+            signals/techstack/GOOGL/20240115_143052.json
+        """
+        from datetime import datetime, timezone
+
+        if timestamp is None:
+            timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+
+        ticker = ticker.upper()
+        s3_key = f"signals/{signal_type}/{ticker}/{timestamp}.json"
+
+        logger.info(f"  💾 Storing {signal_type} data to S3: {s3_key}")
+
+        return self.upload_json(data, s3_key)
+
 
 # Singleton instance
 _s3_service: Optional[S3StorageService] = None

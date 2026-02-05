@@ -28,6 +28,7 @@ from dotenv import load_dotenv
 from app.pipelines.pipeline2_state import Pipeline2State
 from app.pipelines.utils import clean_nan, safe_filename
 from app.models.signal import SignalCategory, SignalSource, ExternalSignal
+from app.services.s3_storage import get_s3_service
 
 # Load environment variables from .env file
 load_dotenv()
@@ -351,33 +352,56 @@ async def run_patent_signals(
     logger.info("-" * 60)
     logger.info("📊 PATENT SIGNALS PIPELINE")
     logger.info("-" * 60)
-    
+
     collector = PatentSignalCollector(api_key=api_key)
-    
+    s3_service = get_s3_service()
+
     all_patents = []
     patent_signals = {}
-    
+
     for company in state.companies:
         company_id = company.get("id", "")
         company_name = company.get("name", "")
-        
+        ticker = company.get("ticker", "").upper()
+
         if not company_name:
             continue
-        
+
         logger.info(f"Processing {company_name}...")
-        
+
         # Fetch patents
         patents = await collector.fetch_patents(
             company_name=company_name,
             years_back=years_back,
             max_results=results_per_company
         )
-        
+
         if not patents:
             logger.warning(f"No patents found for {company_name}")
             continue
-        
-        # Classify each patent
+
+        # Store raw patents to S3 BEFORE classification
+        if not skip_storage and ticker:
+            raw_patents_data = {
+                "company_id": company_id,
+                "company_name": company_name,
+                "ticker": ticker,
+                "years_back": years_back,
+                "total_patents": len(patents),
+                "fetched_at": datetime.now(timezone.utc).isoformat(),
+                "patents": [asdict(p) for p in patents]
+            }
+            try:
+                s3_service.store_signal_data(
+                    signal_type="patents",
+                    ticker=ticker,
+                    data=raw_patents_data
+                )
+                logger.info(f"  📤 Stored {len(patents)} raw patents to S3 for {ticker}")
+            except Exception as e:
+                logger.warning(f"  ⚠️ Failed to store raw patents to S3: {e}")
+
+        # Classify each patent (AFTER storing raw data)
         classified_patents = []
         for patent in patents:
             classified_patent = collector.classify_patent(patent)

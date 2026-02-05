@@ -100,9 +100,12 @@ class JobDataService:
                 }
             }
             
-            # Store in S3 for persistence
-            s3_key = f"signals/jobposting/{ticker}/{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.json"
-            self._store_in_s3(job_data, s3_key)
+            # Store in S3 for persistence using common method
+            self.s3_service.store_signal_data(
+                signal_type="jobs",
+                ticker=ticker,
+                data=job_data
+            )
             
             # Update cache
             self._cache[cache_key] = job_data
@@ -113,19 +116,6 @@ class JobDataService:
         except Exception as e:
             logger.error(f"❌ Error collecting job data for {ticker}: {e}")
             raise
-    
-    def _store_in_s3(self, job_data: Dict, s3_key: str):
-        """Store job data in S3."""
-        try:
-            # Convert to JSON string
-            json_data = json.dumps(job_data, indent=2, default=str)
-            
-            # Store in S3
-            self.s3_service.upload_content(json_data, s3_key)
-            logger.info(f"  💾 Stored job data in S3: {s3_key}")
-        except Exception as e:
-            logger.warning(f"  ⚠️ Failed to store in S3: {e}")
-            # Continue even if S3 storage fails
     
     def get_job_data(self, ticker: str, max_age_hours: int = 24) -> Optional[Dict]:
         """
