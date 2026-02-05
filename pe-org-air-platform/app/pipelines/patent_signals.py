@@ -126,15 +126,15 @@ class PatentSignalCollector:
         start_date = end_date - timedelta(days=years_back * 365)
         start_date_str = start_date.strftime("%Y-%m-%d")
         
-        # Build query for PatentsView API
+        # Build query for PatentsView API - use _and to combine conditions
         query_obj = {
             "_and": [
-                {"_contains": {"assignees.assignee_organization": company_name}},
+                {"_text_phrase": {"assignees.assignee_organization": company_name}},
                 {"_gte": {"patent_date": start_date_str}}
             ]
         }
         
-        # Fields to return
+        # Fields to return - simplified to essential fields
         fields = [
             "patent_id",
             "patent_title",
@@ -143,9 +143,7 @@ class PatentSignalCollector:
             "patent_type",
             "assignees.assignee_organization",
             "inventors.inventor_first_name",
-            "inventors.inventor_last_name",
-            "filing_date",  # Try to get filing date if available
-            "grant_date"    # Try to get grant date if available
+            "inventors.inventor_last_name"
         ]
         
         # Build URL with query params
@@ -160,13 +158,27 @@ class PatentSignalCollector:
             await asyncio.sleep(PATENTSVIEW_REQUEST_DELAY)
             
             try:
+                # Make the request
                 response = await client.get(
                     PATENTSVIEW_API_URL,
                     params=params,
                     headers=self.headers
                 )
-                response.raise_for_status()
+                
+                # Log the response for debugging
+                logger.debug(f"API Response Status: {response.status_code}")
+                
+                # Check for errors
+                if response.status_code != 200:
+                    logger.error(f"API Error {response.status_code}: {response.text}")
+                    return []
+                
                 data = response.json()
+                
+                # Check for API errors in response (error: true indicates failure)
+                if data.get("error") is True:
+                    logger.error(f"API Error: {data}")
+                    return []
                 
                 patents_data = data.get("patents", []) or []
                 patents = []
@@ -186,26 +198,25 @@ class PatentSignalCollector:
                         for inv in inventors
                     ]
                     
-                    # Parse dates
+                    # Parse patent date
                     patent_date_str = clean_nan(patent_data.get("patent_date"))
-                    filing_date_str = clean_nan(patent_data.get("filing_date"))
-                    grant_date_str = clean_nan(patent_data.get("grant_date"))
-                    
                     filing_date = None
-                    grant_date = None
                     
                     try:
-                        if filing_date_str:
-                            filing_date = datetime.fromisoformat(filing_date_str.replace("Z", "+00:00"))
-                        elif patent_date_str:
-                            # Fallback to patent date if filing date not available
-                            filing_date = datetime.fromisoformat(patent_date_str.replace("Z", "+00:00"))
-                        
-                        if grant_date_str:
-                            grant_date = datetime.fromisoformat(grant_date_str.replace("Z", "+00:00"))
-                    except ValueError:
-                        # If date parsing fails, use current date as fallback
-                        filing_date = filing_date or datetime.now(timezone.utc)
+                        if patent_date_str:
+                            # Parse the date and ensure it's timezone-aware
+                            parsed = datetime.fromisoformat(patent_date_str.replace("Z", "+00:00"))
+                            # If naive (no timezone), assume UTC
+                            if parsed.tzinfo is None:
+                                filing_date = parsed.replace(tzinfo=timezone.utc)
+                            else:
+                                filing_date = parsed
+                        else:
+                            # If no date, use current date as fallback
+                            filing_date = datetime.now(timezone.utc)
+                    except (ValueError, AttributeError) as e:
+                        logger.warning(f"Could not parse date '{patent_date_str}': {e}")
+                        filing_date = datetime.now(timezone.utc)
                     
                     # Use first assignee as primary assignee
                     primary_assignee = assignee_names[0] if assignee_names else company_name
@@ -215,7 +226,7 @@ class PatentSignalCollector:
                         title=str(patent_data.get("patent_title", "")),
                         abstract=str(patent_data.get("patent_abstract", "") or ""),
                         filing_date=filing_date,
-                        grant_date=grant_date,
+                        grant_date=None,  # Grant date not available in basic API response
                         inventors=inventor_names,
                         assignee=primary_assignee,
                         is_ai_related=False,
@@ -227,20 +238,23 @@ class PatentSignalCollector:
                 logger.info(f"Fetched {len(patents)} patents for {company_name}")
                 return patents
                 
-            except Exception as e:
-                logger.error(f"Error fetching patents for {company_name}: {e}")
+            except httpx.HTTPStatusError as e:
+                logger.error(f"HTTP error fetching patents for {company_name}: {e.response.status_code} - {e.response.text[:200]}")
                 return []
-    
+            except Exception as e:
+                logger.error(f"Error fetching patents for {company_name}: {str(e)}")
+                return []
+
     def classify_patent(self, patent: Patent) -> Patent:
         """Classify a patent as AI-related."""
         text = f"{patent.title} {patent.abstract}".lower()
-        
+
         # Check for AI keywords
         ai_keywords_found = []
         for keyword, pattern in self.keyword_patterns.items():
             if pattern.search(text):
                 ai_keywords_found.append(keyword)
-        
+
         # Determine AI categories
         ai_categories = []
         for category, patterns in self.category_patterns.items():
@@ -248,12 +262,12 @@ class PatentSignalCollector:
                 if pattern.search(text):
                     ai_categories.append(category)
                     break  # Found one keyword from this category
-        
+
         patent.is_ai_related = len(ai_keywords_found) > 0 or len(ai_categories) > 0
         patent.ai_categories = list(set(ai_categories))  # Remove duplicates
-        
+
         return patent
-    
+
     def analyze_patents(
         self,
         company_id: str,
@@ -262,34 +276,34 @@ class PatentSignalCollector:
         years: int = 5
     ) -> ExternalSignal:
         """Analyze patent portfolio for AI innovation."""
-        
+
         cutoff = datetime.now(timezone.utc) - timedelta(days=years * 365)
         recent_patents = [p for p in patents if p.filing_date > cutoff]
         ai_patents = [p for p in recent_patents if p.is_ai_related]
-        
+
         # Last year cutoff for recency bonus
         last_year = datetime.now(timezone.utc) - timedelta(days=365)
         recent_ai = [p for p in ai_patents if p.filing_date > last_year]
-        
+
         # Collect all AI categories
         categories = set()
         for p in ai_patents:
             categories.update(p.ai_categories)
-        
+
         # Scoring algorithm from pseudocode:
         # - AI patent count: 5 points each (max 50)
         # - Recency bonus: +2 per patent filed in last year (max 20)
         # - Category diversity: 10 points per category (max 30)
-        
+
         score = (
             min(len(ai_patents) * 5, 50) +
             min(len(recent_ai) * 2, 20) +
             min(len(categories) * 10, 30)
         )
-        
+
         # Ensure score is between 0 and 100
         normalized_score = min(100.0, max(0.0, float(score)))
-        
+
         # Create ExternalSignal
         signal = ExternalSignal(
             company_id=company_id,
@@ -310,7 +324,7 @@ class PatentSignalCollector:
                 "analysis_date": datetime.now(timezone.utc).isoformat()
             }
         )
-        
+
         return signal
 
 
