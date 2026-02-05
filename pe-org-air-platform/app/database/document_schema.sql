@@ -21,18 +21,3 @@ CREATE TABLE IF NOT EXISTS documents (
     created_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
     processed_at TIMESTAMP_NTZ
 );
-
-
-
-CREATE TABLE IF NOT EXISTS document_chunks (
-    id VARCHAR(36) PRIMARY KEY,
-    document_id VARCHAR(36) NOT NULL REFERENCES documents(id),
-    chunk_index INT NOT NULL,
-    content TEXT NOT NULL,
-    section VARCHAR(50),
-    start_char INT,
-    end_char INT,
-    word_count INT,
-    created_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
-    UNIQUE (document_id, chunk_index)
-);
