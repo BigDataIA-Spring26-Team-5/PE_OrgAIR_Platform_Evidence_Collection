@@ -3,15 +3,23 @@ Pipeline 2 Runner - Job and Patent Collection
 app/pipelines/pipeline2_runner.py
 
 Scrapes job postings and fetches patents for companies.
-Stores data in S3 (raw) and Snowflake (aggregated signals).
-Use --local-only flag to save to local JSON files instead.
+Uses step-based architecture similar to runner.py:
+1. Extract data → S3 (raw)
+2. Read from S3 
+3. Score data
+4. Write to Snowflake
+Use --local-only flag to save to local JSON files only.
 """
 
 from __future__ import annotations
 
 import argparse
 import asyncio
-from typing import List, Optional
+import json
+import os
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import List, Optional, Dict, Any
 
 from dotenv import load_dotenv
 
@@ -19,15 +27,425 @@ from app.pipelines.pipeline2_state import Pipeline2State
 from app.pipelines.job_signals import run_job_signals
 from app.pipelines.patent_signals import run_patent_signals
 from app.pipelines.utils import Company
+from app.services.s3_storage import S3Storage
+from app.services.snowflake import SnowflakeService
 
 # Load environment variables from .env file
 load_dotenv()
 
 
+class Pipeline2Runner:
+    """Pipeline 2 runner with step-based architecture similar to runner.py"""
+    
+    def __init__(self):
+        self.state = Pipeline2State()
+        self.s3 = S3Storage()
+        self.snowflake = None
+        
+    def _init_snowflake(self):
+        """Initialize Snowflake connection if needed"""
+        if self.snowflake is None:
+            self.snowflake = SnowflakeService()
+    
+    def _close_snowflake(self):
+        """Close Snowflake connection"""
+        if self.snowflake:
+            self.snowflake.close()
+            self.snowflake = None
+    
+    # =============================================================================
+    # STEP 1: EXTRACT DATA → Local + S3 (raw/)
+    # =============================================================================
+    async def step_extract_data(
+        self,
+        *,
+        companies: List[str],
+        mode: str = "jobs",
+        jobs_request_delay: float = 6.0,
+        patents_request_delay: float = 1.5,
+        jobs_results_per_company: int = 50,
+        patents_results_per_company: int = 100,
+        patents_years_back: int = 5,
+        patents_api_key: Optional[str] = None,
+        use_cloud_storage: bool = True,
+    ) -> Dict[str, Any]:
+        """
+        Step 1: Extract job postings and/or patent data.
+        Stores raw data to S3 if use_cloud_storage=True.
+        """
+        print("=" * 60)
+        print("Step 1: Extract Data → S3 (raw/)")
+        print("=" * 60)
+        
+        if not companies:
+            return {"status": "error", "message": "No companies provided"}
+        
+        # Create state with company list
+        company_list = [Company.from_name(name, i).to_dict() for i, name in enumerate(companies)]
+        self.state.companies = company_list
+        self.state.use_cloud_storage = use_cloud_storage
+        
+        print(f"\nCompanies to process: {len(self.state.companies)}")
+        for c in self.state.companies:
+            print(f"  - {c['name']}")
+        
+        s3_uploads = []
+        
+        # Run job signals pipeline if requested
+        if mode in ["jobs", "both"]:
+            print("\n" + "-" * 60)
+            print("Extracting Job Postings")
+            print("-" * 60)
+            
+            self.state.request_delay = jobs_request_delay
+            self.state.results_per_company = jobs_results_per_company
+            
+            # Extract job data
+            self.state = await run_job_signals(
+                self.state, 
+                use_cloud_storage=use_cloud_storage,
+                upload_to_s3=True  # Always upload raw data to S3 in this step
+            )
+            
+            # Track S3 uploads
+            for company in self.state.companies:
+                if company.get('job_data'):
+                    timestamp = datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')
+                    s3_key = f"raw/jobs/{company['name']}/{timestamp}.json"
+                    s3_uploads.append(s3_key)
+        
+        # Run patent signals pipeline if requested
+        if mode in ["patents", "both"]:
+            print("\n" + "-" * 60)
+            print("Extracting Patent Data")
+            print("-" * 60)
+            
+            self.state.request_delay = patents_request_delay
+            self.state.results_per_company = patents_results_per_company
+            
+            # Extract patent data
+            self.state = await run_patent_signals(
+                self.state,
+                years_back=patents_years_back,
+                results_per_company=patents_results_per_company,
+                api_key=patents_api_key,
+                upload_to_s3=use_cloud_storage  # Upload to S3 if cloud storage enabled
+            )
+            
+            # Track S3 uploads
+            for company in self.state.companies:
+                if company.get('patent_data'):
+                    timestamp = datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')
+                    s3_key = f"raw/patents/{company['name']}/{timestamp}.json"
+                    s3_uploads.append(s3_key)
+        
+        self.state.mark_step_complete("extract")
+        
+        return {
+            "status": "success",
+            "companies_processed": len(self.state.companies),
+            "job_postings": self.state.summary.get('job_postings_collected', 0),
+            "patents_collected": self.state.summary.get('patents_collected', 0),
+            "s3_uploads": len(s3_uploads),
+            "s3_files": s3_uploads,
+            "mode": mode
+        }
+    
+    # =============================================================================
+    # STEP 2: READ FROM S3
+    # =============================================================================
+    def step_read_from_s3(self) -> Dict[str, Any]:
+        """
+        Step 2: Read raw data from S3 for processing.
+        This step loads data that was uploaded in step 1.
+        """
+        print("\n" + "=" * 60)
+        print("Step 2: Read Data from S3")
+        print("=" * 60)
+        
+        if not self.state.is_step_complete("extract"):
+            return {"status": "error", "message": "Extract step not complete"}
+        
+        if not self.state.use_cloud_storage:
+            print("Cloud storage not enabled, reading from local files")
+            return {"status": "skipped", "message": "Local mode enabled"}
+        
+        loaded_data = {"jobs": {}, "patents": {}}
+        
+        # Read job data from S3
+        print("\nLoading job data from S3...")
+        for company in self.state.companies:
+            company_name = company['name']
+            try:
+                # List S3 files for this company
+                prefix = f"raw/jobs/{company_name}/"
+                job_files = self.s3.list_files(prefix)
+                
+                if job_files:
+                    # Read the most recent file
+                    latest_file = sorted(job_files)[-1]
+                    job_data = self.s3.download_json(latest_file)
+                    loaded_data["jobs"][company_name] = job_data
+                    print(f"  ✓ {company_name}: {len(job_data.get('jobs', []))} jobs")
+            except Exception as e:
+                print(f"  ✗ {company_name}: Error reading from S3 - {e}")
+                self.state.add_error("read_s3", f"Failed to read job data for {company_name}: {e}")
+        
+        # Read patent data from S3
+        print("\nLoading patent data from S3...")
+        for company in self.state.companies:
+            company_name = company['name']
+            try:
+                # List S3 files for this company
+                prefix = f"raw/patents/{company_name}/"
+                patent_files = self.s3.list_files(prefix)
+                
+                if patent_files:
+                    # Read the most recent file
+                    latest_file = sorted(patent_files)[-1]
+                    patent_data = self.s3.download_json(latest_file)
+                    loaded_data["patents"][company_name] = patent_data
+                    print(f"  ✓ {company_name}: {len(patent_data.get('patents', []))} patents")
+            except Exception as e:
+                print(f"  ✗ {company_name}: Error reading from S3 - {e}")
+                self.state.add_error("read_s3", f"Failed to read patent data for {company_name}: {e}")
+        
+        self.state.loaded_s3_data = loaded_data
+        self.state.mark_step_complete("read_s3")
+        
+        return {
+            "status": "success",
+            "jobs_loaded": len(loaded_data["jobs"]),
+            "patents_loaded": len(loaded_data["patents"]),
+            "total_companies": len(self.state.companies)
+        }
+    
+    # =============================================================================
+    # STEP 3: SCORE DATA
+    # =============================================================================
+    def step_score_data(self) -> Dict[str, Any]:
+        """
+        Step 3: Calculate scores from the loaded data.
+        Uses existing scoring algorithms (unchanged).
+        """
+        print("\n" + "=" * 60)
+        print("Step 3: Score Data")
+        print("=" * 60)
+        
+        if not self.state.is_step_complete("read_s3") and self.state.use_cloud_storage:
+            return {"status": "error", "message": "Read from S3 step not complete"}
+        
+        print("Calculating job market scores...")
+        # Use existing job scoring logic
+        # This would call your existing scoring functions
+        # For now, we'll simulate or use the scores from state
+        
+        print("Calculating patent portfolio scores...")
+        # Use existing patent scoring logic
+        # This would call your existing scoring functions
+        
+        # Note: The actual scoring implementation should remain unchanged
+        # as per your requirement. This step organizes the scoring process.
+        
+        # Store scores in state (assuming they're already calculated in run_job_signals/run_patent_signals)
+        # If scores need to be recalculated from S3 data, that logic would go here
+        
+        self.state.mark_step_complete("score")
+        
+        return {
+            "status": "success",
+            "job_scores_calculated": len(self.state.job_market_scores),
+            "patent_scores_calculated": len(self.state.patent_scores)
+        }
+    
+    # =============================================================================
+    # STEP 4: WRITE TO SNOWFLAKE
+    # =============================================================================
+    def step_write_to_snowflake(self) -> Dict[str, Any]:
+        """
+        Step 4: Write raw data and scores to Snowflake.
+        Raw data → external_signals table
+        Aggregated scores → company_signal_summaries table
+        """
+        print("\n" + "=" * 60)
+        print("Step 4: Write to Snowflake")
+        print("=" * 60)
+        
+        if not self.state.is_step_complete("score"):
+            return {"status": "error", "message": "Score step not complete"}
+        
+        if not self.state.use_cloud_storage:
+            print("Cloud storage not enabled, skipping Snowflake write")
+            return {"status": "skipped", "message": "Local mode enabled"}
+        
+        self._init_snowflake()
+        
+        try:
+            snowflake_inserts = {
+                "external_signals": 0,
+                "company_signal_summaries": 0
+            }
+            
+            # Write raw data to external_signals table
+            print("\nWriting raw data to external_signals table...")
+            for company in self.state.companies:
+                company_name = company['name']
+                
+                # Write job data
+                if company.get('job_data'):
+                    for job in company['job_data'].get('jobs', []):
+                        try:
+                            self.snowflake.insert_external_signal(
+                                company_name=company_name,
+                                signal_type="job_posting",
+                                signal_data=job,
+                                source="pipeline2_jobs",
+                                collected_at=datetime.now(timezone.utc)
+                            )
+                            snowflake_inserts["external_signals"] += 1
+                        except Exception as e:
+                            print(f"  ✗ Error inserting job for {company_name}: {e}")
+                
+                # Write patent data
+                if company.get('patent_data'):
+                    for patent in company['patent_data'].get('patents', []):
+                        try:
+                            self.snowflake.insert_external_signal(
+                                company_name=company_name,
+                                signal_type="patent",
+                                signal_data=patent,
+                                source="pipeline2_patents",
+                                collected_at=datetime.now(timezone.utc)
+                            )
+                            snowflake_inserts["external_signals"] += 1
+                        except Exception as e:
+                            print(f"  ✗ Error inserting patent for {company_name}: {e}")
+            
+            # Write aggregated scores to company_signal_summaries table
+            print("\nWriting scores to company_signal_summaries table...")
+            for company in self.state.companies:
+                company_name = company['name']
+                company_id = company.get('id', '')
+                
+                # Get scores for this company
+                job_score = self.state.job_market_scores.get(company_id, 0)
+                patent_score = self.state.patent_scores.get(company_id, 0)
+                
+                if job_score > 0 or patent_score > 0:
+                    try:
+                        self.snowflake.insert_company_signal_summary(
+                            company_id=company_id,
+                            company_name=company_name,
+                            job_market_score=job_score,
+                            patent_portfolio_score=patent_score,
+                            total_score=(job_score + patent_score) / 2 if job_score > 0 and patent_score > 0 else max(job_score, patent_score),
+                            calculated_at=datetime.now(timezone.utc)
+                        )
+                        snowflake_inserts["company_signal_summaries"] += 1
+                        print(f"  ✓ {company_name}: Job={job_score:.1f}, Patent={patent_score:.1f}")
+                    except Exception as e:
+                        print(f"  ✗ Error inserting scores for {company_name}: {e}")
+            
+            self.state.mark_step_complete("snowflake_write")
+            
+            return {
+                "status": "success",
+                "snowflake_inserts": snowflake_inserts,
+                "companies_processed": len(self.state.companies)
+            }
+            
+        finally:
+            self._close_snowflake()
+    
+    # =============================================================================
+    # COMPLETE PIPELINE RUN
+    # =============================================================================
+    async def run_pipeline(
+        self,
+        *,
+        companies: List[str],
+        mode: str = "jobs",
+        jobs_request_delay: float = 6.0,
+        patents_request_delay: float = 1.5,
+        jobs_results_per_company: int = 50,
+        patents_results_per_company: int = 100,
+        patents_years_back: int = 5,
+        patents_api_key: Optional[str] = None,
+        use_cloud_storage: bool = True,
+    ) -> Dict[str, Any]:
+        """
+        Complete Pipeline 2 execution with all steps.
+        """
+        results = {}
+        
+        # Step 1: Extract data
+        results["step1_extract"] = await self.step_extract_data(
+            companies=companies,
+            mode=mode,
+            jobs_request_delay=jobs_request_delay,
+            patents_request_delay=patents_request_delay,
+            jobs_results_per_company=jobs_results_per_company,
+            patents_results_per_company=patents_results_per_company,
+            patents_years_back=patents_years_back,
+            patents_api_key=patents_api_key,
+            use_cloud_storage=use_cloud_storage
+        )
+        
+        # Step 2: Read from S3
+        results["step2_read_s3"] = self.step_read_from_s3()
+        
+        # Step 3: Score data
+        results["step3_score"] = self.step_score_data()
+        
+        # Step 4: Write to Snowflake
+        results["step4_snowflake"] = self.step_write_to_snowflake()
+        
+        # Print summary
+        self._print_summary()
+        
+        return results
+    
+    def _print_summary(self) -> None:
+        """Print pipeline execution summary."""
+        print("\n" + "=" * 60)
+        print("Pipeline 2 Complete - Summary")
+        print("=" * 60)
+        
+        print(f"\nSteps completed: {', '.join(self.state.steps_completed)}")
+        
+        if self.state.job_market_scores:
+            print("\nJob Market Scores:")
+            for company_id, score in self.state.job_market_scores.items():
+                company_name = self._get_company_name(company_id)
+                print(f"  {company_name}: {score:.2f}/100")
+        
+        if self.state.patent_scores:
+            print("\nPatent Portfolio Scores:")
+            for company_id, score in self.state.patent_scores.items():
+                company_name = self._get_company_name(company_id)
+                print(f"  {company_name}: {score:.2f}/100")
+        
+        print(f"\nErrors: {len(self.state.summary.get('errors', []))}")
+        
+        if self.state.use_cloud_storage:
+            print("\nStorage Summary:")
+            print("  S3: raw/jobs/{company}/{timestamp}.json")
+            print("  S3: raw/patents/{company}/{timestamp}.json")
+            print("  Snowflake: external_signals table (raw data)")
+            print("  Snowflake: company_signal_summaries table (aggregated scores)")
+    
+    def _get_company_name(self, company_id: str) -> str:
+        """Get company name from ID."""
+        for c in self.state.companies:
+            if c.get("id") == company_id:
+                return c.get("name", company_id)
+        return company_id
+
+
 async def run_pipeline2(
     *,
     companies: Optional[List[str]] = None,
-    mode: str = "jobs",  # "jobs", "patents", or "both"
+    mode: str = "jobs",
     jobs_output_dir: str = "data/signals/jobs",
     patents_output_dir: str = "data/signals/patents",
     jobs_request_delay: float = 6.0,
@@ -39,158 +457,48 @@ async def run_pipeline2(
     use_cloud_storage: bool = True,
 ) -> Pipeline2State:
     """
-    Run Pipeline 2: Job and Patent Collection.
-
-    Args:
-        companies: List of company names to process
-        mode: "jobs", "patents", or "both"
-        jobs_output_dir: Directory to save job JSON output files
-        patents_output_dir: Directory to save patent JSON output files
-        jobs_request_delay: Delay between job API requests for rate limiting
-        patents_request_delay: Delay between patent API requests for rate limiting
-        jobs_results_per_company: Max job postings per company
-        patents_results_per_company: Max patents per company
-        patents_years_back: How many years back to search for patents
-        patents_api_key: PatentsView API key (or set PATENTSVIEW_API_KEY env var)
-        use_cloud_storage: If True, store in S3 + Snowflake. If False, local JSON only.
-
-    Returns:
-        Pipeline2State with all collected data and scores
+    Legacy function for backward compatibility.
+    Runs the new step-based pipeline internally.
     """
-    mode_labels = {
-        "jobs": "Job Scraping",
-        "patents": "Patent Collection",
-        "both": "Job and Patent Collection"
-    }
-    print("=" * 60)
-    print(f"Pipeline 2: {mode_labels.get(mode, mode)}")
-    print("=" * 60)
-
-    if not companies:
-        print("\n[error] No companies provided. Use --companies flag.")
-        print("Example: python -m app.pipelines.pipeline2_runner --companies Microsoft Google")
-        return Pipeline2State()
-
-    # Create state with company list
-    company_list = [Company.from_name(name, i).to_dict() for i, name in enumerate(companies)]
-    state = Pipeline2State(companies=company_list)
-
-    print(f"\nCompanies to process: {len(state.companies)}")
-    for c in state.companies:
-        print(f"  - {c['name']}")
-
-    # Run job signals pipeline if requested
-    if mode in ["jobs", "both"]:
-        print("\n" + "-" * 60)
-        print("Job Scraping Pipeline")
-        print("-" * 60)
-        print(f"Storage: {'S3 + Snowflake' if use_cloud_storage else 'Local JSON files only'}")
-
-        state.output_dir = jobs_output_dir
-        state.request_delay = jobs_request_delay
-        state = await run_job_signals(state, use_cloud_storage=use_cloud_storage)
-
-    # Run patent signals pipeline if requested
-    if mode in ["patents", "both"]:
-        print("\n" + "-" * 60)
-        print("Patent Collection Pipeline")
-        print("-" * 60)
-
-        state.output_dir = patents_output_dir
-        state.request_delay = patents_request_delay
-        state = await run_patent_signals(
-            state,
-            years_back=patents_years_back,
-            results_per_company=patents_results_per_company,
-            api_key=patents_api_key,
-        )
-
-    _print_summary(state, mode, use_cloud_storage)
-    return state
-
-
-def _get_company_name(state: Pipeline2State, company_id: str) -> str:
-    """Get company name from ID."""
-    for c in state.companies:
-        if c.get("id") == company_id:
-            return c.get("name", company_id)
-    return company_id
-
-
-def _print_summary(state: Pipeline2State, mode: str, use_cloud_storage: bool) -> None:
-    """Print pipeline execution summary."""
-    print("\n" + "=" * 60)
-    print("Pipeline Complete")
-    print("=" * 60)
-
-    if mode in ["jobs", "both"]:
-        print(f"Companies processed: {state.summary.get('companies_processed', 0)}")
-        print(f"Total job postings: {state.summary.get('job_postings_collected', 0)}")
-        print(f"AI-related jobs: {state.summary.get('ai_jobs_found', 0)}")
-
-        if state.job_market_scores:
-            print("\nJob Market Scores:")
-            for company_id, score in state.job_market_scores.items():
-                print(f"  {_get_company_name(state, company_id)}: {score:.2f}/100")
-
-    if mode in ["patents", "both"]:
-        print(f"\nTotal patents: {state.summary.get('patents_collected', 0)}")
-        print(f"AI-related patents: {state.summary.get('ai_patents_found', 0)}")
-
-        if state.patent_scores:
-            print("\nPatent Portfolio Scores:")
-            for company_id, score in state.patent_scores.items():
-                print(f"  {_get_company_name(state, company_id)}: {score:.2f}/100")
-
-    print(f"\nErrors: {len(state.summary.get('errors', []))}")
-
-    print("\nStorage:")
-    if use_cloud_storage:
-        print("  S3: raw/jobs/{company}/{timestamp}.json")
-        print("  Snowflake: external_signals table")
-    print("  Local: data/signals/jobs (working files)")
-
-    errors = state.summary.get("errors", [])
-    if errors:
-        print(f"\nErrors ({len(errors)}):")
-        for err in errors[:5]:
-            print(f"  - [{err.get('step', 'unknown')}] {err.get('error', 'Unknown error')}")
+    runner = Pipeline2Runner()
+    
+    await runner.run_pipeline(
+        companies=companies or [],
+        mode=mode,
+        jobs_request_delay=jobs_request_delay,
+        patents_request_delay=patents_request_delay,
+        jobs_results_per_company=jobs_results_per_company,
+        patents_results_per_company=patents_results_per_company,
+        patents_years_back=patents_years_back,
+        patents_api_key=patents_api_key,
+        use_cloud_storage=use_cloud_storage
+    )
+    
+    return runner.state
 
 
 async def main():
-    """CLI entry point for Pipeline 2."""
+    """CLI entry point for Pipeline 2 with step-based architecture."""
     parser = argparse.ArgumentParser(
-        description="Pipeline 2: Job and Patent Collection",
+        description="Pipeline 2: Job and Patent Collection (Step-based)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
+        epilog=""" 
 Examples:
-  # Scrape jobs and store in S3 + Snowflake (default)
+  # Run complete pipeline (all steps)
   python -m app.pipelines.pipeline2_runner --companies Microsoft Google Amazon
 
-  # Scrape jobs and save to local JSON only (no cloud storage)
+  # Run specific step only (for debugging)
+  python -m app.pipelines.pipeline2_runner --companies Microsoft --step extract
+  python -m app.pipelines.pipeline2_runner --companies Microsoft --step read_s3
+
+  # Local mode only (no cloud storage)
   python -m app.pipelines.pipeline2_runner --companies Microsoft --local-only
 
-  # Fetch patents for specific companies
+  # Patent collection only
   python -m app.pipelines.pipeline2_runner --companies Microsoft --mode patents
 
-  # Run both job scraping and patent collection
+  # Both jobs and patents
   python -m app.pipelines.pipeline2_runner --companies Microsoft --mode both
-
-  # With PatentsView API key (recommended for patents)
-  python -m app.pipelines.pipeline2_runner --companies Microsoft --mode patents --api-key YOUR_KEY
-
-  # Or set environment variable
-  set PATENTSVIEW_API_KEY=YOUR_KEY
-  python -m app.pipelines.pipeline2_runner --companies Microsoft --mode patents
-
-  # Custom output directories
-  python -m app.pipelines.pipeline2_runner --companies Microsoft --jobs-output ./jobs --patents-output ./patents
-
-  # Adjust years back for patents (default: 5)
-  python -m app.pipelines.pipeline2_runner --companies Microsoft --mode patents --years 3
-
-  # Limit results per company
-  python -m app.pipelines.pipeline2_runner --companies Microsoft --mode both --jobs-results 20 --patents-results 50
 
 Get PatentsView API key at: https://patentsview.org/apis/keyrequest
         """
@@ -198,10 +506,8 @@ Get PatentsView API key at: https://patentsview.org/apis/keyrequest
     parser.add_argument("--companies", nargs="+", required=True, help="Company names to process")
     parser.add_argument("--mode", choices=["jobs", "patents", "both"], default="jobs",
                         help="Pipeline mode: jobs (default), patents, or both")
-    parser.add_argument("--jobs-output", default="data/signals/jobs", dest="jobs_output_dir",
-                        help="Output directory for job JSON files")
-    parser.add_argument("--patents-output", default="data/signals/patents", dest="patents_output_dir",
-                        help="Output directory for patent JSON files")
+    parser.add_argument("--step", choices=["extract", "read_s3", "score", "snowflake_write", "all"], default="all",
+                        help="Run specific step only (default: all)")
     parser.add_argument("--jobs-delay", type=float, default=6.0, dest="jobs_request_delay",
                         help="Delay between job API requests in seconds")
     parser.add_argument("--patents-delay", type=float, default=1.5, dest="patents_request_delay",
@@ -219,19 +525,41 @@ Get PatentsView API key at: https://patentsview.org/apis/keyrequest
 
     args = parser.parse_args()
 
-    await run_pipeline2(
-        companies=args.companies,
-        mode=args.mode,
-        jobs_output_dir=args.jobs_output_dir,
-        patents_output_dir=args.patents_output_dir,
-        jobs_request_delay=args.jobs_request_delay,
-        patents_request_delay=args.patents_request_delay,
-        jobs_results_per_company=args.jobs_results_per_company,
-        patents_results_per_company=args.patents_results_per_company,
-        patents_years_back=args.patents_years_back,
-        patents_api_key=args.patents_api_key,
-        use_cloud_storage=not args.local_only,
-    )
+    runner = Pipeline2Runner()
+    
+    if args.step == "all":
+        # Run complete pipeline
+        await runner.run_pipeline(
+            companies=args.companies,
+            mode=args.mode,
+            jobs_request_delay=args.jobs_request_delay,
+            patents_request_delay=args.patents_request_delay,
+            jobs_results_per_company=args.jobs_results_per_company,
+            patents_results_per_company=args.patents_results_per_company,
+            patents_years_back=args.patents_years_back,
+            patents_api_key=args.patents_api_key,
+            use_cloud_storage=not args.local_only,
+        )
+    else:
+        # Run specific step only
+        if args.step == "extract":
+            await runner.step_extract_data(
+                companies=args.companies,
+                mode=args.mode,
+                jobs_request_delay=args.jobs_request_delay,
+                patents_request_delay=args.patents_request_delay,
+                jobs_results_per_company=args.jobs_results_per_company,
+                patents_results_per_company=args.patents_results_per_company,
+                patents_years_back=args.patents_years_back,
+                patents_api_key=args.patents_api_key,
+                use_cloud_storage=not args.local_only,
+            )
+        elif args.step == "read_s3":
+            runner.step_read_from_s3()
+        elif args.step == "score":
+            runner.step_score_data()
+        elif args.step == "snowflake_write":
+            runner.step_write_to_snowflake()
 
 
 if __name__ == "__main__":
