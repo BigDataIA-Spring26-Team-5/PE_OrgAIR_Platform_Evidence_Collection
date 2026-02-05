@@ -534,6 +534,43 @@ class DocumentRepository:
         finally:
             cur.close()
 
+    def delete_by_ticker(self, ticker: str) -> int:
+        """Delete all documents for a ticker"""
+        sql = "DELETE FROM documents WHERE ticker = %s"
+        cur = self.conn.cursor()
+        try:
+            cur.execute(sql, (ticker,))
+            self.conn.commit()
+            return cur.rowcount
+        finally:
+            cur.close()
+
+    def reset_status_by_ticker(self, ticker: str, from_status: str, to_status: str) -> int:
+        """Reset document status for a ticker"""
+        sql = """
+        UPDATE documents 
+        SET status = %s, processed_at = NULL 
+        WHERE ticker = %s AND status = %s
+        """
+        cur = self.conn.cursor()
+        try:
+            cur.execute(sql, (to_status, ticker, from_status))
+            self.conn.commit()
+            return cur.rowcount
+        finally:
+            cur.close()
+
+    def reset_chunk_count_by_ticker(self, ticker: str) -> int:
+        """Reset chunk_count to NULL for a ticker"""
+        sql = "UPDATE documents SET chunk_count = NULL WHERE ticker = %s"
+        cur = self.conn.cursor()
+        try:
+            cur.execute(sql, (ticker,))
+            self.conn.commit()
+            return cur.rowcount
+        finally:
+            cur.close()
+
 
 # Singleton
 _repo: Optional[DocumentRepository] = None
