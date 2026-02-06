@@ -34,6 +34,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import boto3
 from botocore.exceptions import ClientError, NoCredentialsError
+from functools import lru_cache
 
 
 class S3SignalsStorage:
@@ -501,3 +502,13 @@ class SignalsStorage:
                 return json.load(f)
         except (json.JSONDecodeError, IOError):
             return None
+
+@lru_cache
+def get_signals_storage_service() -> SignalsStorage:
+    """
+    FastAPI dependency provider for SignalsStorage.
+
+    Uses singleton pattern so filesystem + S3 client
+    are not recreated on every request.
+    """
+    return SignalsStorage(enable_s3=True)

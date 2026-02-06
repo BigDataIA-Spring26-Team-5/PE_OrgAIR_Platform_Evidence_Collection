@@ -52,9 +52,9 @@ async def root():
 
 
 # SHUTDOWN EVENT
-        "docs": "/docs",
-        "redoc": "/redoc",
-    }
+    #     "docs": "/docs",
+    #     "redoc": "/redoc",
+    # }
 
 
 # REGISTER ROUTERS

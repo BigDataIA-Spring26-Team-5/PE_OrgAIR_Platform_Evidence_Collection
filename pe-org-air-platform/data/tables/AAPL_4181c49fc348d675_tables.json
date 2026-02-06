@@ -1,0 +1,2497 @@
+{
+  "document_id": "4181c49fc348d675",
+  "ticker": "AAPL",
+  "filing_type": "10-K",
+  "filing_date": "September 27, 2025",
+  "source_path": "C:\\Users\\Dwaraka Deepika vadd\\OneDrive\\Desktop\\case_study_2_final\\PE_OrgAIR_Platform_Evidence_Collection\\pe-org-air-platform\\data\\sample_10k\\_10-K-2025-As-Filed.pdf",
+  "table_count": 83,
+  "tables": [
+    {
+      "table_index": 0,
+      "headers": [
+        "Item 1.",
+        "Business",
+        "1"
+      ],
+      "rows": [
+        [
+          "Item 1A. Risk Factors 5",
+          "",
+          ""
+        ],
+        [
+          "Item 1B. Unresolved Staff Comments 17",
+          "",
+          ""
+        ],
+        [
+          "Item 1C. Cybersecurity 17",
+          "",
+          ""
+        ],
+        [
+          "Item 2. Properties 17",
+          "",
+          ""
+        ],
+        [
+          "Item 3. Legal Proceedings 18",
+          "",
+          ""
+        ],
+        [
+          "Item 4. Mine Safety Disclosures 18",
+          "",
+          ""
+        ]
+      ],
+      "row_count": 6,
+      "col_count": 3,
+      "page": 3,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 1,
+      "headers": [
+        "Item 5. Market for Registrant’s Common Equity, Related Stockholder Matters and Issuer Purchases of Equity 19\nSecurities"
+      ],
+      "rows": [
+        [
+          "Item 6. [Reserved] 20"
+        ],
+        [
+          "Item 7. Management’s Discussion and Analysis of Financial Condition and Results of Operations 21"
+        ],
+        [
+          "Item 7A. Quantitative and Qualitative Disclosures About Market Risk 27"
+        ],
+        [
+          "Item 8. Financial Statements and Supplementary Data 28"
+        ],
+        [
+          "Item 9. Changes in and Disagreements with Accountants on Accounting and Financial Disclosure 52"
+        ],
+        [
+          "Item 9A. Controls and Procedures 52"
+        ],
+        [
+          "Item 9B. Other Information 53"
+        ],
+        [
+          "Item 9C. Disclosure Regarding Foreign Jurisdictions that Prevent Inspections 53"
+        ]
+      ],
+      "row_count": 8,
+      "col_count": 1,
+      "page": 3,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 2,
+      "headers": [
+        "Open market and privately negotiated purchases 33,265 $ 210.43 33,265"
+      ],
+      "rows": [
+        [
+          "August 3, 2025 to August 30, 2025:"
+        ],
+        [
+          "Open market and privately negotiated purchases 28,986 $ 224.25 28,986"
+        ],
+        [
+          "August 31, 2025 to September 27, 2025:"
+        ],
+        [
+          "Open market and privately negotiated purchases 27,247 $ 238.56 27,247"
+        ],
+        [
+          "Total 89,498 $ 99,779"
+        ]
+      ],
+      "row_count": 5,
+      "col_count": 1,
+      "page": 22,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 3,
+      "headers": [
+        "S&P 500 Index $ 100 $ 137 $ 115 $ 136 $ 185 $ 217"
+      ],
+      "rows": [
+        [
+          "Dow Jones U.S. Technology Total Stock\nMarket Index $ 100 $ 147 $ 107 $ 147 $ 220 $ 287"
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 1,
+      "page": 23,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 4,
+      "headers": [
+        "Europe 111,032 10 % 101,328 7 % 94,294"
+      ],
+      "rows": [
+        [
+          "Greater China 64,377 (4) % 66,952 (8) % 72,559"
+        ],
+        [
+          "Japan 28,703 15 % 25,052 3 % 24,257"
+        ],
+        [
+          "Rest of Asia Pacific 33,696 10 % 30,658 4 % 29,615"
+        ],
+        [
+          "Total net sales $ 416,161 6 % $ 391,035 2 % $ 383,285"
+        ]
+      ],
+      "row_count": 4,
+      "col_count": 1,
+      "page": 25,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 5,
+      "headers": [
+        "Mac 33,708 12 % 29,984 2 % 29,357"
+      ],
+      "rows": [
+        [
+          "iPad 28,023 5 % 26,694 (6) % 28,300"
+        ],
+        [
+          "Wearables, Home and Accessories 35,686 (4) % 37,005 (7) % 39,845"
+        ],
+        [
+          "Services (1) 109,158 14 % 96,169 13 % 85,200"
+        ],
+        [
+          "Total net sales $ 416,161 6 % $ 391,035 2 % $ 383,285"
+        ]
+      ],
+      "row_count": 4,
+      "col_count": 1,
+      "page": 26,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 6,
+      "headers": [
+        "Products $ 112,887 $ 109,633 $ 108,803"
+      ],
+      "rows": [
+        [
+          "Services 82,314 71,050 60,345"
+        ],
+        [
+          "Total gross margin $ 195,201 $ 180,683 $ 169,148"
+        ]
+      ],
+      "row_count": 2,
+      "col_count": 1,
+      "page": 27,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 7,
+      "headers": [
+        "Products",
+        "36.8% 37.2% 36.5%"
+      ],
+      "rows": [
+        [
+          "Services 75.4% 73.9% 70.8%",
+          ""
+        ],
+        [
+          "Total gross margin percentage 46.9% 46.2% 44.1%",
+          ""
+        ]
+      ],
+      "row_count": 2,
+      "col_count": 2,
+      "page": 27,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 8,
+      "headers": [
+        "Percentage of total net sales 8% 8% 8%"
+      ],
+      "rows": [
+        [
+          "Selling, general and administrative $ 27,601 6 % $ 26,097 5 % $ 24,932"
+        ],
+        [
+          "Percentage of total net sales 7% 7% 7%"
+        ],
+        [
+          "Total operating expenses $ 62,151 8 % $ 57,467 5 % $ 54,847"
+        ],
+        [
+          "Percentage of total net sales 15% 15% 14%"
+        ]
+      ],
+      "row_count": 4,
+      "col_count": 1,
+      "page": 27,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 9,
+      "headers": [
+        "Effective tax rate 15.6% 24.1% 14.7%"
+      ],
+      "rows": [
+        [
+          "Statutory federal income tax rate 21% 21% 21%"
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 1,
+      "page": 28,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 10,
+      "headers": [
+        "Consolidated Statements of Comprehensive Income for the years ended September 27, 2025, September 28,\n2024 and September 30, 2023",
+        "",
+        "30"
+      ],
+      "rows": [
+        [
+          "Consolidated Balance Sheets as of September 27, 2025 and September 28, 2024",
+          "",
+          ""
+        ],
+        [
+          "Consolidated Statements of Shareholders’ Equity for the years ended September 27, 2025, September 28, 2024\nand September 30, 2023",
+          "",
+          "32"
+        ],
+        [
+          "Consolidated Statements of Cash Flows for the years ended September 27, 2025, September 28, 2024 and\nSeptember 30, 2023",
+          "",
+          ""
+        ],
+        [
+          "Notes to Consolidated Financial Statements",
+          "",
+          "34"
+        ],
+        [
+          "Reports of Independent Registered Public Accounting Firm",
+          "",
+          ""
+        ]
+      ],
+      "row_count": 5,
+      "col_count": 3,
+      "page": 31,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 11,
+      "headers": [
+        "Products $ 307,003 $ 294,866 $ 298,085"
+      ],
+      "rows": [
+        [
+          "Services 109,158 96,169 85,200"
+        ],
+        [
+          "Total net sales 416,161 391,035 383,285"
+        ],
+        [
+          "Cost of sales:"
+        ],
+        [
+          "Products 194,116 185,233 189,282"
+        ],
+        [
+          "Services 26,844 25,119 24,855"
+        ],
+        [
+          "Total cost of sales 220,960 210,352 214,137"
+        ],
+        [
+          "Gross margin 195,201 180,683 169,148"
+        ],
+        [
+          "Operating expenses:"
+        ],
+        [
+          "Research and development 34,550 31,370 29,915"
+        ],
+        [
+          "Selling, general and administrative 27,601 26,097 24,932"
+        ],
+        [
+          "Total operating expenses 62,151 57,467 54,847"
+        ],
+        [
+          "Operating income 133,050 123,216 114,301"
+        ],
+        [
+          "Other income/(expense), net (321) 269 (565)"
+        ],
+        [
+          "Income before provision for income taxes 132,729 123,485 113,736"
+        ],
+        [
+          "Provision for income taxes 20,719 29,749 16,741"
+        ],
+        [
+          "Net income $ 112,010 $ 93,736 $ 96,995"
+        ],
+        [
+          "Earnings per share:"
+        ],
+        [
+          "Basic $ 7.49 $ 6.11 $ 6.16"
+        ],
+        [
+          "Diluted $ 7.46 $ 6.08 $ 6.13"
+        ],
+        [
+          "Shares used in computing earnings per share:"
+        ],
+        [
+          "Basic 14,948,500 15,343,783 15,744,231"
+        ],
+        [
+          "Diluted 15,004,697 15,408,095 15,812,547"
+        ]
+      ],
+      "row_count": 22,
+      "col_count": 1,
+      "page": 32,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 12,
+      "headers": [
+        "Other comprehensive income/(loss):"
+      ],
+      "rows": [
+        [
+          "Change in foreign currency translation, net of tax (267) 395 (765)"
+        ],
+        [
+          "Change in unrealized gains/losses on derivative instruments, net of tax:"
+        ],
+        [
+          "Change in fair value of derivative instruments 849 (832) 323"
+        ],
+        [
+          "Adjustment for net (gains)/losses realized and included in net\nincome (212) (1,337) (1,717)"
+        ],
+        [
+          "Total change in unrealized gains/losses on derivative\ninstruments 637 (2,169) (1,394)"
+        ],
+        [
+          "Change in unrealized gains/losses on marketable debt securities, net of\ntax:"
+        ],
+        [
+          "Change in fair value of marketable debt securities 817 5,850 1,563"
+        ],
+        [
+          "Adjustment for net (gains)/losses realized and included in net\nincome 414 204 253"
+        ],
+        [
+          "Total change in unrealized gains/losses on marketable debt\nsecurities 1,231 6,054 1,816"
+        ],
+        [
+          "Total other comprehensive income/(loss) 1,601 4,280 (343)"
+        ],
+        [
+          "Total comprehensive income $ 113,611 $ 98,016 $ 96,652"
+        ]
+      ],
+      "row_count": 11,
+      "col_count": 1,
+      "page": 33,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 13,
+      "headers": [
+        "ASSETS:",
+        ""
+      ],
+      "rows": [
+        [
+          "Current assets:",
+          ""
+        ],
+        [
+          "Cash and cash equivalents $ 35,934 $ 29,943",
+          ""
+        ],
+        [
+          "Marketable securities 18,763 35,228",
+          ""
+        ],
+        [
+          "Accounts receivable, net 39,777 33,410",
+          ""
+        ],
+        [
+          "Vendor non-trade receivables 33,180 32,833",
+          ""
+        ],
+        [
+          "Inventories 5,718 7,286",
+          ""
+        ],
+        [
+          "Other current assets 14,585 14,287",
+          ""
+        ],
+        [
+          "Total current assets 147,957 152,987",
+          ""
+        ],
+        [
+          "Non-current assets:",
+          ""
+        ],
+        [
+          "Marketable securities 77,723 91,479",
+          ""
+        ],
+        [
+          "Property, plant and equipment, net 49,834 45,680",
+          ""
+        ],
+        [
+          "Other non-current assets 83,727 74,834",
+          ""
+        ],
+        [
+          "Total non-current assets 211,284 211,993",
+          ""
+        ],
+        [
+          "Total assets $ 359,241 $ 364,980",
+          ""
+        ],
+        [
+          "LIABILITIES AND SHAREHOLDERS’ EQUITY:",
+          ""
+        ],
+        [
+          "Current liabilities:",
+          ""
+        ],
+        [
+          "Accounts payable $ 69,860 $ 68,960",
+          ""
+        ],
+        [
+          "Other current liabilities 66,387 78,304",
+          ""
+        ],
+        [
+          "Deferred revenue 9,055 8,249",
+          ""
+        ],
+        [
+          "Commercial paper 7,979 9,967",
+          ""
+        ],
+        [
+          "Term debt 12,350 10,912",
+          ""
+        ],
+        [
+          "Total current liabilities 165,631 176,392",
+          ""
+        ],
+        [
+          "Non-current liabilities:",
+          ""
+        ],
+        [
+          "Term debt 78,328 85,750",
+          ""
+        ],
+        [
+          "Other non-current liabilities 41,549 45,888",
+          ""
+        ],
+        [
+          "Total non-current liabilities 119,877 131,638",
+          ""
+        ],
+        [
+          "Total liabilities 285,508 308,030",
+          ""
+        ],
+        [
+          "Commitments and contingencies",
+          ""
+        ],
+        [
+          "Shareholders’ equity:",
+          ""
+        ],
+        [
+          "Common stock and additional paid-in capital, $0.00001 par value: 50,400,000 shares\nauthorized; 14,773,260 and 15,116,786 shares issued and outstanding, respectively 93,568 83,276",
+          ""
+        ],
+        [
+          "Accumulated deficit (14,264) (19,154)",
+          ""
+        ],
+        [
+          "Accumulated other comprehensive loss (5,571) (7,172)",
+          ""
+        ],
+        [
+          "Total shareholders’ equity 73,733 56,950",
+          ""
+        ],
+        [
+          "Total liabilities and shareholders’ equity $ 359,241 $ 364,980",
+          ""
+        ]
+      ],
+      "row_count": 34,
+      "col_count": 2,
+      "page": 34,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 14,
+      "headers": [
+        ""
+      ],
+      "rows": [
+        [
+          "Common stock and additional paid-in capital:"
+        ],
+        [
+          "Beginning balances 83,276 73,812 64,849"
+        ],
+        [
+          "Common stock issued 1,498 1,423 1,346"
+        ],
+        [
+          "Common stock withheld related to net share settlement of equity\nawards (4,452) (3,993) (3,521)"
+        ],
+        [
+          "Share-based compensation 13,246 12,034 11,138"
+        ],
+        [
+          "Ending balances 93,568 83,276 73,812"
+        ],
+        [
+          "Accumulated deficit:"
+        ],
+        [
+          "Beginning balances (19,154) (214) (3,068)"
+        ],
+        [
+          "Net income 112,010 93,736 96,995"
+        ],
+        [
+          "Dividends and dividend equivalents declared (15,413) (15,218) (14,996)"
+        ],
+        [
+          "Common stock withheld related to net share settlement of equity\nawards (1,655) (1,612) (2,099)"
+        ],
+        [
+          "Common stock repurchased (90,052) (95,846) (77,046)"
+        ],
+        [
+          "Ending balances (14,264) (19,154) (214)"
+        ],
+        [
+          "Accumulated other comprehensive loss:"
+        ],
+        [
+          "Beginning balances (7,172) (11,452) (11,109)"
+        ],
+        [
+          "Other comprehensive income/(loss) 1,601 4,280 (343)"
+        ],
+        [
+          "Ending balances (5,571) (7,172) (11,452)"
+        ],
+        [
+          "Total shareholders’ equity, ending balances $ 73,733 $ 56,950 $ 62,146"
+        ],
+        [
+          "Dividends and dividend equivalents declared per share or RSU $ 1.02 $ 0.98 $ 0.94"
+        ]
+      ],
+      "row_count": 19,
+      "col_count": 1,
+      "page": 35,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 15,
+      "headers": [
+        "",
+        ""
+      ],
+      "rows": [
+        [
+          "Operating activities:",
+          ""
+        ],
+        [
+          "Net income 112,010 93,736 96,995",
+          ""
+        ],
+        [
+          "Adjustments to reconcile net income to cash generated by operating activities:",
+          ""
+        ],
+        [
+          "Depreciation and amortization 11,698 11,445 11,519",
+          ""
+        ],
+        [
+          "Share-based compensation expense 12,863 11,688 10,833",
+          ""
+        ],
+        [
+          "Other (89) (2,266) (2,227)",
+          ""
+        ],
+        [
+          "Changes in operating assets and liabilities:",
+          ""
+        ],
+        [
+          "Accounts receivable, net (6,682) (3,788) (1,688)",
+          ""
+        ],
+        [
+          "Vendor non-trade receivables (347) (1,356) 1,271",
+          ""
+        ],
+        [
+          "Inventories 1,400 (1,046) (1,618)",
+          ""
+        ],
+        [
+          "Other current and non-current assets (9,197) (11,731) (5,684)",
+          ""
+        ],
+        [
+          "Accounts payable 902 6,020 (1,889)",
+          ""
+        ],
+        [
+          "Other current and non-current liabilities (11,076) 15,552 3,031",
+          ""
+        ],
+        [
+          "Cash generated by operating activities 111,482 118,254 110,543",
+          ""
+        ],
+        [
+          "Investing activities:",
+          ""
+        ],
+        [
+          "Purchases of marketable securities (24,407) (48,656) (29,513)",
+          ""
+        ],
+        [
+          "Proceeds from maturities of marketable securities 40,907 51,211 39,686",
+          ""
+        ],
+        [
+          "Proceeds from sales of marketable securities 12,890 11,135 5,828",
+          ""
+        ],
+        [
+          "Payments for acquisition of property, plant and equipment (12,715) (9,447) (10,959)",
+          ""
+        ],
+        [
+          "Other (1,480) (1,308) (1,337)",
+          ""
+        ],
+        [
+          "Cash generated by investing activities 15,195 2,935 3,705",
+          ""
+        ],
+        [
+          "Financing activities:",
+          ""
+        ],
+        [
+          "Payments for taxes related to net share settlement of equity awards (5,960) (5,441) (5,431)",
+          ""
+        ],
+        [
+          "Payments for dividends and dividend equivalents (15,421) (15,234) (15,025)",
+          ""
+        ],
+        [
+          "Repurchases of common stock (90,711) (94,949) (77,550)",
+          ""
+        ],
+        [
+          "Proceeds from issuance of term debt, net 4,481 — 5,228",
+          ""
+        ],
+        [
+          "Repayments of term debt (10,932) (9,958) (11,151)",
+          ""
+        ],
+        [
+          "Proceeds from/(Repayments of) commercial paper, net (2,032) 3,960 (3,978)",
+          ""
+        ],
+        [
+          "Other (111) (361) (581)",
+          ""
+        ],
+        [
+          "Cash used in financing activities (120,686) (121,983) (108,488)",
+          ""
+        ],
+        [
+          "Increase/(Decrease) in cash, cash equivalents, and restricted cash and cash\nequivalents 5,991 (794) 5,760",
+          ""
+        ],
+        [
+          "Cash, cash equivalents, and restricted cash and cash equivalents, ending\nbalances $ 35,934 $ 29,943 $ 30,737",
+          ""
+        ],
+        [
+          "Supplemental cash flow disclosure:",
+          ""
+        ],
+        [
+          "Cash paid for income taxes, net $ 43,369 $ 26,102 $ 18,679",
+          ""
+        ]
+      ],
+      "row_count": 34,
+      "col_count": 2,
+      "page": 36,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 16,
+      "headers": [
+        "Mac 33,708 29,984 29,357"
+      ],
+      "rows": [
+        [
+          "iPad 28,023 26,694 28,300"
+        ],
+        [
+          "Wearables, Home and Accessories 35,686 37,005 39,845"
+        ],
+        [
+          "Services (1) 109,158 96,169 85,200"
+        ],
+        [
+          "Total net sales $ 416,161 $ 391,035 $ 383,285"
+        ],
+        [
+          "Portion of total net sales that was included in deferred revenue as of the\nbeginning of the period $ 8,229 $ 7,728 $ 8,169"
+        ]
+      ],
+      "row_count": 5,
+      "col_count": 1,
+      "page": 39,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 17,
+      "headers": [
+        "Net income $ 112,010 $ 93,736 $ 96,995"
+      ],
+      "rows": [
+        [
+          "Denominator:"
+        ],
+        [
+          "Weighted-average basic shares outstanding 14,948,500 15,343,783 15,744,231"
+        ],
+        [
+          "Effect of dilutive share-based awards 56,197 64,312 68,316"
+        ],
+        [
+          "Weighted-average diluted shares 15,004,697 15,408,095 15,812,547"
+        ],
+        [
+          "Basic earnings per share $ 7.49 $ 6.11 $ 6.16"
+        ],
+        [
+          "Diluted earnings per share $ 7.46 $ 6.08 $ 6.13"
+        ]
+      ],
+      "row_count": 6,
+      "col_count": 1,
+      "page": 39,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 18,
+      "headers": [
+        "Level 1:"
+      ],
+      "rows": [
+        [
+          "Money market funds 5,272 — — 5,272 5,272 — —"
+        ],
+        [
+          "Mutual funds 679 177 (2) 854 — 854 —"
+        ],
+        [
+          "Subtotal 5,951 177 (2) 6,126 5,272 854 —"
+        ],
+        [
+          "Level 2 (1):"
+        ],
+        [
+          "U.S. Treasury securities 16,074 56 (282) 15,848 1,190 3,712 10,946"
+        ],
+        [
+          "U.S. agency securities 5,269 — (149) 5,120 251 2,456 2,413"
+        ],
+        [
+          "Non-U.S. government securities 6,586 111 (424) 6,273 — 855 5,418"
+        ],
+        [
+          "Certificates of deposit and time deposits 917 — — 917 904 — 13"
+        ],
+        [
+          "Commercial paper 100 — — 100 50 50 —"
+        ],
+        [
+          "Corporate debt securities 47,210 266 (916) 46,560 — 10,623 35,937"
+        ],
+        [
+          "Municipal securities 207 — (2) 205 — 119 86"
+        ],
+        [
+          "Mortgage- and asset-backed securities 24,130 126 (1,252) 23,004 — 94 22,910"
+        ],
+        [
+          "Subtotal 100,493 559 (3,025) 98,027 2,395 17,909 77,723"
+        ],
+        [
+          "Total $ 134,711 $ 736 $ (3,027) $ 132,420 $ 35,934 $ 18,763 $ 77,723"
+        ]
+      ],
+      "row_count": 14,
+      "col_count": 1,
+      "page": 40,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 19,
+      "headers": [
+        "Level 1:"
+      ],
+      "rows": [
+        [
+          "Money market funds 778 — — 778 778 — —"
+        ],
+        [
+          "Mutual funds 515 105 (3) 617 — 617 —"
+        ],
+        [
+          "Subtotal 1,293 105 (3) 1,395 778 617 —"
+        ],
+        [
+          "Level 2 (1):"
+        ],
+        [
+          "U.S. Treasury securities 16,150 45 (516) 15,679 212 4,087 11,380"
+        ],
+        [
+          "U.S. agency securities 5,431 — (272) 5,159 155 703 4,301"
+        ],
+        [
+          "Non-U.S. government securities 17,959 93 (484) 17,568 1,158 10,810 5,600"
+        ],
+        [
+          "Certificates of deposit and time deposits 873 — — 873 387 478 8"
+        ],
+        [
+          "Commercial paper 1,066 — — 1,066 28 1,038 —"
+        ],
+        [
+          "Corporate debt securities 65,622 270 (1,953) 63,939 26 16,027 47,886"
+        ],
+        [
+          "Municipal securities 412 — (7) 405 — 190 215"
+        ],
+        [
+          "Mortgage- and asset-backed securities 24,595 175 (1,403) 23,367 — 1,278 22,089"
+        ],
+        [
+          "Subtotal 132,108 583 (4,635) 128,056 1,966 34,611 91,479"
+        ],
+        [
+          "Total (2)(3) $ 160,600 $ 688 $ (4,638) $ 156,650 $ 29,943 $ 35,228 $ 91,479"
+        ]
+      ],
+      "row_count": 14,
+      "col_count": 1,
+      "page": 40,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 20,
+      "headers": [
+        "Foreign exchange contracts $ 62,647 $ 64,069"
+      ],
+      "rows": [
+        [
+          "Interest rate contracts $ 12,875 $ 14,575"
+        ],
+        [
+          "Derivative instruments not designated as accounting hedges:"
+        ],
+        [
+          "Foreign exchange contracts $ 109,079 $ 91,493"
+        ]
+      ],
+      "row_count": 3,
+      "col_count": 1,
+      "page": 42,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 21,
+      "headers": [
+        "Machinery, equipment and internal-use software 83,420 80,205"
+      ],
+      "rows": [
+        [
+          "Leasehold improvements 15,091 14,233"
+        ],
+        [
+          "Gross property, plant and equipment 125,848 119,128"
+        ],
+        [
+          "Accumulated depreciation (76,014) (73,448)"
+        ],
+        [
+          "Total property, plant and equipment, net $ 49,834 $ 45,680"
+        ]
+      ],
+      "row_count": 4,
+      "col_count": 1,
+      "page": 42,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 22,
+      "headers": [
+        "Other non-current assets 62,950 55,335"
+      ],
+      "rows": [
+        [
+          "Total other non-current assets $ 83,727 $ 74,834"
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 1,
+      "page": 43,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 23,
+      "headers": [
+        "Accrued distribution and marketing 8,919 7,679"
+      ],
+      "rows": [
+        [
+          "Other current liabilities 44,452 44,024"
+        ],
+        [
+          "Total other current liabilities $ 66,387 $ 78,304"
+        ]
+      ],
+      "row_count": 2,
+      "col_count": 1,
+      "page": 43,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 24,
+      "headers": [
+        "Current $ 11,487 $ 5,571 $ 9,445"
+      ],
+      "rows": [
+        [
+          "Deferred (1,804) (3,080) (3,644)"
+        ],
+        [
+          "Total 9,683 2,491 5,801"
+        ],
+        [
+          "State:"
+        ],
+        [
+          "Current 1,680 1,726 1,570"
+        ],
+        [
+          "Deferred (139) (298) (49)"
+        ],
+        [
+          "Total 1,541 1,428 1,521"
+        ],
+        [
+          "Foreign:"
+        ],
+        [
+          "Current 8,891 25,483 8,750"
+        ],
+        [
+          "Deferred 604 347 669"
+        ],
+        [
+          "Total 9,495 25,830 9,419"
+        ],
+        [
+          "Provision for income taxes $ 20,719 $ 29,749 $ 16,741"
+        ]
+      ],
+      "row_count": 11,
+      "col_count": 1,
+      "page": 43,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 25,
+      "headers": [
+        "Earnings of foreign subsidiaries (8,120) (5,311) (5,744)"
+      ],
+      "rows": [
+        [
+          "Change in valuation allowance 2,091 — —"
+        ],
+        [
+          "Research and development credit, net (1,049) (1,397) (1,212)"
+        ],
+        [
+          "Impact of the State Aid Decision (486) 10,246 —"
+        ],
+        [
+          "Other 410 279 (188)"
+        ],
+        [
+          "Provision for income taxes $ 20,719 $ 29,749 $ 16,741"
+        ],
+        [
+          "Effective tax rate 15.6% 24.1% 14.7%"
+        ]
+      ],
+      "row_count": 6,
+      "col_count": 1,
+      "page": 44,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 26,
+      "headers": [
+        "Capitalized research and development $ 15,041 $ 10,739"
+      ],
+      "rows": [
+        [
+          "Tax credit carryforwards 8,643 8,856"
+        ],
+        [
+          "Accrued liabilities and other reserves 6,154 6,114"
+        ],
+        [
+          "Deferred revenue 2,953 3,413"
+        ],
+        [
+          "Lease liabilities 2,577 2,410"
+        ],
+        [
+          "Other 3,049 3,341"
+        ],
+        [
+          "Total deferred tax assets 38,417 34,873"
+        ],
+        [
+          "Less: Valuation allowance (10,966) (8,866)"
+        ],
+        [
+          "Total deferred tax assets, net 27,451 26,007"
+        ],
+        [
+          "Deferred tax liabilities:"
+        ],
+        [
+          "Depreciation 3,276 2,551"
+        ],
+        [
+          "Right-of-use assets 2,300 2,125"
+        ],
+        [
+          "Minimum tax on foreign earnings 1,217 1,674"
+        ],
+        [
+          "Other 678 455"
+        ],
+        [
+          "Total deferred tax liabilities 7,471 6,805"
+        ],
+        [
+          "Net deferred tax assets $ 19,980 $ 19,202"
+        ]
+      ],
+      "row_count": 15,
+      "col_count": 1,
+      "page": 44,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 27,
+      "headers": [
+        "Increases related to tax positions taken during a prior year 1,971 1,727 2,044"
+      ],
+      "rows": [
+        [
+          "Decreases related to tax positions taken during a prior year (71) (386) (1,463)"
+        ],
+        [
+          "Increases related to tax positions taken during the current year 3,795 2,542 2,628"
+        ],
+        [
+          "Decreases related to settlements with taxing authorities (2,939) (1,070) (19)"
+        ],
+        [
+          "Decreases related to expiration of the statute of limitations (1,552) (229) (494)"
+        ],
+        [
+          "Ending balances $ 23,242 $ 22,038 $ 19,454"
+        ]
+      ],
+      "row_count": 5,
+      "col_count": 1,
+      "page": 45,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 28,
+      "headers": [
+        "The Company is subject to taxation and files income tax returns in the U.S. federal jurisdiction and many state and foreign"
+      ],
+      "rows": [
+        [
+          "jurisd"
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 1,
+      "page": 45,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 29,
+      "headers": [
+        "Operating leases Other non-current assets $ 11,205 $ 10,234"
+      ],
+      "rows": [
+        [
+          "Finance leases Property, plant and equipment, net 1,033 1,069"
+        ],
+        [
+          "Total right-of-use assets $ 12,238 $ 11,303"
+        ],
+        [
+          "Lease liabilities:"
+        ],
+        [
+          "Operating leases Other current liabilities $ 1,579 $ 1,488"
+        ],
+        [
+          "Other non-current liabilities 10,911 10,046"
+        ],
+        [
+          "Finance leases Other current liabilities 538 144"
+        ],
+        [
+          "Other non-current liabilities 692 752"
+        ],
+        [
+          "Total lease liabilities $ 13,720 $ 12,430"
+        ]
+      ],
+      "row_count": 8,
+      "col_count": 1,
+      "page": 45,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 30,
+      "headers": [
+        "2027 1,988 73 2,061"
+      ],
+      "rows": [
+        [
+          "2028 1,848 51 1,899"
+        ],
+        [
+          "2029 1,585 48 1,633"
+        ],
+        [
+          "2030 1,381 43 1,424"
+        ],
+        [
+          "Thereafter 5,956 801 6,757"
+        ],
+        [
+          "Total undiscounted liabilities 14,725 1,579 16,304"
+        ],
+        [
+          "Less: Imputed interest (2,235) (349) (2,584)"
+        ],
+        [
+          "Total lease liabilities $ 12,490 $ 1,230 $ 13,720"
+        ]
+      ],
+      "row_count": 7,
+      "col_count": 1,
+      "page": 46,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 31,
+      "headers": [
+        "Proceeds from/(Repayments of) commercial paper, net $ (5,820)",
+        "$ 3,960",
+        "$ (1,333)"
+      ],
+      "rows": [
+        [
+          "Maturities greater than 90 days:",
+          "",
+          ""
+        ],
+        [
+          "Proceeds from commercial paper 5,836 — —",
+          "",
+          ""
+        ],
+        [
+          "Repayments of commercial paper (2,048)",
+          "—",
+          "(2,645)"
+        ],
+        [
+          "Proceeds from/(Repayments of) commercial paper, net 3,788 — (2,645)",
+          "",
+          ""
+        ],
+        [
+          "Total proceeds from/(repayments of) commercial paper, net $ (2,032) $ 3,960 $ (3,978)",
+          "",
+          ""
+        ]
+      ],
+      "row_count": 5,
+      "col_count": 3,
+      "page": 46,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 32,
+      "headers": [
+        "Fixed-rate 0.000% – 4.850% notes 2025 – 2062 $ 86,781 0.03% – 5.75% $ 97,341 0.03% – 6.65%"
+      ],
+      "rows": [
+        [
+          "2025 debt issuance:"
+        ],
+        [
+          "Fixed-rate 4.000% – 4.750% notes 2028 – 2035 4,500 4.07% – 4.83% —"
+        ],
+        [
+          "Total term debt principal 91,281 97,341"
+        ],
+        [
+          "Unamortized premium/(discount) and issuance\ncosts, net (309) (321)"
+        ],
+        [
+          "Hedge accounting fair value adjustments (294) (358)"
+        ],
+        [
+          "Total term debt 90,678 96,662"
+        ],
+        [
+          "Less: Current portion of term debt (12,350) (10,912)"
+        ],
+        [
+          "Total non-current portion of term debt $ 78,328 $ 85,750"
+        ]
+      ],
+      "row_count": 8,
+      "col_count": 1,
+      "page": 47,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 33,
+      "headers": [
+        "",
+        "$ 12,393"
+      ],
+      "rows": [
+        [
+          "2027 10,078",
+          ""
+        ],
+        [
+          "2028 9,300",
+          ""
+        ],
+        [
+          "2029 5,235",
+          ""
+        ],
+        [
+          "2030 4,972",
+          ""
+        ],
+        [
+          "Thereafter 49,303",
+          ""
+        ],
+        [
+          "Total term debt principal $ 91,281",
+          ""
+        ]
+      ],
+      "row_count": 6,
+      "col_count": 2,
+      "page": 47,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 34,
+      "headers": [
+        "Common stock repurchased (401,672)",
+        "",
+        "(499,372) (471,419)"
+      ],
+      "rows": [
+        [
+          "Common stock issued, net of shares withheld for employee taxes 58,146 66,097 78,055",
+          "",
+          ""
+        ],
+        [
+          "Common stock outstanding, ending balances 14,773,260",
+          "",
+          "15,116,786 15,550,061"
+        ]
+      ],
+      "row_count": 2,
+      "col_count": 3,
+      "page": 48,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 35,
+      "headers": [
+        "RSUs granted 73,466 $ 226.68"
+      ],
+      "rows": [
+        [
+          "RSUs vested (76,845) $ 159.85"
+        ],
+        [
+          "RSUs forfeited (8,373) $ 183.03"
+        ],
+        [
+          "Balance as of September 27, 2025 151,574 $ 189.75"
+        ]
+      ],
+      "row_count": 3,
+      "col_count": 1,
+      "page": 48,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 36,
+      "headers": [
+        "2027 3,708"
+      ],
+      "rows": [
+        [
+          "2028 1,981"
+        ],
+        [
+          "2029 1,306"
+        ],
+        [
+          "2030 788"
+        ],
+        [
+          "Thereafter 773"
+        ],
+        [
+          "Total $ 13,308"
+        ]
+      ],
+      "row_count": 5,
+      "col_count": 1,
+      "page": 49,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 37,
+      "headers": [
+        "Cost of sales (95,699) (58,617) (35,141) (13,779) (17,724) — (220,960)"
+      ],
+      "rows": [
+        [
+          "Research and development — — — — — (34,550) (34,550)"
+        ],
+        [
+          "Selling and marketing (10,174) (4,676) (2,319) (969) (1,386) — (19,524)"
+        ],
+        [
+          "General and administrative — — — — — (8,077) (8,077)"
+        ],
+        [
+          "Operating income/(loss) $ 72,480 $ 47,739 $ 26,917 $ 13,955 $ 14,586 $ (42,627) $ 133,050"
+        ]
+      ],
+      "row_count": 4,
+      "col_count": 1,
+      "page": 50,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 38,
+      "headers": [
+        "Cost of sales (89,587) (55,197) (37,519) (11,744) (16,305) — (210,352)"
+      ],
+      "rows": [
+        [
+          "Research and development — — — — — (31,370) (31,370)"
+        ],
+        [
+          "Selling and marketing (9,802) (4,341) (2,351) (854) (1,291) — (18,639)"
+        ],
+        [
+          "General and administrative — — — — — (7,458) (7,458)"
+        ],
+        [
+          "Operating income/(loss) $ 67,656 $ 41,790 $ 27,082 $ 12,454 $ 13,062 $ (38,828) $ 123,216"
+        ]
+      ],
+      "row_count": 4,
+      "col_count": 1,
+      "page": 50,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 39,
+      "headers": [
+        "Cost of sales (92,394) (54,101) (39,787) (11,542) (16,313) — (214,137)"
+      ],
+      "rows": [
+        [
+          "Research and development — — — — — (29,915) (29,915)"
+        ],
+        [
+          "Selling and marketing (9,658) (4,095) (2,444) (827) (1,236) — (18,260)"
+        ],
+        [
+          "General and administrative — — — — — (6,672) (6,672)"
+        ],
+        [
+          "Operating income/(loss) $ 60,508 $ 36,098 $ 30,328 $ 11,888 $ 12,066 $ (36,587) $ 114,301"
+        ]
+      ],
+      "row_count": 4,
+      "col_count": 1,
+      "page": 50,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 40,
+      "headers": [
+        "U.S. $ 151,790 $ 142,196 $ 138,573"
+      ],
+      "rows": [
+        [
+          "China (1) 64,377 66,952 72,559"
+        ],
+        [
+          "Other countries 199,994 181,887 172,153"
+        ],
+        [
+          "Total net sales $ 416,161 $ 391,035 $ 383,285"
+        ]
+      ],
+      "row_count": 3,
+      "col_count": 1,
+      "page": 51,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 41,
+      "headers": [
+        "U.S. $ 40,274",
+        "",
+        "$ 35,664"
+      ],
+      "rows": [
+        [
+          "China (1) 3,617 4,797",
+          "",
+          ""
+        ],
+        [
+          "Other countries 5,943",
+          "",
+          "5,219"
+        ],
+        [
+          "Total long-lived assets $ 49,834 $ 45,680",
+          "",
+          ""
+        ]
+      ],
+      "row_count": 3,
+      "col_count": 3,
+      "page": 51,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 42,
+      "headers": [
+        "Consolidated Statements of Comprehensive Income for the years ended September 27, 2025, September 28,\n2024 and September 30, 2023",
+        "",
+        "30"
+      ],
+      "rows": [
+        [
+          "Consolidated Balance Sheets as of September 27, 2025 and September 28, 2024",
+          "",
+          ""
+        ],
+        [
+          "Consolidated Statements of Shareholders’ Equity for the years ended September 27, 2025, September 28, 2024\nand September 30, 2023",
+          "",
+          "32"
+        ],
+        [
+          "Consolidated Statements of Cash Flows for the years ended September 27, 2025, September 28, 2024 and\nSeptember 30, 2023",
+          "",
+          ""
+        ],
+        [
+          "Notes to Consolidated Financial Statements",
+          "",
+          "34"
+        ],
+        [
+          "Reports of Independent Registered Public Accounting Firm*",
+          "",
+          ""
+        ]
+      ],
+      "row_count": 5,
+      "col_count": 3,
+      "page": 57,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 43,
+      "headers": [
+        "issued under such Indenture from time to time in one or more series. The Indentures and the Notes are governed by,"
+      ],
+      "rows": [
+        [
+          "and construed in accordance with, the laws of the State of New York."
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 1,
+      "page": 64,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 44,
+      "headers": [
+        "maturity date of the 2025 Notes is November 15, 2025, and interest at a rate of 0.000% per annum is paid annually"
+      ],
+      "rows": [
+        [
+          "on November 15 of each year, beginning on November 15, 2020, and on the maturity date. As of"
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 1,
+      "page": 64,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 45,
+      "headers": [
+        "maturity date of the 2026 Notes is November 10, 2026, and interest at a rate of 1.625% per annum is paid annually"
+      ],
+      "rows": [
+        [
+          "on November 10 of each year, beginning on November 10, 2015, and on the maturity date. As of"
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 1,
+      "page": 64,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 46,
+      "headers": [
+        "maturity date of the 2027 Notes is September 17, 2027, and interest at a rate of 2.000% per annum is paid annually"
+      ],
+      "rows": [
+        [
+          "on September 17 of each year, beginning on September 17, 2016, and on the maturity date. As of"
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 1,
+      "page": 64,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 47,
+      "headers": [
+        "maturity date of the 1.375% 2029 Notes is May 24, 2029, and interest at a rate of 1.375% per annum is paid annually"
+      ],
+      "rows": [
+        [
+          "on May 24 of each year, beginning on May 24, 2018, and on the maturity date. As of"
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 1,
+      "page": 64,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 48,
+      "headers": [
+        "maturity date of the 2031 Notes is November 15, 2031, and interest at a rate of 0.500% per annum is paid annually"
+      ],
+      "rows": [
+        [
+          "on November 15 of each year, beginning on November 15, 2020, and on the maturity date. As of"
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 1,
+      "page": 65,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 49,
+      "headers": [
+        "of the 2042 Notes is July 31, 2042, and interest at a rate of 3.600% per annum is paid semi-annually on January 31"
+      ],
+      "rows": [
+        [
+          "and July 31 of each year, beginning on January 31, 2016, and on the maturity date. As of"
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 1,
+      "page": 65,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 50,
+      "headers": [
+        "senior unsecured and unsubordinated indebtedness from time to time outstanding. However, the Notes are"
+      ],
+      "rows": [
+        [
+          "structurally subordinated to any indebtedness and preferred stock, if any, of our subsidiaries and are effectively"
+        ],
+        [
+          "subordinated to any secured indebtedness to the extent of the value of the assets securing such indebtedness."
+        ],
+        [
+          "Claims of the creditors of our subsidiaries generally have priority with respect to the assets and earnings of such"
+        ],
+        [
+          "subsidiaries over the claims of our creditors, including holders of the Notes. Accordingly, the Notes are effectively"
+        ],
+        [
+          "subordinated to creditors, including trade creditors and preferred stockholders, if any, of our subsidiaries. The"
+        ],
+        [
+          "Indentures do not restrict our ability or that of our subsidiaries to incur additional indebtedness."
+        ]
+      ],
+      "row_count": 6,
+      "col_count": 1,
+      "page": 65,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 51,
+      "headers": [
+        "free and clear of, and without deduction or withholding for or on account of any present or future taxes, duties,"
+      ],
+      "rows": [
+        [
+          "assessments or other governmental charges of whatsoever nature required to be deducted or withheld by the United"
+        ],
+        [
+          "States or any political subdivision or taxing authority of or in the United States, unless such withholding or deduction"
+        ],
+        [
+          "is required by law."
+        ]
+      ],
+      "row_count": 3,
+      "col_count": 1,
+      "page": 66,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 52,
+      "headers": [
+        "tax purposes, a corporation, partnership or other entity created or organized in or under the laws of the United States,"
+      ],
+      "rows": [
+        [
+          "any state of the United States or the District of Columbia (other than a partnership that is not treated as a United"
+        ],
+        [
+          "States person under any applicable Treasury regulations), or any estate or trust the income of which is subject to U.S."
+        ],
+        [
+          "federal income taxation regardless of its source."
+        ]
+      ],
+      "row_count": 3,
+      "col_count": 1,
+      "page": 67,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 53,
+      "headers": [
+        "introduction of, the laws (or any regulations or rulings promulgated under the laws) of the United States (or any"
+      ],
+      "rows": [
+        [
+          "political subdivision or taxing authority of or in the United States), or any change in, or amendments to, an official"
+        ],
+        [
+          "position regarding the application or interpretation of such laws, regulations or rulings,"
+        ]
+      ],
+      "row_count": 2,
+      "col_count": 1,
+      "page": 67,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 54,
+      "headers": [
+        "upon a written opinion of independent counsel selected by us, will become obligated to pay additional amounts as"
+      ],
+      "rows": [
+        [
+          "described above under the heading “Payments of Additional Amounts” with respect to a series of the Notes, then we"
+        ],
+        [
+          "may at our option redeem, in whole, but not in part"
+        ]
+      ],
+      "row_count": 2,
+      "col_count": 1,
+      "page": 67,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 55,
+      "headers": [
+        "accrued but unpaid on those Notes to"
+      ],
+      "rows": [
+        [
+          "date fixed for redemption."
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 1,
+      "page": 68,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 56,
+      "headers": [
+        "on or prior to a redemption date shall be payable on the interest payment date to the holders as of the close of"
+      ],
+      "rows": [
+        [
+          "business on the relevant regular record date according to the Notes and the applicable Indenture."
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 1,
+      "page": 68,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 57,
+      "headers": [
+        "for the 2026 Notes and the 2027 Notes, at the discretion of an independent investment bank selected by us, a"
+      ],
+      "rows": [
+        [
+          "German government bond whose maturity is closest to the maturity of the Notes being redeemed, or if such"
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 1,
+      "page": 68,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 58,
+      "headers": [
+        "government bond as such independent investment bank may, with the advice of three brokers of, and/or market"
+      ],
+      "rows": [
+        [
+          "makers in, German government bonds selected by us, determine to be appropriate for determining the Comparable"
+        ],
+        [
+          "Government Bond Rate."
+        ]
+      ],
+      "row_count": 2,
+      "col_count": 1,
+      "page": 68,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 59,
+      "headers": [
+        "for the 2025 Notes, the 1.375% 2029 Notes and the 2031 Notes, at the discretion of an independent investment bank"
+      ],
+      "rows": [
+        [
+          "selected by us, a German government bond whose maturity is closest to the applicable Par Call Date of the Notes"
+        ],
+        [
+          "being redeemed, or if such independent investment bank in its discretion determines that such similar bond is not in"
+        ],
+        [
+          "issue, such other German government bond as such independent investment bank may, with the advice of three"
+        ],
+        [
+          "brokers of, and/or market makers in, German government bonds selected by us, determine to be appropriate for"
+        ],
+        [
+          "determining the Comparable Government Bond Rate."
+        ]
+      ],
+      "row_count": 5,
+      "col_count": 1,
+      "page": 69,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 60,
+      "headers": [
+        "decimal places, with 0.0005 being rounded upwards), at which the gross redemption yield on the Notes, if they were"
+      ],
+      "rows": [
+        [
+          "to be purchased at such price on the third business day prior to the date fixed for redemption, would be equal to the"
+        ],
+        [
+          "gross redemption yield on such business day of the Comparable Government Bond on the basis of the middle market"
+        ],
+        [
+          "price of the Comparable Government Bond prevailing at 11:00 a.m. (London time) on such business day as"
+        ],
+        [
+          "determined by an independent investment bank selected by us."
+        ]
+      ],
+      "row_count": 4,
+      "col_count": 1,
+      "page": 69,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 61,
+      "headers": [
+        "such event of default and whether or not it will be voluntary or involuntary or be effected by operation of law or"
+      ],
+      "rows": [
+        [
+          "pursuant to any judgment, decree or order of any court or any order, rule or regulation of any administrative or"
+        ],
+        [
+          "governmental body) with respect to the debt securities of any series:"
+        ]
+      ],
+      "row_count": 2,
+      "col_count": 1,
+      "page": 70,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 62,
+      "headers": [
+        "becomes due and payable at its stated maturity, upon optional redemption, upon declaration or"
+      ],
+      "rows": [
+        [
+          "otherwise;"
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 1,
+      "page": 70,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 63,
+      "headers": [
+        "with respect to the debt securities of such series (other than a covenant or agreement, a default in the"
+      ],
+      "rows": [
+        [
+          "performance of which or a breach of which is elsewhere in the applicable Indenture specifically dealt"
+        ],
+        [
+          "with or that has expressly been included in the applicable Indenture solely for the benefit of a series of"
+        ],
+        [
+          "debt securities other than such series), which continues for a period of 90 days after written notice to us"
+        ],
+        [
+          "by the trustee or to us and the trustee by the holders of, in the case of the 2013 Indenture, at least 25%"
+        ],
+        [
+          "in aggregate principal amount of the outstanding debt securities of that series, and in the case of the"
+        ],
+        [
+          "2018 Indenture, at least 33% in aggregate principal amount of the outstanding debt securities of that"
+        ],
+        [
+          "series;"
+        ]
+      ],
+      "row_count": 7,
+      "col_count": 1,
+      "page": 70,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 64,
+      "headers": [
+        "and the order or decree remains unstayed and in effect for 90 days (or, in the case of the 2018"
+      ],
+      "rows": [
+        [
+          "Indenture, 90 consecutive days); or"
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 1,
+      "page": 70,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 65,
+      "headers": [
+        "relief of debtors. “Custodian” means any custodian, receiver, trustee, assignee, liquidator or other similar official"
+      ],
+      "rows": [
+        [
+          "under any Bankruptcy Law."
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 1,
+      "page": 70,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 66,
+      "headers": [
+        "",
+        "If an event of default with respect to debt securities of any series (other than an event of default relating to"
+      ],
+      "rows": [
+        [
+          "certain events of bankruptcy, insolvency, or reorganization of us) occurs and is continuing, the trustee by notice to",
+          ""
+        ],
+        [
+          "or the holders of, in the case of the 2013 Indenture, at least 25% in aggregate principal amount of the outstanding",
+          ""
+        ],
+        [
+          "debt securities of such series",
+          ""
+        ]
+      ],
+      "row_count": 3,
+      "col_count": 2,
+      "page": 71,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 67,
+      "headers": [
+        "",
+        "by notice to us and the trustee, may, and the trustee at the request o"
+      ],
+      "rows": [
+        [
+          "these holders will, declare the principal of and premium, if any, and accrued and unpaid interest on all the debt",
+          ""
+        ],
+        [
+          "securities of such series to be due and payable. Upon such a declaration, such principal, premium and accrued an",
+          ""
+        ],
+        [
+          "unpaid interest will be due and payable immediately. If an event of default relating to certain events of bankruptcy,",
+          ""
+        ],
+        [
+          "insolvency, or reorganization of us occurs and is continuing, the principal of and premium, if any, and accrued and",
+          ""
+        ],
+        [
+          "unpaid interest on the debt securities of such series will become and be immediately due and payable without any",
+          ""
+        ],
+        [
+          "declaration or other act on the part of the trustee or any holders.",
+          ""
+        ]
+      ],
+      "row_count": 6,
+      "col_count": 2,
+      "page": 71,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 68,
+      "headers": [
+        "",
+        "The holders of not less than a majority in aggregate principal amount of the outstanding debt securities of"
+      ],
+      "rows": [
+        [
+          "any series may rescind a declaration of acceleration and its consequences, if we have deposited certain sums with",
+          ""
+        ],
+        [
+          "the trustee and all events of default with respect to the debt securities of such series, other than the non-payment o",
+          ""
+        ],
+        [
+          "the principal or interest which have become due solely by such acceleration, have been cured or waived, as provid",
+          ""
+        ],
+        [
+          "in the Indentures.",
+          ""
+        ]
+      ],
+      "row_count": 4,
+      "col_count": 2,
+      "page": 71,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 69,
+      "headers": [
+        "",
+        "We are required to furnish the trustee annually within 120 days after the end of our fiscal year a statement"
+      ],
+      "rows": [
+        [
+          "by one of our officers to the effect that, to the best knowledge of such officer, we are not in default in the fulfillment",
+          ""
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 2,
+      "page": 71,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 70,
+      "headers": [
+        "(2) in the case of the 2013 Indenture, the holders of not less than 25% of the aggregate principal amount",
+        ""
+      ],
+      "rows": [
+        [
+          "",
+          "the outstanding debt securities of such series, and in the case of the 2018 Indenture, the holders of n"
+        ],
+        [
+          "",
+          "less than 33% of the aggregate principal amount of the outstanding debt securities of such series hav"
+        ],
+        [
+          "",
+          "requested the trustee to institute proceedings in respect of such event of default;"
+        ]
+      ],
+      "row_count": 3,
+      "col_count": 2,
+      "page": 71,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 71,
+      "headers": [
+        "",
+        "The holders of a majority in aggregate principal amount of outstanding debt securities of a series will have"
+      ],
+      "rows": [
+        [
+          "the right, subject to certain limitations, to direct the time, method and place of conducting any proceeding for any\nremedy available to the trustee with respect to the debt securities of that series or exercising any trust or power\nconferred to the trustee, and to waive certain defaults. Each of the Indentures provides that if an event of default",
+          ""
+        ],
+        [
+          "occurs and is continuing, the trustee will exercise such of its rights and powers under such Indenture, and use the",
+          ""
+        ],
+        [
+          "same degree of care and skill in their exercise, as a prudent person would exercise or use under the circumstance",
+          ""
+        ],
+        [
+          "the conduct of such person’s own affairs. Subject to such provisions, the trustee will be under no obligation to",
+          ""
+        ]
+      ],
+      "row_count": 4,
+      "col_count": 2,
+      "page": 71,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 72,
+      "headers": [
+        "",
+        "Notwithstanding the foregoing, the holder of any debt security will have an absolute and unconditional right"
+      ],
+      "rows": [
+        [
+          "to receive payment of the principal of and premium, if any, and interest on that debt security on or after the due dates",
+          ""
+        ],
+        [
+          "expressed in that debt security and to institute suit for the enforcement of payment.",
+          ""
+        ]
+      ],
+      "row_count": 2,
+      "col_count": 2,
+      "page": 72,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 73,
+      "headers": [
+        "consent of the holders of not less than a majority in aggregate principal amount of the outstanding series of Notes"
+      ],
+      "rows": [
+        [
+          "affected thereby; provided, however, that no such modification or amendment may, without the consent of the holder"
+        ],
+        [
+          "of each outstanding Note of that series affected thereby:"
+        ]
+      ],
+      "row_count": 2,
+      "col_count": 1,
+      "page": 72,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 74,
+      "headers": [
+        "on behalf of the holders of all Notes of that series, waive compliance by us with certain restrictive provisions of the"
+      ],
+      "rows": [
+        [
+          "Indentures. The holders of not less than a majority in aggregate principal amount of the outstanding Notes of a series"
+        ],
+        [
+          "may, on behalf of the holders of all Notes of that series, waive any past default and its consequences under the"
+        ],
+        [
+          "applicable Indenture with respect to the Notes of that series, except a default (1) in the payment of principal or"
+        ],
+        [
+          "premium, if any, or interest on Notes of that series or (2) in respect of a covenant or provision of the applicable"
+        ],
+        [
+          "Indenture that cannot be modified or amended without the consent of the holder of each Note of that series. Upon any"
+        ],
+        [
+          "such waiver, such default will cease to exist, and any event of default arising therefrom will be deemed to have been"
+        ],
+        [
+          "cured, for every purpose of the Indenture; however, no such waiver will extend to any subsequent or other default or"
+        ],
+        [
+          "event of default or impair any rights consequent thereon."
+        ]
+      ],
+      "row_count": 8,
+      "col_count": 1,
+      "page": 73,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 75,
+      "headers": [
+        "delivered to the trustee for cancellation and that either have become due and payable or will become due and"
+      ],
+      "rows": [
+        [
+          "payable within one year (or scheduled for redemption within one year) by depositing with the trustee, in trust, funds in"
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 1,
+      "page": 74,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 76,
+      "headers": [
+        "premium, if any, and interest to the date of such deposit (if due and payable) or to the maturity thereof or the"
+      ],
+      "rows": [
+        [
+          "redemption date of the Notes of that series, as the case may be. We may direct the trustee to invest such funds in"
+        ],
+        [
+          "U.S. Treasury securities with a maturity of one year or less or in a money market fund that invests solely in short-term"
+        ],
+        [
+          "U.S. Treasury securities."
+        ]
+      ],
+      "row_count": 3,
+      "col_count": 1,
+      "page": 74,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 77,
+      "headers": [
+        "obligations with respect to the Notes of a series (except for, among other things, obligations to register the transfer or"
+      ],
+      "rows": [
+        [
+          "exchange of the Notes, to replace temporary or mutilated, destroyed, lost or stolen Notes, to maintain an office or"
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 1,
+      "page": 74,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 78,
+      "headers": [
+        "from our obligations to comply with the restrictive covenants under the applicable Indenture, and any omission to"
+      ],
+      "rows": [
+        [
+          "comply with such obligations will not constitute a default or an event of default with respect to the Notes of a serie"
+        ],
+        [
+          "and clauses (3) and (6) under the caption “Events of Default” above will no longer be applied (“covenant"
+        ],
+        [
+          "defeasance”). Legal defeasance or covenant defeasance, as the case may be, will be conditioned upon, among other"
+        ],
+        [
+          "things, the irrevocable deposit by us with the trustee, in trust, of an amount in U.S. dollars, or U.S. government"
+        ],
+        [
+          "obligations (as such term is modified below), or both, applicable to the Notes of that series which through the"
+        ],
+        [
+          "scheduled payment of principal and interest in accordance with their terms will provide money in an amount sufficient"
+        ],
+        [
+          "to pay the principal or premium, if any, and interest on the Notes on the scheduled due dates therefor."
+        ]
+      ],
+      "row_count": 7,
+      "col_count": 1,
+      "page": 74,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 79,
+      "headers": [
+        "",
+        "If we effect covenant defeasance with respect to the Notes of any series, the amount in U.S. dollars, or U.S."
+      ],
+      "rows": [
+        [
+          "government obligations (as such term is modified below), or both, on deposit with the trustee will be sufficient, in the",
+          ""
+        ],
+        [
+          "opinion of a nationally recognized firm of independent accountants, to pay amounts due on the Notes of that series at",
+          ""
+        ],
+        [
+          "the time of the stated maturity but may not be sufficient to pay amounts due on the Notes of that series at the time of",
+          ""
+        ],
+        [
+          "the acceleration resulting from such event of default. However, we would remain liable to make payment of such",
+          ""
+        ],
+        [
+          "amounts due at the time of acceleration.",
+          ""
+        ]
+      ],
+      "row_count": 5,
+      "col_count": 2,
+      "page": 74,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 80,
+      "headers": [
+        "",
+        "We will be required to deliver to the trustee an opinion of counsel that the deposit and related defeasanc"
+      ],
+      "rows": [
+        [
+          "will not cause the holders and beneficial owners of the Notes of that series to recognize income, gain or loss for",
+          ""
+        ]
+      ],
+      "row_count": 1,
+      "col_count": 2,
+      "page": 74,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 81,
+      "headers": [
+        "commercial deposits and custodial arrangements with The Bank of New York Mellon Trust Company, N.A. and its"
+      ],
+      "rows": [
+        [
+          "affiliates (“BNYM”). We may enter into similar or other banking relationships with BNYM in the future in the normal"
+        ],
+        [
+          "course of business. In addition, BNYM acts as trustee and as paying agent with respect to other debt securities"
+        ],
+        [
+          "issued by us, and may do so for future issuances of debt securities by us as well."
+        ]
+      ],
+      "row_count": 3,
+      "col_count": 1,
+      "page": 75,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    },
+    {
+      "table_index": 82,
+      "headers": [
+        "Apple Asia LLC Delaware, U.S."
+      ],
+      "rows": [
+        [
+          "Apple Canada Inc. Canada"
+        ],
+        [
+          "Apple Computer Trading (Shanghai) Co., Ltd. China"
+        ],
+        [
+          "Apple Distribution International Limited Ireland"
+        ],
+        [
+          "Apple India Private Limited India"
+        ],
+        [
+          "Apple Insurance Company, Inc. Arizona, U.S."
+        ],
+        [
+          "Apple Japan, Inc. Japan"
+        ],
+        [
+          "Apple Korea Limited South Korea"
+        ],
+        [
+          "Apple Operations International Limited Ireland"
+        ],
+        [
+          "Apple Operations Limited Ireland"
+        ],
+        [
+          "Apple Operations Mexico, S.A. de C.V. Mexico"
+        ],
+        [
+          "Apple Pty Limited Australia"
+        ],
+        [
+          "Apple Services Pte. Ltd. Singapore"
+        ],
+        [
+          "Apple South Asia (Thailand) Limited Thailand"
+        ],
+        [
+          "Apple South Asia Pte. Ltd. Singapore"
+        ],
+        [
+          "Apple Vietnam Limited Liability Company Vietnam"
+        ],
+        [
+          "Braeburn Capital, Inc. Nevada, U.S."
+        ],
+        [
+          "iTunes K.K. Japan"
+        ]
+      ],
+      "row_count": 17,
+      "col_count": 1,
+      "page": 76,
+      "source": "PDF: _10-K-2025-As-Filed.pdf"
+    }
+  ],
+  "extracted_at": "2026-02-05T22:24:41.247392+00:00"
+}
