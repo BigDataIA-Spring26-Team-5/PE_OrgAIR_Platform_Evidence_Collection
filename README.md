@@ -1,125 +1,178 @@
-# PE Org-AI-R Platform Foundation
+# PE-OrgAIR Platform — Evidence Collection (Case Study 2)
 
-A REST API platform for assessing organizational AI readiness across portfolio companies. Built with FastAPI, Snowflake, Redis, and AWS S3.
+> **"SEC filings tell you what companies say. External signals tell you what they do."**
+
+---
 
 ## Table of Contents
 
-- [Quick Start](#quick-start)
-- [Starting the Application](#starting-the-application)
-- [Stopping the Application](#stopping-the-application)
-- [Directory Structure](#directory-structure)
-- [Technology Stack & Packages](#technology-stack--packages)
-- [Project Implementation Summary](#project-implementation-summary)
-- [Infrastructure Diagram](#infrastructure-diagram)
-- [Data Flow Examples](#data-flow-examples)
-- [API Documentation](#api-documentation)
+1. [Title](#pe-orgair-platform--evidence-collection-case-study-2)
+2. [Codelab & Video Links](#codelab--video-links)
+3. [Project Context](#project-context)
+4. [Project Overview & Objectives](#project-overview--objectives)
+5. [Architecture & Diagram](#architecture--diagram)
+6. [Tech Stack](#tech-stack)
+7. [Step-by-Step Setup Guide](#step-by-step-setup-guide)
+8. [Directory Structure](#directory-structure)
+9. [How Does the Flow Work](#how-does-the-flow-work)
+10. [Summary & Key Takeaways](#summary--key-takeaways)
+11. [Design Decisions & Trade-offs](#design-decisions--trade-offs)
+12. [Known Limitations](#known-limitations)
+13. [Team Member Contributions & AI Usage](#team-member-contributions--ai-usage)
 
 ---
 
-## Quick Start
+## Codelab & Video Links
+
+| Resource | Link |
+|----------|------|
+| Codelab Document | [Link to Codelab](<!-- TODO: Add codelab link -->) |
+| Demo Video | [Link to Video](<!-- TODO: Add video link -->) |
+| GitHub Repository | [Link to Repo](<!-- TODO: Add repo link -->) |
+
+---
+
+## Project Context
+
+This project is **Case Study 2** in the Big Data and Intelligent Analytics course (Spring 2026, QuantUniversity). It builds directly on **Case Study 1 (Platform Foundation)**, where API endpoints, data models, and a persistence layer were established. Case Study 2 populates that platform with **evidence** — the raw data that will eventually feed an AI-readiness scoring engine in Case Study 3.
+
+### The Business Problem
+
+Private equity partners need to answer: *"How do we know if a company is actually investing in AI, or just talking about it?"*
+
+- **73%** of companies mention "AI" in 10-K filings (up from 12% in 2018)
+- But only **23%** have deployed AI in production
+- The gap between rhetoric and reality — the **Say-Do Gap** — is measurable
+
+This case study builds pipelines to collect both types of evidence for **10 target companies** across 5 sectors (Industrials, Healthcare, Services, Consumer, Financial).
+
+---
+
+## Project Overview & Objectives
+
+### Purpose
+
+Build an evidence collection pipeline that ingests **SEC filings** (what companies *say*) and **external signals** (what companies *do*) to enable downstream AI-readiness scoring.
+
+### Scope
+
+| Dimension | Detail |
+|-----------|--------|
+| **Companies** | 10 targets — CAT, DE, UNH, HCA, ADP, PAYX, WMT, TGT, JPM, GS |
+| **SEC Filings** | 10-K (annual), 10-Q (quarterly), 8-K (material events) and DEF 14A |
+| **External Signals** | Job postings, technology stack, patents, leadership signals |
+| **Storage** | Snowflake (metadata & structured data), S3 (raw documents), Redis (caching) |
+
+### Objectives
+
+1. **SEC EDGAR Pipeline** — Download, parse (PDF & HTML), extract key sections, and semantically chunk SEC filings for all 10 companies.
+2. **External Signals Pipeline** — Collect and score job posting, technology stack, patent, and leadership signals with normalized scoring (0–100).
+3. **Data Persistence** — Extend the database schema with `documents`, `document_chunks`, `external_signals`, and `company_signal_summaries` tables.
+4. **API & Integration** — Expose collection and retrieval endpoints with background task processing, integrating with the CS1 platform foundation.
+
+---
+
+## Architecture & Diagram
+
+![Architecture Diagram](case%20study2%20docs/Screenshots/Architecture.png)
+---
+
+## Tech Stack
+
+| Layer | Technology | Purpose |
+|-------|-----------|---------|
+| **Runtime** | Python 3.11+ | Core language |
+| **API Framework** | FastAPI | REST endpoints, background tasks |
+| **SEC Downloads** | `sec-edgar-downloader` | Automated SEC filing retrieval |
+| **PDF Parsing** | `pdfplumber` | Extract text from PDF filings |
+| **HTML Parsing** | `BeautifulSoup4` | Extract text from HTML filings |
+| **HTTP Client** | `httpx` | External API calls (signals) |
+| **Database** | Snowflake | Structured metadata & signal storage |
+| **Object Storage** | AWS S3 | Raw document storage |
+| **Caching** | Redis | Pipeline result caching |
+| **Data Models** | Pydantic v2 | Request/response validation |
+| **Logging** | `structlog` | Structured logging |
+| **Containerization** | Docker / Docker Compose | Reproducible environments |
+| **Testing** | `pytest` | Unit & integration tests |
+
+---
+
+## Step-by-Step Setup Guide
+
+### Prerequisites
+
+- Python 3.11+
+- Docker & Docker Compose
+- Snowflake account with credentials
+- AWS S3 bucket access
+- Redis instance (or use Docker Compose)
+
+### 1. Clone the Repository
 
 ```bash
-# 1. Clone the repository
-git clone https://github.com/BigDataIA-Spring26-Team-5/PE_OrgAIR_Platform_Foundation.git
+git clone https://github.com/BigDataIA-Spring26-Team-5/PE_OrgAIR_Platform_Evidence_Collection.git
 cd pe-org-air-platform
-
-# 2. Copy environment template and configure
-cp .env.example .env
-# Edit .env with your credentials (Snowflake, AWS, Redis)
 ```
 
-### Using Poetry (Recommended)
-
-Poetry handles virtual environment creation and dependency management automatically.
+### 2. Configure Environment Variables
 
 ```bash
-# Install Poetry (if not already installed)
-pip install poetry
+cp .env.example .env
+# Edit .env with your credentials:
+#   SNOWFLAKE_ACCOUNT, SNOWFLAKE_USER, SNOWFLAKE_PASSWORD
+#   AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, S3_BUCKET
+#   REDIS_URL
+#   SEC_EDGAR_EMAIL (required by SEC for rate limiting)
+```
 
-# Install all dependencies (creates venv automatically)
-poetry install
+### 3. Install Dependencies
 
-# Activate the virtual environment
-poetry env activate
-
-# Copy and paste the output in your command line, It should be something like:
-& "C:\Users\...\pe-org-air-platform\.venv\Scripts\activate.ps1"
-
-# Install additional packages which are not available through poetry (eg. python-jobspy)
+```bash
 pip install -r requirements.txt
 ```
 
----
+### 4. Set Up the Database
 
-## Starting the Application
-
-### Docker Compose
-
-This starts both the FastAPI application and Redis cache:
+Run the schema files against Snowflake in order:
 
 ```bash
-# Run from project root directory
-docker-compose -f docker/docker-compose.yml -p pe_orgair up --build -d
+# Core tables (from CS1)
+# Then CS2 extensions:
+#   app/database/document_schema.sql
+#   app/database/document_chunks_schema.sql
+#   app/database/signals_schema.sql
 ```
 
-**Services started:**
-
-| Service | Container Name | Port | Description |
-|---------|----------------|------|-------------|
-| API | pe_orgair_platform_api | 8000 | FastAPI application |
-| Redis | pe_orgair_platform_redis | 6379 | Cache layer |
-
-**Access points after startup:**
-- API Base URL: http://localhost:8000
-- Swagger UI: http://localhost:8000/docs
-- ReDoc: http://localhost:8000/redoc
-- OpenAPI JSON: http://localhost:8000/openapi.json
-- Health Check: http://localhost:8000/health
-
-
-### Verify Application is Running
+### 5. Run with Docker (Recommended)
 
 ```bash
-# Health check endpoint
-http://localhost:8000/health (or) http://127.0.0.1:8000/health
-
-# Expected response (all services healthy):
-{
-  "status": "healthy",
-  "timestamp": "2026-01-30T12:00:00Z",
-  "version": "1.0.0",
-  "dependencies": {
-    "snowflake": "healthy (User: PEORGAIRPLATFORM)",
-    "redis": "healthy (URL: redis://redis:6379/0)",
-    "s3": "healthy (Bucket: pe-orgair-platform, Region: us-east-2)"
-  }
-}
+cd docker
+docker-compose up --build
 ```
 
----
-
-## Stopping the Application
-
-### Docker Compose
+### 6. Run Locally
 
 ```bash
-# Stop containers (from project root)
-docker-compose -f docker/docker-compose.yml -p pe_orgair down
-
-# Stop and remove volumes (clears Redis data)
-docker-compose -f docker/docker-compose.yml -p pe_orgair down -v
-
-# Stop and remove everything (containers, networks, volumes, images)
-docker-compose -f docker/docker-compose.yml -p pe_orgair down -v --rmi all
+uvicorn app.main:app --reload
 ```
 
-### Graceful Shutdown Behavior
+### 7. Collect Evidence
+ 
+- test the api end points for evidence part
 
-The application handles shutdown gracefully:
-1. **SIGTERM/SIGINT signals** trigger cleanup
-2. **Active requests** are allowed to complete
-3. **Database connections** are closed properly
-4. **Cache connections** are terminated cleanly
+### 8. Run Tests
+
+```bash
+pytest tests/ -v
+```
+
+### Run Streamlit
+```bash 
+streamlit run ./streamlit/app/py
+```
+![Architecture Diagram](case%20study2%20docs/Screenshots/streamlit_sec.png)
+
+![Architecture Diagram](case%20study2%20docs/Screenshots/streamlit_signals.png)
 
 ---
 
@@ -127,335 +180,267 @@ The application handles shutdown gracefully:
 
 ```
 pe-org-air-platform/
-├── app/                              # Main FastAPI application
-│   ├── core/                         # Core utilities
-│   │   ├── dependencies.py           # FastAPI dependency injection
-│   │   └── exceptions.py             # Custom exception classes
-│   ├── database/                     # Database configurations
-│   ├── models/                       # Pydantic data models
-│   │   ├── assessment.py             # Assessment schemas
-│   │   ├── company.py                # Company schemas
-│   │   ├── dimension.py              # Dimension score schemas
-│   │   ├── enumerations.py           # Enums (AssessmentType, Status, Dimension)
-│   │   └── industry.py               # Industry schemas
-│   ├── repositories/                 # Data access layer (Snowflake)
-│   │   ├── base.py                   # Base repository with connection management
-│   │   ├── assessment_repository.py  # Assessment CRUD operations
-│   │   ├── company_repository.py     # Company CRUD operations
-│   │   ├── dimension_score_repository.py # Dimension score operations
-│   │   └── industry_repository.py    # Industry CRUD operations
-│   ├── routers/                      # API endpoint handlers
-│   │   ├── assessments.py            # /api/v1/assessments endpoints
-│   │   ├── companies.py              # /api/v1/companies endpoints
-│   │   ├── dimensionScores.py        # /api/v1/scores endpoints
-│   │   ├── health.py                 # /health endpoints
-│   │   └── industries.py             # /api/v1/industries endpoints
-│   ├── services/                     # Business logic services
-│   │   ├── cache.py                  # Cache service singleton
-│   │   ├── redis_cache.py            # Redis caching implementation
-│   │   ├── s3_storage.py             # AWS S3 document storage
-│   │   └── snowflake.py              # Snowflake connection factory
-│   ├── config.py                     # Application settings (Pydantic)
-│   └── main.py                       # FastAPI app initialization
-├── docker/                           # Docker configuration
-│   ├── Dockerfile                    # FastAPI container build
-│   └── docker-compose.yml            # Multi-container orchestration
-├── tests/                            # Test suite
-│   ├── conftest.py                   # Pytest fixtures
-│   ├── test_api.py                   # API endpoint tests
-│   ├── test_models.py                # Pydantic model tests
-│   └── test_redis_cache.py           # Cache service tests
-├── streamlit/                        # Dashboard UI (optional)
-│   └── app.py                        # Streamlit dashboard
-├── .env.example                      # Environment template
-├── .gitignore                        # Git ignore rules
-├── pyproject.toml                    # Poetry configuration
-├── requirements.txt                  # Python dependencies
-└── README.md                         # This file
+├── pyproject.toml
+├── requirements.txt
+├── .env.example
+├── app/
+│   ├── config.py                  # App configuration & env vars
+│   ├── main.py                    # FastAPI app entrypoint
+│   ├── shutdown.py                # Graceful shutdown handling
+│   ├── core/
+│   │   ├── dependencies.py        # Dependency injection
+│   │   └── exceptions.py          # Custom exception classes
+│   ├── database/
+│   │   ├── schema.sql             # Core schema (CS1)
+│   │   ├── document_schema.sql    # Documents table
+│   │   ├── document_chunks_schema.sql  # Chunks table
+│   │   ├── signals_schema.sql     # Signals & summaries tables
+│   │   └── seed-*.sql             # Seed data files
+│   ├── models/                    # Pydantic data models
+│   │   ├── assessment.py
+│   │   ├── company.py
+│   │   ├── dimension.py
+│   │   ├── document.py            # DocumentRecord, DocumentStatus
+│   │   ├── evidence.py            # Evidence aggregation models
+│   │   ├── signal.py              # ExternalSignal, CompanySignalSummary
+│   │   └── signal_responses.py
+│   ├── pipelines/                 # Evidence collection pipelines
+│   │   ├── sec_edgar.py           # SEC filing downloader
+│   │   ├── document_parser.py     # PDF/HTML text extraction
+│   │   ├── chunking.py            # Semantic chunking with overlap
+│   │   ├── section_analyzer.py    # 10-K section extraction
+│   │   ├── job_signals.py         # Job posting signal collector
+│   │   ├── tech_signals.py        # Technology stack analyzer
+│   │   ├── patent_signals.py      # Patent search & classification
+│   │   ├── leadership_analyzer.py # Leadership signal analysis
+│   │   ├── keywords.py            # AI keyword definitions
+│   │   ├── runner.py              # Pipeline orchestration
+│   │   ├── pipeline2_runner.py    # Pipeline 2 orchestration
+│   │   ├── pipeline_state.py      # Pipeline state tracking
+│   │   ├── pipeline2_state.py     # Pipeline 2 state tracking
+│   │   ├── registry.py            # Document registry
+│   │   ├── exporters.py           # Data export utilities
+│   │   ├── pdf_parser.py          # PDF-specific parsing
+│   │   └── utils.py               # Shared pipeline utilities
+│   ├── repositories/              # Data access layer
+│   │   ├── base.py                # Base repository pattern
+│   │   ├── company_repository.py
+│   │   ├── document_repository.py
+│   │   ├── chunk_repository.py
+│   │   ├── signal_repository.py
+│   │   ├── signal_scores_repository.py
+│   │   ├── assessment_repository.py
+│   │   ├── dimension_score_repository.py
+│   │   └── industry_repository.py
+│   ├── routers/                   # API route handlers
+│   │   ├── companies.py
+│   │   ├── documents.py           # Document CRUD + collection trigger
+│   │   ├── signals.py             # Signal CRUD + collection trigger
+│   │   ├── evidence.py            # Unified evidence endpoints
+│   │   ├── assessments.py
+│   │   ├── dimensionScores.py
+│   │   ├── health.py
+│   │   ├── industries.py
+│   │   ├── pdf_parser.py
+│   │   └── sec_filings.py
+│   ├── services/                  # Business logic layer
+│   │   ├── snowflake.py           # Snowflake DB connection & queries
+│   │   ├── s3_storage.py          # AWS S3 file operations
+│   │   ├── redis_cache.py         # Redis caching
+│   │   ├── cache.py               # Cache abstraction
+│   │   ├── document_collector.py  # Document collection orchestration
+│   │   ├── document_chunking_service.py
+│   │   ├── document_parsing_service.py
+│   │   ├── job_data_service.py
+│   │   ├── job_signal_service.py
+│   │   ├── tech_signal_service.py
+│   │   ├── patent_signal_service.py
+│   │   ├── leadership_service.py
+│   │   └── signals_storage.py
+│   └── Scripts/
+│       ├── collect_evidence.py    # Main evidence collection script
+│       ├── backfill_companies.py  # Backfill for all 10 companies
+│       ├── query_snowflake.py     # Ad-hoc Snowflake queries
+│       └── test_connections.py    # Connection verification
+├── data/
+│   ├── raw/                       # Downloaded SEC filings
+│   ├── parsed/                    # Extracted JSON documents
+│   ├── signals/                   # Cached signal data
+│   └── tables/                    # Extracted table data
+├── docker/
+│   ├── Dockerfile
+│   └── docker-compose.yml
+└── tests/
+    ├── conftest.py                # Test fixtures
+    ├── test_api.py                # API endpoint tests
+    ├── test_models.py             # Model validation tests
+    ├── test_redis_cache.py        # Cache tests
+    ├── test_sec_edgar.py          # SEC pipeline tests
+    └── test_signals.py            # Signal pipeline tests
 ```
 
 ---
 
-## Technology Stack & Packages
+## How Does the Flow Work
 
-### Core Framework
+### 1. SEC Document Pipeline
 
-| Package | Version | Purpose |
-|---------|---------|---------|
-| fastapi | >=0.109.0 | Modern async web framework |
-| uvicorn[standard] | >=0.27.0 | ASGI server |
-| pydantic | >=2.5.0 | Data validation & settings |
-| pydantic-settings | >=2.1.0 | Environment configuration |
-| starlette | >=0.35.0 | ASGI middleware |
+![Architecture Diagram](case%20study2%20docs/Screenshots/sec_edgar_flow.png)
 
-### Database & Storage
+### 2. External Signals Pipeline
+![Architecture Diagram](case%20study2%20docs/Screenshots/signals_flow.png)
 
-| Package | Version | Purpose |
-|---------|---------|---------|
-| snowflake-connector-python | >=3.6.0 | Snowflake database driver |
-| snowflake-sqlalchemy | >=1.5.0 | SQLAlchemy dialect |
-| sqlalchemy | >=2.0.0 | ORM and SQL toolkit |
-| redis | >=5.0.0 | Redis client for caching |
-| hiredis | >=2.3.0 | C parser for Redis protocol |
-| boto3 | >=1.34.0 | AWS SDK (S3 storage) |
+--- 
 
-### Data Processing
+### 3. API Layer
 
-| Package | Version | Purpose |
-|---------|---------|---------|
-| pandas | >=2.1.0 | Data manipulation |
-| numpy | >=1.26.0 | Numerical computing |
-| pyarrow | >=14.0.0 | Arrow serialization |
-
-### Security
-
-| Package | Version | Purpose |
-|---------|---------|---------|
-| python-jose[cryptography] | >=3.3.0 | JWT tokens |
-| passlib[bcrypt] | >=1.7.4 | Password hashing |
-| cryptography | >=41.0.0 | Cryptographic operations |
-
-
-### Observability
-
-| Package | Version | Purpose |
-|---------|---------|---------|
-| opentelemetry-api | >=1.22.0 | Distributed tracing API |
-| opentelemetry-sdk | >=1.22.0 | Tracing SDK |
-| opentelemetry-instrumentation-fastapi | >=0.43b0 | Auto-instrumentation |
-| structlog | >=24.1.0 | Structured logging |
-
-### Testing & Development
-
-| Package | Version | Purpose |
-|---------|---------|---------|
-| pytest | >=8.0.0 | Test framework |
-| pytest-asyncio | >=0.23.0 | Async test support |
-| pytest-cov | >=4.1.0 | Coverage reporting |
-| black | >=24.1.0 | Code formatting |
-| mypy | >=1.8.0 | Static type checking |
-| ruff | >=0.2.0 | Fast linter |
-
-### Full requirements.txt
-
-See [requirements.txt](pe-org-air-platform/requirements.txt) for the complete dependency list with all version constraints.
-
----
-
-## Project Implementation Summary
-
-### Infrastructure Diagram
-![infrastructure](https://github.com/BigDataIA-Spring26-Team-5/PE_OrgAIR_Platform_Foundation/blob/aqeel/case%20study1%20docs/Screenshots/infrastructure.png)
-
----
-### Entity Relationship Diagram
-![ERD](https://github.com/BigDataIA-Spring26-Team-5/PE_OrgAIR_Platform_Foundation/blob/aqeel/case%20study1%20docs/Screenshots/ERD.png)
-
----
-### Data Models
-
-Pydantic models for all four core entities are implemented in `app/models/`:
-
-| Entity | File | Schemas |
-|--------|------|---------|
-| Company | `company.py` | CompanyBase, CompanyCreate, CompanyUpdate, CompanyResponse |
-| Assessment | `assessment.py` | AssessmentCreate, AssessmentResponse, StatusUpdate |
-| DimensionScore | `dimension.py` | DimensionScoreCreate, DimensionScoreResponse, DimensionScoreUpdate |
-| Industry | `industry.py` | IndustryCreate, IndustryResponse |
-
-Enumerations and validation rules are defined in `enumerations.py`:
-- **AssessmentType**: screening, due_diligence, quarterly, exit_prep
-- **AssessmentStatus**: draft, in_progress, submitted, approved, superseded
-- **Dimension**: 7 dimensions with weights summing to 1.0
-- **Field validators**: Score (0-100), confidence (0-1), weight (0-1), position_factor (-1 to 1)
-
-### API Endpoints
-
-All endpoints are implemented in `app/routers/`:
-
-| Resource | Endpoints | File |
-|----------|-----------|------|
-| Companies | POST, GET (list), GET (by id), PUT, DELETE | `companies.py` |
-| Assessments | POST, GET (list), GET (by id), PATCH (status) | `assessments.py` |
-| Dimension Scores | POST, GET (by assessment), PUT | `dimensionScores.py` |
-| Health | GET (overall), GET (per service), cache stats/test | `health.py` |
-
-Pagination is implemented on list endpoints with `page` and `page_size` query parameters.
-
-### Data Persistence
-
-- **Snowflake**: Connection factory in `app/services/snowflake.py`, repositories in `app/repositories/`
-- **Redis Caching**: Implemented in `app/services/redis_cache.py` and `app/services/cache.py`
-  - TTL: Companies (5min), Assessments (2min), Industries (1hr), Weights (24hr)
-  - Cache invalidation on create/update/delete operations
-
-### Infrastructure
-
-- **Dockerfile**: `docker/Dockerfile` - Python 3.12-slim base, installs dependencies, runs uvicorn
-- **docker-compose**: `docker/docker-compose.yml` - API and Redis services with health checks
-- **Environment**: `.env.example` template, Pydantic BaseSettings in `app/config.py`
-
-### Quality & Documentation
-
-- **Tests**: `tests/` directory with API, model, and cache tests
-- **OpenAPI/Swagger**: Auto-generated at `/docs`, `/redoc`, `/openapi.json`
-
----
-
-## Data Flow Examples
-
-### Example 1: Create Company (POST /api/v1/companies)
-
-This flow shows company creation with validation, database persistence, and cache invalidation.
-
-```mermaid
-flowchart TD
-    A[Client] -->|POST /companies<br/>name, industry_id, ticker| B[FastAPI Router]
-
-    B --> C{Pydantic Validation}
-    C -->|Invalid| C1[422 Validation Error]
-    C -->|Valid| D[Check Industry Exists]
-
-    D --> E[(Snowflake)]
-    E -->|Not Found| D1[404 Industry Not Found]
-    E -->|Exists| F[Check Duplicate Company]
-
-    F --> G[(Snowflake)]
-    G -->|Duplicate| F1[409 Conflict]
-    G -->|No Duplicate| H[Insert Company]
-
-    H --> I[(Snowflake)]
-    I --> J[Invalidate Cache]
-
-    J --> K[(Redis)]
-    K -->|DELETE companies:list:*| L[Return Response]
-
-    L -->|201 Created| M[Client]
-
-    style A fill:#e1f5fe
-    style M fill:#e1f5fe
-    style E fill:#fff3e0
-    style G fill:#fff3e0
-    style I fill:#fff3e0
-    style K fill:#ffebee
-```
-
-**Steps:**
-1. **Pydantic Validation** - Validates request body, auto-uppercases ticker
-2. **Industry Check** - Verifies industry_id exists in database
-3. **Duplicate Check** - Ensures no company with same name in that industry
-4. **Database Insert** - Creates record with UUID and timestamps
-5. **Cache Invalidation** - Clears list cache for consistency
-
----
-## API Documentation
-
-### Swagger UI
-Interactive API documentation with request/response examples:
-```
-http://localhost:8000/docs
-```
-
-### ReDoc
-Alternative documentation format:
-```
-http://localhost:8000/redoc
-```
-
-### OpenAPI Schema
-Raw OpenAPI 3.0 specification:
-```
-http://localhost:8000/openapi.json
-```
-
-### Endpoint Summary
+The FastAPI application exposes endpoints for triggering collection and retrieving results:
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | /health | System health check |
-| GET | /health/snowflake | Snowflake status |
-| GET | /health/redis | Redis status |
-| GET | /health/s3 | S3 status |
-| GET | /health/cache/stats | Cache statistics |
-| GET | /health/cache/test | Test cache operations |
-| POST | /api/v1/companies | Create company |
-| GET | /api/v1/companies | List companies |
-| GET | /api/v1/companies/{id} | Get company |
-| PUT | /api/v1/companies/{id} | Update company |
-| DELETE | /api/v1/companies/{id} | Delete company |
-| POST | /api/v1/industries | Create industry |
-| GET | /api/v1/industries | List industries |
-| GET | /api/v1/industries/{id} | Get industry |
-| POST | /api/v1/assessments | Create assessment |
-| GET | /api/v1/assessments | List assessments |
-| GET | /api/v1/assessments/{id} | Get assessment |
-| PATCH | /api/v1/assessments/{id}/status | Update status |
-| POST | /api/v1/assessments/{id}/scores | Add dimension score |
-| GET | /api/v1/assessments/{id}/scores | Get dimension scores |
-| PUT | /api/v1/scores/{id} | Update dimension score |
-| GET | /api/v1/dimensions/weights | Get dimension weights |
+| **Documents** | | |
+| `POST` | `/api/v1/documents/collect` | Trigger document collection for a company |
+| `GET` | `/api/v1/documents` | List documents (filterable by company, type) |
+| `GET` | `/api/v1/documents/{id}` | Get document with metadata |
+| `GET` | `/api/v1/documents/{id}/chunks` | Get document chunks |
+| **Signals** | | |
+| `POST` | `/api/v1/signals/collect` | Trigger signal collection for a company |
+| `GET` | `/api/v1/signals` | List signals (filterable) |
+| `GET` | `/api/v1/companies/{id}/signals` | Get signal summary for company |
+| `GET` | `/api/v1/companies/{id}/signals/{category}` | Get signals by category |
+| **Evidence** | | |
+| `GET` | `/api/v1/companies/{id}/evidence` | Get all evidence for a company |
+| `POST` | `/api/v1/evidence/backfill` | Backfill evidence for all 10 companies |
+| `GET` | `/api/v1/evidence/stats` | Get evidence collection statistics |
 
 ---
 
-## Running Tests
+## Summary & Key Takeaways
 
-Run from the `pe-org-air-platform` directory:
+### The Say-Do Gap Framework
 
-```bash
-# Run all tests
-pytest
+The core insight driving this project is that **what companies say about AI differs significantly from what they actually do**. We measure this through a normalized formula:
 
-# Run with verbose output
-pytest -v
-
-# Run specific test file
-pytest tests/test_api.py
-pytest tests/test_models.py
-pytest tests/test_redis_cache.py
-
-# Run with coverage report
-pytest --cov=app --cov-report=html
+```
+Say-Do Gap = (SAY - DO) / max(SAY, DO)
 ```
 
+Where **SAY** = AI/ML keyword mentions in SEC filings and **DO** = Composite score from four external signal categories (Technology Hiring 30%, Innovation Activity 25%, Digital Presence 25%, Leadership Signals 20%).
+
+### Key Findings Across 10 Companies
+
+| Rank | Company | Gap Score | Interpretation |
+|------|---------|-----------|----------------|
+| 1 | Goldman Sachs (GS) | **+0.05** | Perfect alignment — communication matches execution across all dimensions |
+| 2 | Walmart (WMT) | **+0.09** | Near-perfect alignment — conservative AI talk, strong balanced execution |
+| 3 | Target (TGT) | **+0.13** | Nearly aligned — measured communication with solid multi-signal execution |
+| 4 | UnitedHealth (UNH) | **+0.22** | Slight over-communication — patent-heavy, hiring-light strategy |
+| 5 | JPMorgan Chase (JPM) | **-0.45** | Strong under-promiser — elite execution (highest composite: 68.66) with minimal hype |
+| 6 | HCA Healthcare (HCA) | **+0.49** | Moderate over-promiser — implementation focus but zero innovation/patents |
+| 7 | Deere & Company (DE) | **+0.54** | Moderate over-promiser — strong innovation (54.5) but imbalanced execution |
+| 8 | Caterpillar (CAT) | **-0.62** | Strong under-promiser — only 12 AI mentions but second-highest composite (51.2) |
+| 9 | Paychex (PAYX) | **+0.74** | Strong over-promiser — lowest composite (8.97) despite 60 AI/ML mentions |
+| 10 | ADP | **+0.88** | Critical over-promiser — highest rhetoric (101 mentions) with minimal execution |
+
+### Strategic Insights
+
+1. **Under-promisers outperform.** JPMorgan (composite 68.66) and Caterpillar (51.2) say the least about AI but execute the most — they build competitive moats quietly.
+
+2. **Alignment correlates with maturity.** Goldman Sachs (+0.05), Walmart (+0.09), and Target (+0.13) show disciplined governance where investor communications and technology teams are synchronized.
+
+3. **Sector patterns emerge.** Retailers (WMT, TGT) describe "digital transformation" rather than using AI buzzwords. Financial services split between elite execution (JPM) and balanced alignment (GS). HR/payroll companies (ADP, PAYX) show the most severe over-promising.
+
+4. **Patent activity is highly uneven.** Innovation scores range from 0.0 (HCA, WMT, TGT) to 87.5 (JPM), revealing fundamentally different AI strategies — some companies build IP, others apply existing tools.
+
+5. **Cloud rhetoric ≠ cloud execution.** ADP has 148 cloud mentions (highest) but the weakest digital presence (2.1), suggesting vendor dependency rather than proprietary development.
+
+6. **The composite score reveals more than any single signal.** Companies like UNH appear moderate overall (29.59) but have extreme imbalances (84.5 innovation vs. 4.0 hiring) that single metrics would miss.
+
+### Execution Strength Rankings
+
+| Rank | Company | Composite Score | Profile |
+|------|---------|----------------|---------|
+| 1 | JPMorgan Chase | 68.66 | Elite comprehensive execution |
+| 2 | Caterpillar | 51.20 | Strong balanced execution |
+| 3 | Target | 36.95 | Solid multi-signal execution |
+| 4 | UnitedHealth | 29.59 | Innovation-heavy, hiring-light |
+| 5 | Goldman Sachs | 28.14 | Perfectly balanced moderate execution |
+| 6 | Deere & Company | 27.92 | Innovation-heavy, infrastructure-light |
+| 7 | Walmart | 27.39 | Balanced moderate execution |
+| 8 | HCA Healthcare | 20.31 | Hiring present, zero innovation |
+| 9 | ADP | 11.78 | Weak across all signals |
+| 10 | Paychex | 8.97 | Weakest execution in cohort |
+
+### Detailed Signal Scores (from Snowflake `company_signal_summaries`)
+
+Data collected as of February 5–6, 2026. Composite = 0.30×Hiring + 0.25×Innovation + 0.25×Digital + 0.20×Leadership.
+
+| Ticker | Company | Hiring (30%) | Innovation (25%) | Digital (25%) | Leadership (20%) | **Composite** | Signals | Last Updated |
+|--------|---------|:------------:|:-----------------:|:-------------:|:-----------------:|:-------------:|:-------:|:------------:|
+| JPM | JPMorgan Chase | **74.60** | **87.50** | **83.20** | 18.00 | **68.66** | 4 | 2026-02-05 |
+| CAT | Caterpillar | 70.10 | 30.00 | **71.75** | 23.67 | **51.20** | 5 | 2026-02-06 |
+| TGT | Target | 53.50 | 0.00 | 54.00 | **37.00** | **36.95** | 6 | 2026-02-05 |
+| UNH | UnitedHealth | 4.00 | 84.50 | 14.65 | 18.00 | **29.59** | 6 | 2026-02-06 |
+| GS | Goldman Sachs | 30.10 | 28.50 | 27.15 | 26.00 | **28.14** | 4 | 2026-02-05 |
+| DE | Deere & Company | 27.30 | 54.50 | 6.30 | 22.67 | **27.92** | 6 | 2026-02-05 |
+| WMT | Walmart | 42.30 | 0.00 | 31.20 | 34.50 | **27.39** | 6 | 2026-02-05 |
+| HCA | HCA Healthcare | 43.10 | 0.00 | 17.50 | 15.00 | **20.31** | 6 | 2026-02-05 |
+| ADP | ADP | 2.00 | 27.00 | 2.10 | 19.50 | **11.78** | 6 | 2026-02-05 |
+| PAYX | Paychex | 4.00 | 0.00 | 1.40 | **37.08** | **8.97** | 6 | 2026-02-05 |
+
+> **Bold** values indicate the highest score in each column across the cohort.
+
+---
+## Design Decisions & Trade-offs
+
+| Decision | Rationale | Trade-off |
+|----------|-----------|-----------|
+| **Word-based chunking** (vs. sentence/token) | Simpler implementation, predictable chunk sizes | Less precise semantic boundaries; a sentence may be split mid-thought |
+| **Section-aware chunking** | Preserves filing structure; chunks don't cross section boundaries | Sections of varying lengths produce uneven chunk counts |
+| **SHA-256 content hashing** | Reliable deduplication across re-runs | Doesn't detect near-duplicate filings with minor formatting differences |
+| **Weighted composite scoring** | Reflects PE firm signal priorities (hiring weighted highest at 0.30) | Weights are static; different industries may warrant different weightings |
+| **Background tasks (FastAPI)** | Simple async processing without a separate task queue | No retry mechanism, no persistent task state; tasks lost on server restart |
+| **Snowflake for all structured data** | Single source of truth, strong SQL analytics support | Higher latency for simple lookups vs. a traditional RDBMS |
+| **Redis for caching** | Fast pipeline result caching, reduces redundant API calls | Adds infrastructure complexity; cache invalidation must be managed |
+| **Regex for section extraction** | No external dependencies, fast | Brittle — SEC filing formatting varies across companies and years |
+| **Normalized 0–100 scoring** | Easy to interpret and compare | Absolute thresholds may not capture relative industry context |
+
 ---
 
-## Environment Variables
+## Known Limitations
 
-Copy `.env.example` to `.env` and configure:
+1. **External signal data is simulated.** The job postings, tech stack, and patent collectors have the analysis logic implemented, but actual API integrations (Indeed, BuiltWith, USPTO) require API keys and are passed empty lists in the collection script. Real data must be sourced separately.
 
-```bash
-# Application
-APP_NAME=pe-orgair
-APP_ENV=development
-DEBUG=true
-SECRET_KEY=dev-secret-key
+2. **SEC rate limiting.** While `sec-edgar-downloader` handles the 10 req/sec limit, bulk collection for all 10 companies with multiple filing types can be slow.
 
-# Snowflake
-SNOWFLAKE_ACCOUNT=your_account
-SNOWFLAKE_USER=your_user
-SNOWFLAKE_PASSWORD=your_password
-SNOWFLAKE_ROLE=ACCOUNTADMIN
-SNOWFLAKE_WAREHOUSE=PE_ORGAIR_WH
-SNOWFLAKE_DATABASE=PE_ORGAIR_DB
-SNOWFLAKE_SCHEMA=PLATFORM
+3. **Section extraction regex is fragile.** SEC filings do not follow a universal format. Edge cases in formatting (especially older filings) may cause section extraction to fail silently.
 
-# Redis
-REDIS_URL=redis://redis:6379/0
+4. **No persistent task queue.** Background tasks in FastAPI are in-memory. If the server restarts during a collection run, the task is lost with no retry mechanism. A production system would use Celery or similar.
 
-# AWS S3
-AWS_ACCESS_KEY_ID=your_key
-AWS_SECRET_ACCESS_KEY=your_secret
-AWS_REGION=us-east-2
-S3_BUCKET=pe-orgair-platform
-```
+5. **No vector embeddings yet.** Document chunks are stored as text but are not yet embedded for semantic search. This is deferred to Case Study 4.
+
+6. **Leadership signal collector** is included structurally but may have limited data sourcing compared to the other three signal categories.
+
+7. **Single-threaded collection.** The evidence collection script processes companies sequentially. Parallel collection would significantly reduce total runtime.
 
 ---
 
+## Team Member Contributions & AI Usage
 
-Leadership Score Breakdown (20% of Composite)
-Since leadership is 20% of composite, I'll break down the internal scoring:
-ComponentMax PointsWhat We MeasureTech Executive Presence30CTO, CDO, Chief AI Officer foundAI/Tech Keywords in Compensation30Mentions of AI, digital, automationTech-Linked Performance Metrics25Bonuses tied to tech goalsBoard Tech Expertise15Directors with tech backgroundsTotal100Normalized score
+### Team Members
+
+| Member | Responsibilities |
+|--------|-----------------|
+| Bhavya | SEC EDGAR pipeline, document parsing, chunking |
+| Aqeel | External signals pipeline, scoring logic |
+| Deepika | Database schema, repositories, API endpoints |
 
 
-What DEF 14A Contains (Proxy Statement)
-SectionWhat It RevealsExecutive CompensationHow much executives are paid, bonuses tied to tech/AI goalsDirector CompensationBoard member pay and incentivesNamed Executive Officers (NEOs)CEO, CFO, CTO - their names and rolesCompensation Discussion & Analysis (CD&A)Strategy behind pay decisionsPerformance MetricsWhat KPIs trigger bonuses (tech adoption, digital transformation?)
+### AI Tools Usage Disclosure
+
+| Tool | Usage |
+|------|-------|
+| **ChatGPT / Claude** | code debugging, documentation draftin |
+| **GitHub Copilot** | Code autocompletion for boilerplate repository methods |
+
+> *All AI-generated code was reviewed, tested, and adapted to fit the project's architecture and requirements. AI was used as a productivity aid, not as a substitute for understanding the underlying concepts.*
