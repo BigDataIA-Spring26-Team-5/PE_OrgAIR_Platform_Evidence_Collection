@@ -150,6 +150,17 @@ class SignalRepository:
         finally:
             cur.close()
 
+    def delete_signals_by_company(self, company_id: str) -> int:
+        """Delete all signals for a company."""
+        sql = "DELETE FROM external_signals WHERE company_id = %s"
+        cur = self.conn.cursor()
+        try:
+            cur.execute(sql, (company_id,))
+            self.conn.commit()
+            return cur.rowcount
+        finally:
+            cur.close()
+
     # ============================================================
     # COMPANY SIGNAL SUMMARIES
     # ============================================================

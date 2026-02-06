@@ -66,14 +66,14 @@ class PatentSignalService:
             patent_score = state.patent_scores.get(company_id, 0.0)
             
             # Get AI patent count and total patents
-            ai_patents = sum(1 for p in state.patents if p.get("is_ai_patent"))
+            ai_patents = sum(1 for p in state.patents if p.get("is_ai_related"))
             total_patents = len(state.patents)
-            
-            # Get unique AI keywords from patents
+
+            # Get unique AI categories from patents
             all_ai_keywords = set()
             for patent in state.patents:
-                if patent.get("is_ai_patent"):
-                    all_ai_keywords.update(patent.get("ai_keywords_found", []))
+                if patent.get("is_ai_related"):
+                    all_ai_keywords.update(patent.get("ai_categories", []))
             
             # Calculate confidence based on data quality
             confidence = self._calculate_confidence(total_patents, ai_patents)
