@@ -1,7 +1,7 @@
--- =============================================================================
+
 -- Seed Data: Sample Documents for Pipeline 1
 -- app/database/seed-documents.sql
--- =============================================================================
+
 
 USE WAREHOUSE PE_ORGAIR_WH;
 
@@ -9,10 +9,10 @@ USE DATABASE PE_ORGAIR_DB;
 
 USE SCHEMA PLATFORM;
 
--- =============================================================================
+
 -- First, add the 10 target companies (if they don't exist)
 -- Using MERGE to avoid duplicates
--- =============================================================================
+
 
 -- CAT - Caterpillar
 INSERT INTO companies (id, name, ticker, industry_id, position_factor)
@@ -64,9 +64,9 @@ INSERT INTO companies (id, name, ticker, industry_id, position_factor)
 SELECT 'comp-gs-010', 'Goldman Sachs', 'GS', '550e8400-e29b-41d4-a716-446655440005', 0.28
 WHERE NOT EXISTS (SELECT 1 FROM companies WHERE ticker = 'GS');
 
--- =============================================================================
+
 -- SAMPLE DOCUMENTS
--- =============================================================================
+
 
 -- Caterpillar 10-K
 INSERT INTO documents (id, company_id, ticker, filing_type, filing_date, accession_number, source_url, local_path, s3_key, content_hash, word_count, chunk_count, status)
@@ -144,9 +144,9 @@ SELECT 'doc-de-10k-2024', 'comp-de-002', 'DE', '10-K', '2024-12-15', '0000315189
     NULL, NULL, NULL, NULL, 'failed', 'Connection timeout during download'
 WHERE NOT EXISTS (SELECT 1 FROM documents WHERE id = 'doc-de-10k-2024');
 
--- =============================================================================
+
 -- SAMPLE DOCUMENT CHUNKS (for Caterpillar 10-K)
--- =============================================================================
+
 
 -- Chunk 0: Item 1 - Business
 INSERT INTO document_chunks (id, document_id, chunk_index, section, content, start_char, end_char, word_count)

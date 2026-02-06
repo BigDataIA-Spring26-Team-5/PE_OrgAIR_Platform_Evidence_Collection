@@ -136,9 +136,9 @@
 #     )
 
 
-# # =============================================================================
+# 
 # # GET /api/v1/evidence/stats - Evidence collection statistics
-# # =============================================================================
+# 
 
 # @router.get(
 #     "/evidence/stats",
@@ -231,9 +231,9 @@
 #     )
 
 
-# # =============================================================================
+# 
 # # POST /api/v1/evidence/backfill - Trigger full backfill
-# # =============================================================================
+# 
 
 # @router.post(
 #     "/evidence/backfill",
@@ -275,9 +275,9 @@
 #     )
 
 
-# # =============================================================================
+# 
 # # GET /api/v1/evidence/backfill/tasks/{task_id} - Check backfill progress
-# # =============================================================================
+# 
 
 # @router.get(
 #     "/evidence/backfill/tasks/{task_id}",
@@ -301,9 +301,9 @@
 #     )
 
 
-# # =============================================================================
+# 
 # # Background Task: run_backfill
-# # =============================================================================
+# 
 
 # async def _collect_signals_for_company(ticker: str) -> Dict[str, Any]:
 #     """Run all 4 signal categories for a company. Returns a summary dict."""
@@ -459,9 +459,9 @@ DEFAULT_SKIP_HOURS = 24
 _backfill_task_store: Dict[str, Dict[str, Any]] = {}
 
 
-# =============================================================================
+
 # GET /api/v1/companies/{ticker}/evidence
-# =============================================================================
+
 
 @router.get(
     "/companies/{ticker}/evidence",
@@ -569,9 +569,9 @@ async def get_company_evidence(ticker: str):
     )
 
 
-# =============================================================================
+
 # GET /api/v1/evidence/stats
-# =============================================================================
+
 
 def _build_signal_stat(ticker: str, summary: Optional[Dict]) -> CompanySignalStat:
     """Build a CompanySignalStat from a company_signal_summaries row."""
@@ -660,9 +660,9 @@ async def get_evidence_stats():
     )
 
 
-# =============================================================================
+
 # POST /api/v1/evidence/backfill
-# =============================================================================
+
 
 @router.post(
     "/evidence/backfill",
@@ -762,9 +762,9 @@ async def trigger_backfill(
     )
 
 
-# =============================================================================
+
 # GET /api/v1/evidence/backfill/tasks/{task_id}
-# =============================================================================
+
 
 @router.get(
     "/evidence/backfill/tasks/{task_id}",
@@ -788,9 +788,9 @@ async def get_backfill_status(task_id: str):
     )
 
 
-# =============================================================================
+
 # POST /api/v1/evidence/backfill/tasks/{task_id}/cancel
-# =============================================================================
+
 
 @router.post(
     "/evidence/backfill/tasks/{task_id}/cancel",
@@ -829,9 +829,9 @@ async def cancel_backfill(task_id: str):
     }
 
 
-# =============================================================================
+
 # Background Task: run_backfill
-# =============================================================================
+
 
 async def _collect_signals_for_company(ticker: str) -> Dict[str, Any]:
     """Run all 4 signal categories for a company."""

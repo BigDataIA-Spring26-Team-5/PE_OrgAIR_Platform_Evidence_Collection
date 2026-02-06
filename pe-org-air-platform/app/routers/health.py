@@ -24,9 +24,9 @@ load_dotenv(dotenv_path=env_path)
 router = APIRouter(tags=["health"])
 
 
-# ═══════════════════════════════════════════════════════════════
+
 #  Schemas
-# ═══════════════════════════════════════════════════════════════
+
 
 class HealthResponse(BaseModel):
     status: str
@@ -61,9 +61,9 @@ class CacheKeysResponse(BaseModel):
     error: Optional[str] = None
 
 
-# ═══════════════════════════════════════════════════════════════
+
 #  Dependency Health Checks
-# ═══════════════════════════════════════════════════════════════
+
 
 async def check_snowflake() -> str:
     """Check Snowflake connection health."""
@@ -163,9 +163,9 @@ async def check_s3() -> str:
         return f"unhealthy: {msg}"
 
 
-# ═══════════════════════════════════════════════════════════════
+
 #  Main Health Check Route
-# ═══════════════════════════════════════════════════════════════
+
 
 @router.get(
     "/health",
@@ -203,9 +203,9 @@ async def health_check():
         )
 
 
-# ═══════════════════════════════════════════════════════════════
+
 #  Individual Service Health Checks
-# ═══════════════════════════════════════════════════════════════
+
 
 @router.get("/health/snowflake", summary="Check Snowflake connection")
 async def health_snowflake():
@@ -240,9 +240,9 @@ async def health_s3():
     }
 
 
-# ═══════════════════════════════════════════════════════════════
+
 #  Redis Cache Testing Endpoints (NEW)
-# ═══════════════════════════════════════════════════════════════
+
 
 @router.get(
     "/health/cache/stats",
@@ -362,9 +362,9 @@ async def cache_flush() -> dict:
         return {"success": False, "error": str(e)}
 
 
-# ═══════════════════════════════════════════════════════════════
+
 #  Environment Check
-# ═══════════════════════════════════════════════════════════════
+
 
 @router.get("/health/env-check", summary="Check environment variables")
 async def health_env_check():

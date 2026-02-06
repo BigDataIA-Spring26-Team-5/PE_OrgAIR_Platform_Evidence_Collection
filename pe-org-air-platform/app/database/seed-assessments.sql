@@ -1,12 +1,12 @@
--- =============================================================================
+
 -- INSERT ASSESSMENTS DATA USING STORED PROCEDURE
--- =============================================================================
+
 -- Uses insert_assessment() procedure for validation:
 -- assessment_type: screening, due_diligence, quarterly, exit_prep
 -- status: draft, in_progress, submitted, approved, superseded
 -- v_r_score: between 0 and 100
 -- Requires companies to be seeded first (run seed-companies.sql)
--- =============================================================================
+
 
 -- Assessments for Apex Manufacturing Inc (a1000000-0000-0000-0000-000000000001)
 CALL insert_assessment('b1000000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000001', 'screening', '2025-01-15', 'approved', 'John Smith', 'Jane Doe', 72.5);

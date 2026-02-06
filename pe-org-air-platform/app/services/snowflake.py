@@ -11,9 +11,9 @@ from dotenv import load_dotenv
 from app.pipelines.chunking import DocumentChunk
 
 
-# ============================================================
+
 # MODULE-LEVEL CONNECTION (USED BY REPOSITORIES)
-# ============================================================
+
 
 def get_snowflake_connection():
     """
@@ -34,9 +34,9 @@ def get_snowflake_connection():
     )
 
 
-# ============================================================
+
 # SERVICE CLASS (USED BY PIPELINES)
-# ============================================================
+
 
 class SnowflakeService:
     """

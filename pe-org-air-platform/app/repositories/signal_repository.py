@@ -14,9 +14,9 @@ class SignalRepository:
     def __init__(self):
         self.conn = get_snowflake_connection()
 
-    # ============================================================
+    
     # EXTERNAL SIGNALS CRUD
-    # ============================================================
+    
 
     def create_signal(
         self,
@@ -161,9 +161,9 @@ class SignalRepository:
         finally:
             cur.close()
 
-    # ============================================================
+    
     # COMPANY SIGNAL SUMMARIES
-    # ============================================================
+    
 
     def get_summary(self, company_id: str) -> Optional[Dict]:
         """Get signal summary for a company."""

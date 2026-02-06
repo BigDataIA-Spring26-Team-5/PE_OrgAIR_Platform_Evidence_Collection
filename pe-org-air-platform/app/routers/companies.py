@@ -23,9 +23,9 @@ from app.services.cache import get_cache, TTL_COMPANY
 router = APIRouter(prefix="/api/v1", tags=["companies"])
 
 
-# ═══════════════════════════════════════════════════════════════
+
 #  Validation Error Messages
-# ═══════════════════════════════════════════════════════════════
+
 
 FIELD_MESSAGES = {
     "name": {
@@ -120,9 +120,9 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     )
 
 
-# ═══════════════════════════════════════════════════════════════
+
 #  Schemas
-# ═══════════════════════════════════════════════════════════════
+
 
 class ErrorResponse(BaseModel):
     error_code: str
@@ -194,9 +194,9 @@ class PaginatedCompanyResponse(BaseModel):
     cache: Optional[CacheInfo] = None
 
 
-# ═══════════════════════════════════════════════════════════════
+
 #  Exception Helpers
-# ═══════════════════════════════════════════════════════════════
+
 
 def raise_error(status_code: int, error_code: str, message: str):
     raise HTTPException(
@@ -220,9 +220,9 @@ def raise_validation_error(msg: str):
     raise_error(status.HTTP_422_UNPROCESSABLE_ENTITY, "VALIDATION_ERROR", msg)
 
 
-# ═══════════════════════════════════════════════════════════════
+
 #  Cache Helpers
-# ═══════════════════════════════════════════════════════════════
+
 
 CACHE_KEY_COMPANY_PREFIX = "company:"
 CACHE_KEY_COMPANIES_LIST_PREFIX = "companies:list:"
@@ -278,9 +278,9 @@ def invalidate_company_cache(company_id: Optional[UUID] = None) -> None:
             pass
 
 
-# ═══════════════════════════════════════════════════════════════
+
 #  Helper Functions
-# ═══════════════════════════════════════════════════════════════
+
 
 def row_to_response(row: dict, cache_info: Optional[CacheInfo] = None) -> CompanyResponse:
     return CompanyResponse(
@@ -295,9 +295,9 @@ def row_to_response(row: dict, cache_info: Optional[CacheInfo] = None) -> Compan
     )
 
 
-# ═══════════════════════════════════════════════════════════════
+
 #  Routes
-# ═══════════════════════════════════════════════════════════════
+
 
 @router.post(
     "/companies",

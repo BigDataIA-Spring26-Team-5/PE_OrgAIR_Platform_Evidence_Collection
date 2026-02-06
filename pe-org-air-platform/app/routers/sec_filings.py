@@ -19,9 +19,9 @@ from app.pipelines.pipeline_state import PipelineStateManager
 router = APIRouter(prefix="/api/v1/sec", tags=["SEC Filings Pipeline"])
 
 
-# =============================================================================
+
 # REQUEST MODELS
-# =============================================================================
+
 
 class DownloadRequest(BaseModel):
     company_id: str = Field(..., description="Company UUID from Snowflake", min_length=1)
@@ -133,9 +133,9 @@ class PipelineResponse(BaseModel):
     data: Optional[Any] = Field(default=None, description="Response data")
 
 
-# =============================================================================
+
 # ENDPOINTS
-# =============================================================================
+
 
 @router.post("/download-all", response_model=PipelineResponse)
 async def download_all_companies(request: DownloadAllRequest):

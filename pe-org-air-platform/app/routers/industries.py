@@ -23,9 +23,9 @@ router = APIRouter(prefix="/api/v1", tags=["industries"])
 
 
 
-# ═══════════════════════════════════════════════════════════════
+
 #  Schemas
-# ═══════════════════════════════════════════════════════════════
+
 
 class ErrorResponse(BaseModel):
     error_code: str
@@ -61,9 +61,9 @@ class IndustryListResponse(BaseModel):
     cache: Optional[CacheInfo] = None  # Cache info for debugging
 
 
-# ═══════════════════════════════════════════════════════════════
+
 #  Exception Helpers
-# ═══════════════════════════════════════════════════════════════
+
 
 def raise_error(status_code: int, error_code: str, message: str):
     raise HTTPException(
@@ -80,9 +80,9 @@ def raise_internal_error():
     raise_error(status.HTTP_500_INTERNAL_SERVER_ERROR, "INTERNAL_SERVER_ERROR", "Unexpected server error")
 
 
-# ═══════════════════════════════════════════════════════════════
+
 #  Cache Helpers
-# ═══════════════════════════════════════════════════════════════
+
 
 CACHE_KEY_INDUSTRY_LIST = "industry:list"
 CACHE_KEY_INDUSTRY_PREFIX = "industry:"
@@ -127,9 +127,9 @@ def invalidate_industry_cache(industry_id: Optional[UUID] = None) -> None:
             pass
 
 
-# ═══════════════════════════════════════════════════════════════
+
 #  Helper Functions
-# ═══════════════════════════════════════════════════════════════
+
 
 def row_to_response(row: dict, cache_info: Optional[CacheInfo] = None) -> IndustryResponse:
     """Convert database row to response model."""
@@ -142,9 +142,9 @@ def row_to_response(row: dict, cache_info: Optional[CacheInfo] = None) -> Indust
     )
 
 
-# ═══════════════════════════════════════════════════════════════
+
 #  Routes
-# ═══════════════════════════════════════════════════════════════
+
 
 @router.get(
     "/industries",

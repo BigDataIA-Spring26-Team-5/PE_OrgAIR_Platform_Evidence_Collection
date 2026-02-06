@@ -78,9 +78,9 @@ class CompanySignalSummary(BaseModel):
         return self
 
 
-# ============================================================
+
 # DATA MODELS (Moved from separate files)
-# ============================================================
+
 
 class JobPosting(BaseModel):
     """Individual job posting from JobSpy."""
@@ -132,9 +132,9 @@ class Patent(BaseModel):
         }
 
 
-# ============================================================
+
 # JOB SIGNAL SPECIFIC MODELS
-# ============================================================
+
 
 class JobScoreBreakdown(BaseModel):
     """Detailed breakdown of job market signal score."""
@@ -168,9 +168,9 @@ class JobAnalysisResponse(BaseModel):
     result: Optional[JobAnalysisResult] = None
 
 
-# ============================================================
+
 # TECH SIGNAL SPECIFIC MODELS
-# ============================================================
+
 
 class TechScoreBreakdown(BaseModel):
     """Detailed breakdown of tech stack signal score."""
@@ -203,9 +203,9 @@ class TechAnalysisResponse(BaseModel):
     result: Optional[TechAnalysisResult] = None
 
 
-# ============================================================
+
 # PATENT SIGNAL SPECIFIC MODELS
-# ============================================================
+
 
 class PatentScoreBreakdown(BaseModel):
     """Detailed breakdown of patent innovation signal score."""
@@ -240,9 +240,9 @@ class PatentAnalysisResponse(BaseModel):
     result: Optional[PatentAnalysisResult] = None
 
 
-# ============================================================
+
 # LEADERSHIP SIGNAL SPECIFIC MODELS
-# ============================================================
+
 
 class LeadershipScoreBreakdown(BaseModel):
     """Detailed breakdown of leadership signal score."""
@@ -277,9 +277,9 @@ class LeadershipAnalysisResponse(BaseModel):
     result: Optional[LeadershipAnalysisResult] = None
 
 
-# ============================================================
+
 # COMBINED RESPONSE MODELS
-# ============================================================
+
 
 class SignalSummaryResponse(BaseModel):
     """API response for signal summary table."""

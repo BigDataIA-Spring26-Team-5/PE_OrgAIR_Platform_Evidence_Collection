@@ -1,6 +1,6 @@
--- =============================================================================
+
 -- INSERT DIMENSION SCORES DATA USING STORED PROCEDURE
--- =============================================================================
+
 -- Uses insert_dimension_score() procedure for validation:
 -- dimension: data_infrastructure, ai_governance, technology_stack,
 --            talent_skills, leadership_vision, use_case_portfolio, culture_change
@@ -8,7 +8,7 @@
 -- weight: between 0 and 1
 -- confidence: between 0 and 1
 -- Requires assessments to be seeded first (run seed-assessments.sql)
--- =============================================================================
+
 
 -- Dimension scores for Apex Manufacturing Screening (b1000000-0000-0000-0000-000000000001)
 -- Complete set of all 7 dimensions

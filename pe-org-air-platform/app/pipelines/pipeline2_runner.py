@@ -83,9 +83,9 @@ class Pipeline2Runner:
             self.snowflake.close()
             self.snowflake = None
     
-    # =============================================================================
+    
     # STEP 1: EXTRACT DATA → Local + S3 (raw/)
-    # =============================================================================
+    
     async def step_extract_data(
         self,
         *,
@@ -170,9 +170,9 @@ class Pipeline2Runner:
             "mode": mode
         }
     
-    # =============================================================================
+    
     # STEP 2: VALIDATE DATA (Previously: Read from S3)
-    # =============================================================================
+    
     def step_validate_data(self) -> Dict[str, Any]:
         print("\n" + "=" * 60)
         print("Step 2: Validate Extracted Data")
@@ -211,9 +211,9 @@ class Pipeline2Runner:
             "companies_with_patents": len(patent_counts)
         }
     
-    # =============================================================================
+    
     # STEP 3: VERIFY SCORES
-    # =============================================================================
+    
     def step_verify_scores(self) -> Dict[str, Any]:
         print("\n" + "=" * 60)
         print("Step 3: Verify Scores")
@@ -255,9 +255,9 @@ class Pipeline2Runner:
             "techstack_scores": len(self.state.techstack_scores)
         }
 
-    # =============================================================================
+    
     # STEP 4: SAVE TO LOCAL DIRECTORY (Always runs)
-    # =============================================================================
+    
     def step_save_to_local(self) -> Dict[str, Any]:
         """Save all collected data to local JSON files."""
         print("\n" + "=" * 60)
@@ -393,9 +393,9 @@ class Pipeline2Runner:
             "files": files_saved
         }
 
-    # =============================================================================
+    
     # STEP 5: WRITE TO SNOWFLAKE
-    # =============================================================================
+    
     def step_write_to_snowflake(self) -> Dict[str, Any]:
 
         print("\n" + "=" * 60)
@@ -458,9 +458,9 @@ class Pipeline2Runner:
         finally:
             self._close_snowflake()
     
-    # =============================================================================
+    
     # COMPLETE PIPELINE RUN
-    # =============================================================================
+    
     async def run_pipeline(
         self,
         *,

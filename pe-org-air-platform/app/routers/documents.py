@@ -29,9 +29,9 @@
 # )
 
 
-# # ============================================================
+# 
 # # SECTION 1: DOCUMENT COLLECTION
-# # ============================================================
+# 
 
 # @router.post(
 #     "/collect",
@@ -84,9 +84,9 @@
 #         raise HTTPException(status_code=500, detail=str(e))
 
 
-# # ============================================================
+# 
 # # SECTION 2: DOCUMENT PARSING
-# # ============================================================
+# 
 
 # @router.post(
 #     "/parse/{ticker}",
@@ -178,9 +178,9 @@
 #     }
 
 
-# # ============================================================
+# 
 # # SECTION 3: DOCUMENT CHUNKING
-# # ============================================================
+# 
 
 # @router.post(
 #     "/chunk/{ticker}",
@@ -272,9 +272,9 @@
 #     }
 
 
-# # ============================================================
+# 
 # # SECTION 4: REPORTS & STATISTICS
-# # ============================================================
+# 
 
 # @router.get(
 #     "/report",
@@ -391,9 +391,9 @@
 #     }
 
 
-# # ============================================================
+# 
 # # SECTION 5: DOCUMENT MANAGEMENT
-# # ============================================================
+# 
 
 # @router.get(
 #     "",
@@ -450,9 +450,9 @@
 #     return doc
 
 
-# # ============================================================
+# 
 # # SECTION 6: DELETE / RESET (For Demo/Testing)
-# # ============================================================
+# 
 
 # @router.delete(
 #     "/reset/{ticker}",
@@ -684,9 +684,9 @@ router = APIRouter(
 )
 
 
-# ============================================================
+
 # SECTION 1: DOCUMENT COLLECTION
-# ============================================================
+
 
 @router.post(
     "/collect",
@@ -739,9 +739,9 @@ async def collect_all_documents(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# ============================================================
+
 # SECTION 2: DOCUMENT PARSING
-# ============================================================
+
 
 @router.post(
     "/parse/{ticker}",
@@ -833,9 +833,9 @@ async def get_parsed_document(document_id: str):
     }
 
 
-# ============================================================
+
 # SECTION 3: DOCUMENT CHUNKING
-# ============================================================
+
 
 @router.post(
     "/chunk/{ticker}",
@@ -927,9 +927,9 @@ async def get_chunk_stats(ticker: str):
     }
 
 
-# ============================================================
+
 # SECTION 4: REPORTS & STATISTICS
-# ============================================================
+
 
 @router.get(
     "/report",
@@ -1043,10 +1043,9 @@ async def get_evidence_report_table():
         "company_table": company_table
     }
 
-# ============================================================
+
 # SECTION 4B: SECTION ANALYSIS
-# ============================================================
-# NOTE: /analysis/export MUST come BEFORE /analysis/{ticker}
+
 
 @router.get(
     "/analysis/export",
@@ -1104,9 +1103,9 @@ async def analyze_company_sections(ticker: str):
         logger.error(f"Analysis failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# ============================================================
+
 # SECTION 5: DOCUMENT MANAGEMENT
-# ============================================================
+
 
 @router.get(
     "",
@@ -1163,9 +1162,9 @@ async def get_document(document_id: str):
     return doc
 
 
-# ============================================================
+
 # SECTION 6: DELETE / RESET (For Demo/Testing)
-# ============================================================
+
 
 @router.delete(
     "/reset/{ticker}",

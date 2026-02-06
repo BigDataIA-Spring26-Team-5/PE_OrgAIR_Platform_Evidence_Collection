@@ -27,9 +27,9 @@ from app.models.assessment import (
 )
 
 
-# =============================================================================
+
 # ENUMERATION TESTS
-# =============================================================================
+
 
 class TestDimensionEnum:
     """Tests for Dimension enumeration."""
@@ -76,9 +76,9 @@ class TestAssessmentStatusEnum:
         assert len(AssessmentStatus) == 5
 
 
-# =============================================================================
+
 # DIMENSION WEIGHTS TESTS
-# =============================================================================
+
 
 class TestDimensionWeights:
     """Tests for dimension weights configuration."""
@@ -106,9 +106,9 @@ class TestDimensionWeights:
             assert actual == expected
 
 
-# =============================================================================
+
 # DIMENSION SCORE MODEL TESTS
-# =============================================================================
+
 
 class TestDimensionScoreCreate:
     """Tests for DimensionScoreCreate model validation."""
@@ -210,9 +210,9 @@ class TestAllDimensionTypes:
         assert score.weight == expected_weight
 
 
-# =============================================================================
+
 # INDUSTRY MODEL TESTS
-# =============================================================================
+
 
 class TestIndustryCreate:
     """Tests for IndustryCreate model validation."""
@@ -268,9 +268,9 @@ class TestIndustryResponse:
         assert response.created_at is not None
 
 
-# =============================================================================
+
 # COMPANY MODEL TESTS
-# =============================================================================
+
 
 class TestCompanyCreate:
     """Tests for CompanyCreate model validation."""
@@ -333,9 +333,9 @@ class TestCompanyCreate:
             CompanyCreate(**data)
 
 
-# =============================================================================
+
 # ASSESSMENT MODEL TESTS
-# =============================================================================
+
 
 class TestAssessmentCreate:
     """Tests for AssessmentCreate model validation."""

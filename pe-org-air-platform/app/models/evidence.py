@@ -54,9 +54,9 @@
 #     signal_summary: Optional[SignalSummary] = None
 
 
-# # =============================================================================
+# 
 # # Backfill Models
-# # =============================================================================
+# 
 
 # class BackfillStatus(str, Enum):
 #     QUEUED = "queued"
@@ -99,9 +99,9 @@
 #     completed_at: Optional[str] = None
 
 
-# # =============================================================================
+# 
 # # Stats Models
-# # =============================================================================
+# 
 
 # class CompanyDocumentStat(BaseModel):
 #     """Document counts by filing type for one company."""
@@ -166,9 +166,9 @@ from datetime import datetime, date
 from enum import Enum
 
 
-# =============================================================================
+
 # Document Summary (replaces per-document listing)
-# =============================================================================
+
 
 class DocumentSummary(BaseModel):
     """Aggregated document stats for a company — no individual doc rows."""
@@ -183,9 +183,9 @@ class DocumentSummary(BaseModel):
     last_processed: Optional[str] = None
 
 
-# =============================================================================
+
 # Signal Models (unchanged)
-# =============================================================================
+
 
 class SignalEvidence(BaseModel):
     """A single external signal observation."""
@@ -211,9 +211,9 @@ class SignalSummary(BaseModel):
     last_updated: Optional[datetime] = None
 
 
-# =============================================================================
+
 # Company Evidence Response
-# =============================================================================
+
 
 class CompanyEvidenceResponse(BaseModel):
     """Combined evidence response for a company."""
@@ -226,9 +226,9 @@ class CompanyEvidenceResponse(BaseModel):
     signal_summary: Optional[SignalSummary] = None
 
 
-# =============================================================================
+
 # Backfill Models (unchanged)
-# =============================================================================
+
 
 class BackfillStatus(str, Enum):
     QUEUED = "queued"
@@ -273,9 +273,9 @@ class BackfillTaskStatus(BaseModel):
     completed_at: Optional[str] = None
 
 
-# =============================================================================
+
 # Stats Models (unchanged)
-# =============================================================================
+
 
 class CompanyDocumentStat(BaseModel):
     """Document counts by filing type for one company."""

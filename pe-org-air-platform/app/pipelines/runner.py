@@ -28,9 +28,9 @@ def _get_s3() -> S3Storage:
     return S3Storage()
 
 
-# =============================================================================
+
 # STEP 1: DOWNLOAD FILINGS → Local + S3 (raw/)
-# =============================================================================
+
 def step_download_filings(
     company_id: str,
     ticker: str,
@@ -121,9 +121,9 @@ def step_download_filings(
     return {"status": "success", "downloaded": state.stats["downloaded"], "s3_uploads": len(s3_uploads), "s3_files": s3_uploads, "filings": state.downloaded_filings, "errors": state.stats["errors"]}
 
 
-# =============================================================================
+
 # STEP 2: PARSE DOCUMENTS → Local + S3 (parsed/, tables/)
-# =============================================================================
+
 def step_parse_documents() -> Dict[str, Any]:
     
     state = PipelineStateManager.get_state()
@@ -229,9 +229,9 @@ def step_parse_documents() -> Dict[str, Any]:
     return {"status": "success", "parsed": state.stats["parsed"], "total_tables_extracted": total_tables, "html_tables": total_tables - total_pdf_tables, "pdf_tables": total_pdf_tables, "s3_uploads": len(s3_uploads), "errors": state.stats["errors"]}
 
 
-# =============================================================================
+
 # STEP 3: DEDUPLICATE
-# =============================================================================
+
 def step_deduplicate() -> Dict[str, Any]:
     
     state = PipelineStateManager.get_state()
@@ -267,9 +267,9 @@ def step_deduplicate() -> Dict[str, Any]:
     return {"status": "success", "unique_filings": len(state.deduplicated_filings), "duplicates_skipped": skipped}
 
 
-# =============================================================================
+
 # STEP 4: CHUNK DOCUMENTS → Local + S3 (chunks/) + Snowflake
-# =============================================================================
+
 def step_chunk_documents(chunk_size: int = 1000, chunk_overlap: int = 100) -> Dict[str, Any]:
     
     state = PipelineStateManager.get_state()
@@ -356,9 +356,9 @@ def step_chunk_documents(chunk_size: int = 1000, chunk_overlap: int = 100) -> Di
     return {"status": "success", "documents_chunked": len(state.chunked_filings), "total_chunks": total_chunks, "s3_uploads": len(s3_uploads), "snowflake_inserts": {"documents": len(state.chunked_filings), "chunks": total_chunks}, "errors": state.stats["errors"]}
 
 
-# =============================================================================
+
 # STEP 5: EXTRACT ITEMS → Local + S3 (output_items/)
-# =============================================================================
+
 def step_extract_items() -> Dict[str, Any]:
     
     state = PipelineStateManager.get_state()
@@ -409,9 +409,9 @@ def step_extract_items() -> Dict[str, Any]:
     return {"status": "success", "items_extracted": state.stats["items_extracted"], "s3_uploads": len(s3_uploads), "files": state.extracted_items}
 
 
-# =============================================================================
+
 # STEP 6: GET PIPELINE STATS
-# =============================================================================
+
 def get_pipeline_stats() -> Dict[str, Any]:
     state = PipelineStateManager.get_state()
     return {
@@ -421,9 +421,9 @@ def get_pipeline_stats() -> Dict[str, Any]:
     }
 
 
-# =============================================================================
+
 # PREVIEW FILINGS
-# =============================================================================
+
 def preview_filings(ticker: str, filing_type: str = "8-K", limit: int = 10) -> Dict[str, Any]:
     import requests
     
@@ -487,9 +487,9 @@ def preview_filings(ticker: str, filing_type: str = "8-K", limit: int = 10) -> D
         return {"status": "error", "message": str(e)}
 
 
-# =============================================================================
+
 # DOWNLOAD ALL COMPANIES - Complete pipeline
-# =============================================================================
+
 def step_download_all_companies(
     from_date: str,
     to_date: str,

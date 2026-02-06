@@ -8,9 +8,9 @@ import pytest
 from fastapi import status
 
 
-# =============================================================================
+
 # DIMENSION WEIGHTS ENDPOINT TESTS
-# =============================================================================
+
 
 class TestDimensionWeightsEndpoint:
     """Tests for GET /api/v1/dimensions/weights endpoint."""
@@ -42,9 +42,9 @@ class TestDimensionWeightsEndpoint:
             assert dimension in data["weights"]
 
 
-# =============================================================================
+
 # DIMENSION SCORE POST ENDPOINT TESTS
-# =============================================================================
+
 
 class TestAddDimensionScoreEndpoint:
     """Tests for POST /api/v1/assessments/{id}/scores endpoint."""
@@ -111,9 +111,9 @@ class TestAddDimensionScoreEndpoint:
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
 
-# =============================================================================
+
 # DIMENSION SCORE GET ENDPOINT TESTS
-# =============================================================================
+
 
 class TestGetDimensionScoresEndpoint:
     """Tests for GET /api/v1/assessments/{id}/scores endpoint."""
@@ -133,9 +133,9 @@ class TestGetDimensionScoresEndpoint:
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
 
-# =============================================================================
+
 # DIMENSION SCORE PUT ENDPOINT TESTS
-# =============================================================================
+
 
 class TestUpdateDimensionScoreEndpoint:
     """Tests for PUT /api/v1/scores/{id} endpoint."""
@@ -161,9 +161,9 @@ class TestUpdateDimensionScoreEndpoint:
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
 
-# =============================================================================
+
 # COMPANY ENDPOINT TESTS
-# =============================================================================
+
 
 class TestCompanyEndpoints:
     """Tests for Company API endpoints."""
@@ -244,9 +244,9 @@ class TestCompanyEndpoints:
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
 
-# =============================================================================
+
 # ASSESSMENT ENDPOINT TESTS
-# =============================================================================
+
 
 class TestAssessmentEndpoints:
     """Tests for Assessment API endpoints."""
@@ -347,9 +347,9 @@ class TestAssessmentEndpoints:
             assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
 
-# =============================================================================
+
 # HEALTH ENDPOINT TESTS
-# =============================================================================
+
 
 class TestHealthEndpoint:
     """Tests for GET /health endpoint."""
@@ -446,9 +446,9 @@ class TestHealthEndpoint:
             assert data["status"] == "degraded"
 
 
-# =============================================================================
+
 # ROOT ENDPOINT TEST
-# =============================================================================
+
 
 class TestRootEndpoint:
     """Tests for root endpoint."""
@@ -466,9 +466,9 @@ class TestRootEndpoint:
         assert "message" in data
 
 
-# =============================================================================
+
 # ERROR RESPONSE FORMAT TESTS
-# =============================================================================
+
 
 class TestErrorResponseFormat:
     """Tests for error response format consistency."""

@@ -41,9 +41,9 @@ from app.models.signal_responses import (
 )
 
 
-# =============================================================================
+
 # SIGNAL CATEGORY ENUM TESTS
-# =============================================================================
+
 
 class TestSignalCategoryEnum:
     """Tests for SignalCategory enumeration."""
@@ -84,9 +84,9 @@ class TestSignalSourceEnum:
         assert len(SignalSource) == 8
 
 
-# =============================================================================
+
 # EXTERNAL SIGNAL MODEL TESTS
-# =============================================================================
+
 
 class TestExternalSignal:
     """Tests for ExternalSignal model validation."""
@@ -182,9 +182,9 @@ class TestExternalSignal:
         assert signal.normalized_score == 100.0
 
 
-# =============================================================================
+
 # COMPANY SIGNAL SUMMARY MODEL TESTS
-# =============================================================================
+
 
 class TestCompanySignalSummary:
     """Tests for CompanySignalSummary model validation."""
@@ -244,9 +244,9 @@ class TestCompanySignalSummary:
             )
 
 
-# =============================================================================
+
 # JOB POSTING MODEL TESTS
-# =============================================================================
+
 
 class TestJobPosting:
     """Tests for JobPosting model validation."""
@@ -293,9 +293,9 @@ class TestJobPosting:
             )
 
 
-# =============================================================================
+
 # PATENT MODEL TESTS
-# =============================================================================
+
 
 class TestPatent:
     """Tests for Patent model validation."""
@@ -346,9 +346,9 @@ class TestPatent:
             )
 
 
-# =============================================================================
+
 # JOB SCORE BREAKDOWN MODEL TESTS
-# =============================================================================
+
 
 class TestJobScoreBreakdown:
     """Tests for JobScoreBreakdown model validation."""
@@ -395,9 +395,9 @@ class TestJobScoreBreakdown:
         assert breakdown.total_score == 100.0
 
 
-# =============================================================================
+
 # JOB ANALYSIS RESULT MODEL TESTS
-# =============================================================================
+
 
 class TestJobAnalysisResult:
     """Tests for JobAnalysisResult model validation."""
@@ -447,9 +447,9 @@ class TestJobAnalysisResult:
             )
 
 
-# =============================================================================
+
 # TECH SCORE BREAKDOWN MODEL TESTS
-# =============================================================================
+
 
 class TestTechScoreBreakdown:
     """Tests for TechScoreBreakdown model validation."""
@@ -476,9 +476,9 @@ class TestTechScoreBreakdown:
             )
 
 
-# =============================================================================
+
 # PATENT SCORE BREAKDOWN MODEL TESTS
-# =============================================================================
+
 
 class TestPatentScoreBreakdown:
     """Tests for PatentScoreBreakdown model validation."""
@@ -507,9 +507,9 @@ class TestPatentScoreBreakdown:
             )
 
 
-# =============================================================================
+
 # LEADERSHIP SCORE BREAKDOWN MODEL TESTS
-# =============================================================================
+
 
 class TestLeadershipScoreBreakdown:
     """Tests for LeadershipScoreBreakdown model validation."""
@@ -549,9 +549,9 @@ class TestLeadershipScoreBreakdown:
             )
 
 
-# =============================================================================
+
 # SIGNAL RESPONSES MODEL TESTS
-# =============================================================================
+
 
 class TestJobPostingResponse:
     """Tests for JobPostingResponse model."""
@@ -660,9 +660,9 @@ class TestSignalScoresResponse:
             )
 
 
-# =============================================================================
+
 # COMBINED ANALYSIS RESPONSE TESTS
-# =============================================================================
+
 
 class TestCombinedAnalysisResponse:
     """Tests for CombinedAnalysisResponse model."""
@@ -691,9 +691,9 @@ class TestCombinedAnalysisResponse:
         assert response.leadership_analysis is None
 
 
-# =============================================================================
+
 # SIGNAL API ENDPOINT TESTS
-# =============================================================================
+
 
 class TestSignalsCollectEndpoint:
     """Tests for POST /api/v1/signals/collect endpoint."""

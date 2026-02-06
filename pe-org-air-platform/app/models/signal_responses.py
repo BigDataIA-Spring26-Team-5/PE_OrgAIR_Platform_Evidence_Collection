@@ -11,9 +11,9 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 
-# ============================================
+
 # Base Models for Reuse
-# ============================================
+
 
 class DateTimeConfigMixin:
     """Mixin for datetime JSON serialization configuration."""
@@ -54,9 +54,9 @@ class TotalCountMixin(BaseModel):
     ai_count: int = 0
 
 
-# ============================================
+
 # Core Response Models
-# ============================================
+
 
 class JobPostingResponse(CompanyInfoMixin, AIScoreMixin, DateTimeConfigMixin):
     """Job posting response model for API."""
@@ -93,9 +93,9 @@ class TechStackResponse(CompanyInfoMixin):
     total_ai_tools: int = 0
 
 
-# ============================================
+
 # Pipeline and Error Models
-# ============================================
+
 
 class PipelineError(BaseModel):
     """Error details from pipeline execution."""
@@ -105,9 +105,9 @@ class PipelineError(BaseModel):
     timestamp: Optional[str] = None
 
 
-# ============================================
+
 # Collection Response Models
-# ============================================
+
 
 class BaseCollectionResponse(OptionalCompanyInfoMixin):
     """Base model for collection responses."""
@@ -147,9 +147,9 @@ class AllSignalsResponse(BaseCollectionResponse, TotalCountMixin):
     techstacks: List[TechStackResponse] = Field(default_factory=list)
 
 
-# ============================================
+
 # Request/Response models for POST /collect
-# ============================================
+
 
 class SignalCollectRequest(BaseModel):
     """Request model for signal collection endpoint."""
@@ -168,9 +168,9 @@ class SignalCollectResponse(BaseModel):
     data_path: Optional[str] = None
 
 
-# ============================================
+
 # Summary and Score Models
-# ============================================
+
 
 class BaseScoreSummary(CompanyInfoMixin):
     """Base model for signal score summaries."""

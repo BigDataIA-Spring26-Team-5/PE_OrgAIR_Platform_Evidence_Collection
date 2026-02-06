@@ -8,8 +8,6 @@ from app.services.document_collector import get_document_collector_service
 from app.services.document_parsing_service import get_document_parsing_service
 from app.services.leadership_service import get_leadership_service
 from app.services.redis_cache import get_redis_cache
-
-# Core services that don't have circular dependencies
 from app.services.cache import get_cache
 from app.services.redis_cache import RedisCache
 from app.services.s3_storage import get_s3_service

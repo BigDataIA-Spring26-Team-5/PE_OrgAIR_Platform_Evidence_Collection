@@ -105,9 +105,9 @@ class ParseAllResponse(BaseModel):
     by_company: List[dict]
 
 
-# ============================================================
+
 # REPORT MODELS
-# ============================================================
+
 
 class CompanyDocumentStats(BaseModel):
     """Document statistics for a single company"""
@@ -138,9 +138,9 @@ class EvidenceCollectionReport(BaseModel):
     status_breakdown: Dict[str, int]
 
 
-# ============================================================
+
 # CHUNKING MODELS
-# ============================================================
+
 
 class ChunkByTickerResponse(BaseModel):
     """Response for chunking by ticker"""

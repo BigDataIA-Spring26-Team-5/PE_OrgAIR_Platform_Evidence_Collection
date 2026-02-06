@@ -313,9 +313,9 @@ def fetch_chunks_table(base_url: str, ticker: Optional[str] = None) -> None:
         st.error(f"❌ Error fetching chunks: {e}")
 
 
-# =============================================================================
+
 # Signal table rendering helpers
-# =============================================================================
+
 
 def render_signals_table(signals: List[Dict], title: str = "Signals") -> None:
     """Render a list of signal dicts as a clean Streamlit table."""
@@ -373,9 +373,9 @@ def render_categories_table(categories: Dict) -> None:
     st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
 
 
-# =============================================================================
+
 # Sidebar Navigation
-# =============================================================================
+
 
 st.sidebar.title("📊 SEC Pipeline")
 st.sidebar.divider()
@@ -1503,8 +1503,8 @@ else:
                 st.warning("Please enter a ticker or company ID.")
 
 
-# =============================================================================
+
 # Footer
-# =============================================================================
+
 st.sidebar.divider()
 st.sidebar.caption("SEC Filings & Signals Pipeline v2.0")

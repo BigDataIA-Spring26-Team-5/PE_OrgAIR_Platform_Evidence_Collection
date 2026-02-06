@@ -31,7 +31,7 @@ router = APIRouter(prefix="/api/v1/assessments", tags=["Assessments"])
 
 
 
-# ============== Custom Exception Handlers ==============
+#  Custom Exception Handlers 
 # Add these to your main.py: app.add_exception_handler(RequestValidationError, validation_exception_handler)
 
 FIELD_MESSAGES = {
@@ -155,7 +155,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     )
 
 
-# ============== Exception Helpers ==============
+#  Exception Helpers 
 
 def raise_error(status_code: int, error_code: str, message: str):
     raise HTTPException(
@@ -198,7 +198,7 @@ def invalidate_assessment_cache(assessment_id: UUID):
             pass  # Log error but don't fail the request
 
 
-# ============== Routes ==============
+#  Routes 
 
 @router.post(
     "",
