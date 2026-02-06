@@ -314,3 +314,130 @@ class SnowflakeService:
             return cur.fetchone()
         finally:
             cur.close()
+    # -------------------------
+    # External Signal operations (Pipeline 2: Jobs, Patents)
+    # -------------------------
+
+    def insert_external_signal(
+        self,
+        signal_id: str,
+        company_id: str,
+        category: str,
+        source: str,
+        score: float,
+        evidence_count: int,
+        summary: str,
+        raw_payload: dict,
+    ) -> str:
+        """
+        Insert or update an external signal (job market, patents, etc.).
+
+        Args:
+            signal_id: Unique identifier for the signal
+            company_id: Reference to companies table
+            category: Signal category (job_market, innovation_activity, etc.)
+            source: Data source (linkedin, indeed, uspto, etc.)
+            score: Computed score (0-100)
+            evidence_count: Number of evidence items (e.g., AI jobs found)
+            summary: Human-readable summary
+            raw_payload: Full data as JSON (stored as VARIANT)
+
+        Returns:
+            signal_id
+        """
+        import json
+
+        sql = """
+        MERGE INTO external_signals t
+        USING (SELECT %s AS id) s
+        ON t.id = s.id
+        WHEN NOT MATCHED THEN INSERT (
+            id, company_id, category, source, score,
+            evidence_count, summary, raw_payload, created_at
+        ) VALUES (
+            %s, %s, %s, %s, %s,
+            %s, %s, PARSE_JSON(%s), CURRENT_TIMESTAMP()
+        )
+        WHEN MATCHED THEN UPDATE SET
+            score = %s,
+            evidence_count = %s,
+            summary = %s,
+            raw_payload = PARSE_JSON(%s),
+            created_at = CURRENT_TIMESTAMP()
+        """
+
+        payload_json = json.dumps(raw_payload, default=str)
+        params = (
+            signal_id,
+            signal_id, company_id, category, source, score,
+            evidence_count, summary, payload_json,
+            score, evidence_count, summary, payload_json,
+        )
+
+        cur = self.conn.cursor()
+        try:
+            cur.execute(sql, params)
+            self.conn.commit()
+            return signal_id
+        finally:
+            cur.close()
+
+    def get_external_signals(
+        self,
+        company_id: Optional[str] = None,
+        category: Optional[str] = None,
+    ) -> list[dict]:
+        """
+        Retrieve external signals, optionally filtered by company or category.
+
+        Args:
+            company_id: Filter by company (optional)
+            category: Filter by category like 'job_market', 'innovation_activity' (optional)
+
+        Returns:
+            List of signal records
+        """
+        sql = "SELECT * FROM external_signals WHERE 1=1"
+        params = []
+
+        if company_id:
+            sql += " AND company_id = %s"
+            params.append(company_id)
+        if category:
+            sql += " AND category = %s"
+            params.append(category)
+
+        sql += " ORDER BY created_at DESC"
+
+        cur = self.conn.cursor(snowflake.connector.DictCursor)
+        try:
+            cur.execute(sql, params if params else None)
+            return cur.fetchall()
+        finally:
+            cur.close()
+
+    def get_pipeline_summary(self, ticker: Optional[str] = None) -> dict:
+        """
+        Get summary statistics for the pipeline.
+        Useful for the /stats endpoint.
+        """
+        where_clause = "WHERE ticker = %s" if ticker else ""
+        params = [ticker] if ticker else []
+        
+        sql = f"""
+        SELECT 
+            COUNT(DISTINCT d.id) as total_documents,
+            SUM(d.chunk_count) as total_chunks,
+            COUNT(DISTINCT d.ticker) as unique_tickers,
+            COUNT(CASE WHEN d.status = 'chunked' THEN 1 END) as chunked_documents,
+            COUNT(CASE WHEN d.status = 'failed' THEN 1 END) as failed_documents
+        FROM documents d
+        {where_clause}
+        """
+        
+        cur = self.conn.cursor(snowflake.connector.DictCursor)
+        try:
+            cur.execute(sql, params if params else None)
+            return cur.fetchone()
+        finally:
+            cur.close()
