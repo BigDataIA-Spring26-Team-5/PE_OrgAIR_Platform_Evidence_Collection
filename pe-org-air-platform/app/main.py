@@ -12,6 +12,7 @@ from app.routers.dimensionScores import router as dimension_scores_router
 from app.routers.documents import router as documents_router
 from app.routers.pdf_parser import router as pdf_parser_router
 from app.routers.signals import router as signals_router
+from app.routers.evidence import router as evidence_router
 
 load_dotenv()
 
@@ -36,6 +37,7 @@ app.include_router(companies_router)
 app.include_router(industries_router)
 app.include_router(assessments_router)
 app.include_router(dimension_scores_router)
+app.include_router(evidence_router)
 
 # ROOT ENDPOINT
 @app.get("/", tags=["Root"], summary="Root endpoint")

@@ -329,6 +329,26 @@ class SignalRepository:
         finally:
             cur.close()
 
+    def get_category_breakdown(self) -> List[Dict]:
+        """Get signal count, avg score, and avg confidence per category."""
+        sql = """
+        SELECT
+            category,
+            COUNT(*) as count,
+            AVG(normalized_score) as avg_score,
+            AVG(confidence) as avg_confidence
+        FROM external_signals
+        GROUP BY category
+        ORDER BY category
+        """
+        cur = self.conn.cursor()
+        try:
+            cur.execute(sql)
+            columns = [col[0].lower() for col in cur.description]
+            return [dict(zip(columns, row)) for row in cur.fetchall()]
+        finally:
+            cur.close()
+
     def delete_summary(self, company_id: str) -> bool:
         """Delete signal summary for a company."""
         sql = "DELETE FROM company_signal_summaries WHERE company_id = %s"
