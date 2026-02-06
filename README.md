@@ -433,9 +433,9 @@ Data collected as of February 5–6, 2026. Composite = 0.30×Hiring + 0.25×Inno
 
 | Member | Responsibilities |
 |--------|-----------------|
-| Bhavya | SEC EDGAR pipeline, document parsing, chunking |
-| Aqeel | External signals pipeline, scoring logic |
-| Deepika | Database schema, repositories, API endpoints |
+| **Bhavya** | Snowflake database seeding & infrastructure setup · FastAPI endpoints (uvicorn) for SEC pipeline with S3 & Snowflake storage · Delete/reset endpoints for pipeline data management · Signal pipeline endpoints & quality testing · Evidence collection for AI readiness scoring · README and project documentation maintenance |
+| **Deepika** | SEC EDGAR initial pipeline architecture & design · PDF parsing for SEC filings · Scaled pipeline to all 10 companies with S3 & Snowflake integration · Streamlit application for SEC and Signal pipelines · Key takeaways and Say-Do Gap analysis documentation |
+| **Aqeel** | Signal pipeline for AI readiness scoring (job postings, patents, tech stack, leadership signals) · Composite scoring methodology across four signal categories · Evidence gathering and validation · Signal data integration with Snowflake |
 
 
 ### AI Tools Usage Disclosure
