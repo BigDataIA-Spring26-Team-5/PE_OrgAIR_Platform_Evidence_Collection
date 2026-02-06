@@ -23,6 +23,8 @@ from app.services.tech_signal_service import get_tech_signal_service
 from app.services.patent_signal_service import get_patent_signal_service
 from app.repositories.signal_repository import get_signal_repository
 from app.repositories.company_repository import CompanyRepository
+from app.repositories.signal_scores_repository import SignalScoresRepository
+from app.services.s3_storage import get_s3_service
 
 logger = logging.getLogger(__name__)
 
@@ -477,3 +479,81 @@ async def run_signal_collection(
     _task_store[task_id]["progress"]["current_category"] = None
 
     logger.info(f"Signal collection completed: task_id={task_id}")
+
+
+# =============================================================================
+# RESET (DEMO)
+# =============================================================================
+
+@router.delete(
+    "/signals/reset/{ticker}",
+    summary="Reset all signals for a company",
+    description="""
+    Deletes all signal data for a company across Snowflake and S3.
+
+    **Snowflake tables cleared:**
+    - `EXTERNAL_SIGNALS` — individual signal rows
+    - `COMPANY_SIGNAL_SUMMARIES` — aggregated summary
+    - `SIGNAL_SCORES` — detailed scores
+
+    **S3 prefixes cleared:**
+    - `signals/jobs/{TICKER}/`
+    - `signals/patents/{TICKER}/`
+    - `signals/techstack/{TICKER}/`
+    """,
+    tags=["Reset (Demo)"],
+)
+async def reset_signals(ticker: str):
+    """Delete all signals for a company from Snowflake and S3."""
+    ticker = ticker.upper()
+
+    # Look up company
+    company_repo = CompanyRepository()
+    company = company_repo.get_by_ticker(ticker)
+    if not company:
+        raise HTTPException(status_code=404, detail=f"Company not found for ticker: {ticker}")
+
+    company_id = str(company["id"])
+    result = {"ticker": ticker, "snowflake": {}, "s3": {"deleted_keys": [], "errors": []}}
+
+    # --- Snowflake ---
+    signal_repo = get_signal_repository()
+    scores_repo = SignalScoresRepository()
+
+    signals_deleted = signal_repo.delete_signals_by_company(company_id)
+    result["snowflake"]["external_signals_deleted"] = signals_deleted
+
+    summary_deleted = signal_repo.delete_summary(company_id)
+    result["snowflake"]["signal_summary_deleted"] = summary_deleted
+
+    scores_deleted = scores_repo.delete_by_ticker(ticker)
+    result["snowflake"]["signal_scores_deleted"] = scores_deleted
+
+    # --- S3 ---
+    s3_prefixes = [
+        f"signals/jobs/{ticker}/",
+        f"signals/patents/{ticker}/",
+        f"signals/techstack/{ticker}/",
+    ]
+
+    try:
+        s3 = get_s3_service()
+        for prefix in s3_prefixes:
+            keys = s3.list_files(prefix)
+            for key in keys:
+                if s3.delete_file(key):
+                    result["s3"]["deleted_keys"].append(key)
+                else:
+                    result["s3"]["errors"].append(key)
+    except Exception as e:
+        logger.error(f"S3 cleanup error for {ticker}: {e}")
+        result["s3"]["errors"].append(str(e))
+
+    total_s3 = len(result["s3"]["deleted_keys"])
+    logger.info(
+        f"Signal reset for {ticker}: "
+        f"snowflake(signals={signals_deleted}, summary={summary_deleted}, scores={scores_deleted}) "
+        f"s3({total_s3} files deleted)"
+    )
+
+    return result
