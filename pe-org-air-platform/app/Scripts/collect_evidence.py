@@ -2,31 +2,45 @@
 """
 Collect evidence for all target companies.
 
+Runs the full pipeline sequentially per company:
+  1. SEC document collection (download → S3 → Snowflake)
+  2. Document parsing (raw HTML → parsed JSON on S3)
+  3. Document chunking (parsed JSON → semantic chunks on S3 + Snowflake)
+  4. Signal collection (jobs, patents, tech stack, leadership)
+
+Companies are processed one-at-a-time to respect API rate limits.
+SEC + signal pipelines run in parallel within each company.
+
 Usage:
     python -m app.Scripts.collect_evidence --companies all
     python -m app.Scripts.collect_evidence --companies CAT,DE,UNH
+    python -m app.Scripts.collect_evidence --companies CAT --skip-signals
+    python -m app.Scripts.collect_evidence --companies all --skip-documents
 """
 
 import argparse
 import asyncio
-import json
-import uuid
+import logging
 from datetime import datetime, timezone
-from pathlib import Path
-from typing import Optional
-from uuid import UUID
+from typing import Dict, List
 
-import structlog
+from app.services.document_collector import get_document_collector_service
+from app.services.document_parsing_service import get_document_parsing_service
+from app.services.document_chunking_service import get_document_chunking_service
+from app.services.job_signal_service import get_job_signal_service
+from app.services.patent_signal_service import get_patent_signal_service
+from app.services.tech_signal_service import get_tech_signal_service
+from app.services.leadership_service import get_leadership_service
+from app.repositories.company_repository import CompanyRepository
+from app.models.document import DocumentCollectionRequest
 
-from app.pipelines.sec_edgar import SECEdgarCollector, SECFiling
-from app.pipelines.document_parser import DocumentParser
-from app.pipelines.chunking import SemanticChunker
-from app.pipelines.job_signals import calculate_job_score
-from app.pipelines.tech_signals import TechStackCollector, TechnologyDetection
-from app.services.snowflake import SnowflakeService
-from app.services.s3_storage import get_s3_service
-
-logger = structlog.get_logger()
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)-8s | %(message)s",
+    datefmt="%H:%M:%S",
+)
+logger = logging.getLogger(__name__)
 
 TARGET_COMPANIES = {
     "CAT": {"name": "Caterpillar Inc.", "sector": "Manufacturing"},
@@ -42,238 +56,262 @@ TARGET_COMPANIES = {
 }
 
 
-async def collect_documents(ticker: str, db: SnowflakeService) -> int:
-    """Collect SEC documents for a company."""
-    logger.info("Collecting documents", ticker=ticker)
-
-    collector = SECEdgarCollector()
-    parser = DocumentParser()
-    chunker = SemanticChunker()
-
-    # Download filings
-    filings = list(collector.get_company_filings(
-        ticker=ticker,
-        filing_types=["10-K", "10-Q", "8-K"],
-        years_back=3
-    ))
-
-    logger.info("Downloaded filings", ticker=ticker, count=len(filings))
-
-    processed_count = 0
-    # Parse and chunk each filing
-    for filing in filings:
-        try:
-            # Download the filing content
-            content = collector.download_filing(filing)
-            if not content:
-                logger.warning("Failed to download filing", ticker=ticker, filing_type=filing.filing_type)
-                continue
-
-            # Generate document ID
-            doc_id = f"{ticker}_{filing.filing_type}_{filing.filing_date}"
-
-            # Parse the document
-            doc = parser.parse(
-                content=content,
-                document_id=doc_id,
-                ticker=ticker,
-                filing_type=filing.filing_type,
-                filing_date=filing.filing_date,
-                filename=filing.primary_document
-            )
-
-            # Chunk the document
-            chunks = chunker.chunk_document(
-                document_id=doc.document_id,
-                content=doc.text_content,
-                sections=doc.sections
-            )
-
-            # Store in database
-            db.insert_document(
-                company_id=ticker,  # Using ticker as company_id for simplicity
-                ticker=ticker,
-                filing_type=doc.filing_type,
-                filing_date=datetime.strptime(doc.filing_date, "%Y-%m-%d"),
-                local_path="",  # Not storing locally
-                content_hash=str(hash(doc.text_content)),
-                word_count=doc.word_count,
-                status="chunked",
-                chunk_count=len(chunks)
-            )
-
-            # Insert chunks
-            db.insert_chunks(chunks)
-
-            logger.info(
-                "Processed document",
-                ticker=ticker,
-                filing_type=doc.filing_type,
-                chunks=len(chunks)
-            )
-            processed_count += 1
-
-        except Exception as e:
-            logger.error("Failed to process", filing_type=filing.filing_type, error=str(e))
-
-    return processed_count
-
-
-async def collect_signals(ticker: str, company_id: UUID, db: SnowflakeService) -> int:
-    """Collect external signals for a company."""
-    logger.info("Collecting signals", ticker=ticker)
-
-    signals = []
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-
-    # Job postings (simplified - in practice, use API)
-    # Note: The actual job signal collection uses the job_signals pipeline
-    job_analysis = calculate_job_score(
-        jobs=[]  # Would be populated from API
-    )
-    job_signal = {
-        "signal_id": f"{company_id}_job_market_{timestamp}",
-        "company_id": str(company_id),
-        "category": "job_market",
-        "source": "collect_evidence_script",
-        "score": job_analysis["score"],
-        "evidence_count": job_analysis.get("ai_jobs", 0),
-        "summary": f"Found {job_analysis.get('ai_jobs', 0)} AI roles out of {job_analysis.get('total_tech_jobs', 0)} tech jobs",
-        "raw_payload": job_analysis
-    }
-    signals.append(job_signal)
-
-    # Technology stack
-    tech_collector = TechStackCollector()
-    tech_analysis = tech_collector.analyze_tech_stack(
-        company_id=str(company_id),
-        technologies=[]  # Would be populated from BuiltWith API
-    )
-    tech_signal = {
-        "signal_id": f"{company_id}_tech_stack_{timestamp}",
-        "company_id": str(company_id),
-        "category": "tech_stack",
-        "source": "collect_evidence_script",
-        "score": tech_analysis["score"],
-        "evidence_count": len(tech_analysis.get("ai_technologies", [])),
-        "summary": f"Found {len(tech_analysis.get('ai_technologies', []))} AI technologies",
-        "raw_payload": tech_analysis
-    }
-    signals.append(tech_signal)
-
-    # Patents (simplified)
-    # Note: The actual patent signal collection uses PatentsView API
-    patent_signal = {
-        "signal_id": f"{company_id}_patent_portfolio_{timestamp}",
-        "company_id": str(company_id),
-        "category": "patent_portfolio",
-        "source": "collect_evidence_script",
-        "score": 0.0,
-        "evidence_count": 0,
-        "summary": "No patents collected (placeholder)",
-        "raw_payload": {"patents": []}  # Would be populated from USPTO/PatentsView API
-    }
-    signals.append(patent_signal)
-
-    # Store signals to Snowflake external_signals table
-    for signal in signals:
-        try:
-            _insert_external_signal(db, signal)
-        except Exception as e:
-            logger.warning("Failed to insert signal", signal_type=signal["category"], error=str(e))
-
-    logger.info("Collected signals", ticker=ticker, count=len(signals))
-
-    return len(signals)
-
-
-def _insert_external_signal(db: SnowflakeService, signal: dict) -> None:
+def collect_documents(ticker: str) -> Dict:
     """
-    Insert an external signal into Snowflake.
-
-    Table: external_signals
-    Columns expected:
-    - id: VARCHAR(100) PRIMARY KEY
-    - company_id: VARCHAR(36) NOT NULL
-    - category: VARCHAR(50) NOT NULL
-    - source: VARCHAR(100)
-    - score: FLOAT
-    - evidence_count: INT
-    - summary: VARCHAR(500)
-    - raw_payload: VARIANT
-    - created_at: TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
+    Collect SEC documents for a company.
+    Pipeline: SEC EDGAR → S3 upload → Snowflake metadata.
     """
-    sql = """
-    INSERT INTO external_signals (
-        id, company_id, category, source, score,
-        evidence_count, summary, raw_payload, created_at
-    ) VALUES (%s, %s, %s, %s, %s, %s, %s, PARSE_JSON(%s), CURRENT_TIMESTAMP())
+    logger.info(f"{'='*60}")
+    logger.info(f"DOCUMENTS: Collecting SEC filings for {ticker}")
+    logger.info(f"{'='*60}")
+
+    service = get_document_collector_service()
+    request = DocumentCollectionRequest(ticker=ticker)
+    result = service.collect_for_company(request)
+
+    return {
+        "documents_found": result.documents_found,
+        "documents_uploaded": result.documents_uploaded,
+        "documents_skipped": result.documents_skipped,
+        "documents_failed": result.documents_failed,
+        "summary": result.summary,
+    }
+
+
+def parse_documents(ticker: str) -> Dict:
     """
+    Parse all uploaded documents for a company.
+    Pipeline: S3 raw HTML → parse → S3 parsed JSON.
+    """
+    logger.info(f"{'='*60}")
+    logger.info(f"PARSING: Parsing documents for {ticker}")
+    logger.info(f"{'='*60}")
 
-    params = (
-        signal["signal_id"],
-        signal["company_id"],
-        signal["category"],
-        signal["source"],
-        signal["score"],
-        signal["evidence_count"],
-        signal["summary"],
-        json.dumps(signal["raw_payload"])
-    )
-
-    cur = db.conn.cursor()
+    service = get_document_parsing_service()
     try:
-        cur.execute(sql, params)
-        db.conn.commit()
-    finally:
-        cur.close()
+        result = service.parse_by_ticker(ticker)
+    except ValueError as e:
+        logger.warning(f"Parsing skipped for {ticker}: {e}")
+        return {"ticker": ticker, "parsed": 0, "skipped": 0, "failed": 0}
+
+    return {
+        "ticker": result["ticker"],
+        "total_documents": result["total_documents"],
+        "parsed": result["parsed"],
+        "skipped": result["skipped"],
+        "failed": result["failed"],
+    }
 
 
-async def main(companies: list[str]) -> dict:
-    """Main collection routine."""
-    db = SnowflakeService()
+def chunk_documents(ticker: str) -> Dict:
+    """
+    Chunk all parsed documents for a company.
+    Pipeline: S3 parsed JSON → semantic chunks → S3 + Snowflake.
+    """
+    logger.info(f"{'='*60}")
+    logger.info(f"CHUNKING: Chunking documents for {ticker}")
+    logger.info(f"{'='*60}")
+
+    service = get_document_chunking_service()
+    try:
+        result = service.chunk_by_ticker(ticker)
+    except ValueError as e:
+        logger.warning(f"Chunking skipped for {ticker}: {e}")
+        return {"ticker": ticker, "chunked": 0, "total_chunks": 0, "failed": 0}
+
+    return {
+        "ticker": result["ticker"],
+        "total_documents": result["total_documents"],
+        "chunked": result["chunked"],
+        "skipped": result["skipped"],
+        "failed": result["failed"],
+        "total_chunks": result["total_chunks"],
+    }
+
+
+async def collect_signals(ticker: str) -> Dict:
+    """
+    Collect all 4 signal categories for a company.
+    Categories: technology_hiring, innovation_activity, digital_presence, leadership_signals.
+    """
+    logger.info(f"{'='*60}")
+    logger.info(f"SIGNALS: Collecting signals for {ticker}")
+    logger.info(f"{'='*60}")
+
+    results = {}
+    errors = []
+
+    categories = [
+        ("technology_hiring", lambda: get_job_signal_service().analyze_company(ticker, force_refresh=True)),
+        ("innovation_activity", lambda: get_patent_signal_service().analyze_company(ticker, years_back=5)),
+        ("digital_presence", lambda: get_tech_signal_service().analyze_company(ticker, force_refresh=True)),
+        ("leadership_signals", lambda: get_leadership_service().analyze_company(ticker)),
+    ]
+
+    for category, service_call in categories:
+        try:
+            result = await service_call()
+            score = result.get("normalized_score") if isinstance(result, dict) else None
+            results[category] = {"status": "success", "score": score}
+            logger.info(f"  {category}: score={score}")
+        except Exception as e:
+            logger.error(f"  {category}: FAILED - {e}")
+            results[category] = {"status": "failed", "error": str(e)}
+            errors.append(f"{category}: {str(e)}")
+
+    return {"signals": results, "errors": errors}
+
+
+async def process_company(
+    ticker: str,
+    skip_documents: bool = False,
+    skip_signals: bool = False,
+) -> Dict:
+    """
+    Run the full evidence collection pipeline for one company.
+
+    SEC pipeline (sync) and signal pipeline (async) run in parallel.
+    Parsing and chunking run after SEC collection completes.
+    """
+    company_result = {
+        "ticker": ticker,
+        "status": "success",
+        "documents": None,
+        "parsing": None,
+        "chunking": None,
+        "signals": None,
+        "error": None,
+    }
+
+    try:
+        if skip_documents and skip_signals:
+            logger.warning(f"Both --skip-documents and --skip-signals set for {ticker}, nothing to do")
+            return company_result
+
+        # Run SEC collection (sync, in thread) and signals (async) in parallel
+        tasks = []
+
+        if not skip_documents:
+            async def _run_document_pipeline():
+                # Step 1: Collect
+                doc_result = await asyncio.to_thread(collect_documents, ticker)
+                company_result["documents"] = doc_result
+
+                # Step 2: Parse
+                parse_result = await asyncio.to_thread(parse_documents, ticker)
+                company_result["parsing"] = parse_result
+
+                # Step 3: Chunk
+                chunk_result = await asyncio.to_thread(chunk_documents, ticker)
+                company_result["chunking"] = chunk_result
+
+            tasks.append(_run_document_pipeline())
+
+        if not skip_signals:
+            async def _run_signal_pipeline():
+                signal_result = await collect_signals(ticker)
+                company_result["signals"] = signal_result
+                if signal_result.get("errors"):
+                    company_result["status"] = "completed_with_errors"
+
+            tasks.append(_run_signal_pipeline())
+
+        await asyncio.gather(*tasks, return_exceptions=False)
+
+    except Exception as e:
+        logger.error(f"FAILED processing {ticker}: {e}")
+        company_result["status"] = "failed"
+        company_result["error"] = str(e)
+
+    return company_result
+
+
+async def main(
+    companies: List[str],
+    skip_documents: bool = False,
+    skip_signals: bool = False,
+) -> Dict:
+    """Main collection routine. Processes companies sequentially."""
+    start_time = datetime.now(timezone.utc)
+
+    logger.info("=" * 60)
+    logger.info("EVIDENCE COLLECTION STARTED")
+    logger.info(f"  Companies: {', '.join(companies)}")
+    logger.info(f"  Skip documents: {skip_documents}")
+    logger.info(f"  Skip signals:   {skip_signals}")
+    logger.info(f"  Started at:     {start_time.isoformat()}")
+    logger.info("=" * 60)
 
     stats = {
-        "companies": 0,
-        "documents": 0,
-        "signals": 0,
-        "errors": 0
+        "companies_processed": 0,
+        "companies_failed": 0,
+        "total_documents_uploaded": 0,
+        "total_documents_parsed": 0,
+        "total_chunks_created": 0,
+        "total_signals_collected": 0,
+        "total_signal_errors": 0,
+        "company_results": [],
     }
 
-    try:
-        for ticker in companies:
-            if ticker not in TARGET_COMPANIES:
-                logger.warning("Unknown ticker", ticker=ticker)
-                continue
+    # Verify tickers exist in database
+    company_repo = CompanyRepository()
 
-            try:
-                # Ensure company exists in database
-                # Note: Using ticker as company_id for simplicity
-                # In production, you would query/create the company in the database
-                company_info = TARGET_COMPANIES[ticker]
+    for ticker in companies:
+        if ticker not in TARGET_COMPANIES:
+            logger.warning(f"Unknown ticker: {ticker} — skipping")
+            continue
 
-                # Generate a deterministic UUID from ticker
-                company_id = uuid.uuid5(uuid.NAMESPACE_DNS, ticker)
+        company = company_repo.get_by_ticker(ticker)
+        if not company:
+            logger.error(f"Company not found in database: {ticker} — skipping")
+            stats["companies_failed"] += 1
+            continue
 
-                # Collect documents
-                doc_count = await collect_documents(ticker, db)
-                stats["documents"] += doc_count
+        logger.info("")
+        logger.info(f"{'#'*60}")
+        logger.info(f"  [{stats['companies_processed']+1}/{len(companies)}] "
+                     f"Processing: {ticker} ({company.get('name', '')})")
+        logger.info(f"{'#'*60}")
 
-                # Collect signals
-                signal_count = await collect_signals(ticker, company_id, db)
-                stats["signals"] += signal_count
+        result = await process_company(ticker, skip_documents, skip_signals)
+        stats["company_results"].append(result)
 
-                stats["companies"] += 1
+        if result["status"] == "failed":
+            stats["companies_failed"] += 1
+        else:
+            stats["companies_processed"] += 1
 
-            except Exception as e:
-                logger.error("Failed to process company", ticker=ticker, error=str(e))
-                stats["errors"] += 1
+        # Accumulate totals
+        if result.get("documents"):
+            stats["total_documents_uploaded"] += result["documents"].get("documents_uploaded", 0)
+        if result.get("parsing"):
+            stats["total_documents_parsed"] += result["parsing"].get("parsed", 0)
+        if result.get("chunking"):
+            stats["total_chunks_created"] += result["chunking"].get("total_chunks", 0)
+        if result.get("signals"):
+            signals = result["signals"].get("signals", {})
+            stats["total_signals_collected"] += sum(
+                1 for s in signals.values() if s.get("status") == "success"
+            )
+            stats["total_signal_errors"] += len(result["signals"].get("errors", []))
 
-        logger.info("Collection complete", **stats)
-        return stats
+    end_time = datetime.now(timezone.utc)
+    elapsed = (end_time - start_time).total_seconds()
 
-    finally:
-        db.close()
+    logger.info("")
+    logger.info("=" * 60)
+    logger.info("EVIDENCE COLLECTION COMPLETE")
+    logger.info(f"  Duration:             {elapsed:.1f}s")
+    logger.info(f"  Companies processed:  {stats['companies_processed']}")
+    logger.info(f"  Companies failed:     {stats['companies_failed']}")
+    logger.info(f"  Documents uploaded:   {stats['total_documents_uploaded']}")
+    logger.info(f"  Documents parsed:     {stats['total_documents_parsed']}")
+    logger.info(f"  Chunks created:       {stats['total_chunks_created']}")
+    logger.info(f"  Signals collected:    {stats['total_signals_collected']}")
+    logger.info(f"  Signal errors:        {stats['total_signal_errors']}")
+    logger.info("=" * 60)
+
+    return stats
 
 
 if __name__ == "__main__":
@@ -283,7 +321,17 @@ if __name__ == "__main__":
     parser.add_argument(
         "--companies",
         default="all",
-        help="Comma-separated tickers or 'all'"
+        help="Comma-separated tickers or 'all' (default: all)",
+    )
+    parser.add_argument(
+        "--skip-documents",
+        action="store_true",
+        help="Skip SEC document collection, parsing, and chunking",
+    )
+    parser.add_argument(
+        "--skip-signals",
+        action="store_true",
+        help="Skip signal collection (jobs, patents, tech, leadership)",
     )
     args = parser.parse_args()
 
@@ -292,4 +340,4 @@ if __name__ == "__main__":
     else:
         companies = [t.strip().upper() for t in args.companies.split(",")]
 
-    asyncio.run(main(companies))
+    asyncio.run(main(companies, args.skip_documents, args.skip_signals))
