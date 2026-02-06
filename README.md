@@ -26,7 +26,7 @@
 
 | Resource | Link |
 |----------|------|
-| Codelab Document | [Link to Codelab](<!-- TODO: Add codelab link -->) |
+| Codelab Document | [Link to Codelab](https://codelabs-preview.appspot.com/?file_id=1zjg7GVe7g4RFy6kKCJcK1QNSoU7jn8RWnn62KT6tgjI#0) |
 | Demo Video | [Link to Video](<!-- TODO: Add video link -->) |
 
 ---
