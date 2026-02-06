@@ -28,6 +28,7 @@ from dotenv import load_dotenv
 from app.pipelines.pipeline2_state import Pipeline2State
 from app.pipelines.utils import clean_nan, safe_filename
 from app.models.signal import SignalCategory, SignalSource, ExternalSignal
+from app.services.s3_storage import get_s3_service
 
 # Load environment variables from .env file
 load_dotenv()
@@ -290,19 +291,50 @@ class PatentSignalCollector:
         for p in ai_patents:
             categories.update(p.ai_categories)
 
-        # Scoring algorithm from pseudocode:
-        # - AI patent count: 5 points each (max 50)
-        # - Recency bonus: +2 per patent filed in last year (max 20)
-        # - Category diversity: 10 points per category (max 30)
+        # Calculate AI patent ratio (what % of patents are AI-related)
+        ai_ratio = len(ai_patents) / len(recent_patents) if recent_patents else 0
 
-        score = (
-            min(len(ai_patents) * 5, 50) +
-            min(len(recent_ai) * 2, 20) +
-            min(len(categories) * 10, 30)
-        )
+        # UPDATED Scoring Algorithm (harder to max out):
+        # ================================================
+        # Component 1: AI Patent Volume (max 40 points)
+        #   - 2 points per AI patent (need 20 AI patents to max)
+        #   - Previously: 5 points per patent, max at 10 patents
+        #
+        # Component 2: AI Patent Ratio (max 25 points)
+        #   - Based on % of patents that are AI-related
+        #   - 25 points if 50%+ are AI patents
+        #   - Scales linearly: ratio * 50 (capped at 25)
+        #
+        # Component 3: Recency Bonus (max 20 points)
+        #   - 1 point per AI patent filed in last year (need 20 to max)
+        #   - Previously: 2 points per patent, max at 10 patents
+        #
+        # Component 4: Category Diversity (max 15 points)
+        #   - 3 points per unique AI category (need 5 categories to max)
+        #   - Previously: 10 points per category, max at 3 categories
+        #
+        # Total possible: 100 points
+
+        volume_score = min(len(ai_patents) * 2, 40)
+        ratio_score = min(ai_ratio * 50, 25)
+        recency_score = min(len(recent_ai) * 1, 20)
+        diversity_score = min(len(categories) * 3, 15)
+
+        score = volume_score + ratio_score + recency_score + diversity_score
 
         # Ensure score is between 0 and 100
         normalized_score = min(100.0, max(0.0, float(score)))
+
+        # Calculate confidence based on sample size
+        # More patents = higher confidence in the score
+        if len(recent_patents) >= 50:
+            confidence = 0.95
+        elif len(recent_patents) >= 20:
+            confidence = 0.85
+        elif len(recent_patents) >= 10:
+            confidence = 0.75
+        else:
+            confidence = 0.60
 
         # Create ExternalSignal
         signal = ExternalSignal(
@@ -313,14 +345,21 @@ class PatentSignalCollector:
             signal_date=datetime.now(timezone.utc),
             raw_value=f"{len(ai_patents)} AI patents in {years} years",
             normalized_score=round(normalized_score, 1),
-            confidence=0.90,
+            confidence=confidence,
             metadata={
                 "total_patents": len(patents),
                 "recent_patents": len(recent_patents),
                 "ai_patents": len(ai_patents),
                 "recent_ai_patents": len(recent_ai),
+                "ai_ratio": round(ai_ratio, 3),
                 "ai_categories": list(categories),
                 "years_analyzed": years,
+                "score_breakdown": {
+                    "volume_score": round(volume_score, 1),
+                    "ratio_score": round(ratio_score, 1),
+                    "recency_score": round(recency_score, 1),
+                    "diversity_score": round(diversity_score, 1)
+                },
                 "analysis_date": datetime.now(timezone.utc).isoformat()
             }
         )
@@ -351,33 +390,56 @@ async def run_patent_signals(
     logger.info("-" * 60)
     logger.info("📊 PATENT SIGNALS PIPELINE")
     logger.info("-" * 60)
-    
+
     collector = PatentSignalCollector(api_key=api_key)
-    
+    s3_service = get_s3_service()
+
     all_patents = []
     patent_signals = {}
-    
+
     for company in state.companies:
         company_id = company.get("id", "")
         company_name = company.get("name", "")
-        
+        ticker = company.get("ticker", "").upper()
+
         if not company_name:
             continue
-        
+
         logger.info(f"Processing {company_name}...")
-        
+
         # Fetch patents
         patents = await collector.fetch_patents(
             company_name=company_name,
             years_back=years_back,
             max_results=results_per_company
         )
-        
+
         if not patents:
             logger.warning(f"No patents found for {company_name}")
             continue
-        
-        # Classify each patent
+
+        # Store raw patents to S3 BEFORE classification
+        if not skip_storage and ticker:
+            raw_patents_data = {
+                "company_id": company_id,
+                "company_name": company_name,
+                "ticker": ticker,
+                "years_back": years_back,
+                "total_patents": len(patents),
+                "fetched_at": datetime.now(timezone.utc).isoformat(),
+                "patents": [asdict(p) for p in patents]
+            }
+            try:
+                s3_service.store_signal_data(
+                    signal_type="patents",
+                    ticker=ticker,
+                    data=raw_patents_data
+                )
+                logger.info(f"  📤 Stored {len(patents)} raw patents to S3 for {ticker}")
+            except Exception as e:
+                logger.warning(f"  ⚠️ Failed to store raw patents to S3: {e}")
+
+        # Classify each patent (AFTER storing raw data)
         classified_patents = []
         for patent in patents:
             classified_patent = collector.classify_patent(patent)

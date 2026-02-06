@@ -7,13 +7,20 @@ from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, Dict, Any
-from app.config import settings
+from app.config import (
+    settings,
+    get_company_search_name,
+    get_company_aliases,
+    get_search_name_by_official,
+    get_aliases_by_official,
+    COMPANY_NAME_MAPPINGS
+)
 from app.models.signal import JobPosting
 from app.pipelines.keywords import AI_KEYWORDS, AI_TECHSTACK_KEYWORDS, TOP_AI_TOOLS
 from app.pipelines.pipeline2_state import Pipeline2State
 from app.pipelines.utils import clean_nan, safe_filename
 from app.pipelines.tech_signals import (
-    TechStackCollector, TechnologyDetection, 
+    TechStackCollector, TechnologyDetection,
     calculate_techstack_score, create_external_signal_from_techstack,
     log_techstack_results
 )
@@ -36,38 +43,61 @@ def step1_init_job_collection(state: Pipeline2State) -> Pipeline2State:
     logger.info(f"   Output directory: {state.output_dir}")
     return state
 
-def is_company_match_fuzzy(job_company: str, target_company: str, threshold: float = 75.0) -> bool:
+def is_company_match_fuzzy(
+    job_company: str,
+    target_company: str,
+    threshold: float = 75.0,
+    ticker: Optional[str] = None
+) -> bool:
     """
     Use fuzzy matching to determine if job company matches target company.
-    
+
     Args:
         job_company: Company name from job posting
         target_company: Target company we're searching for
         threshold: Similarity score threshold (0-100)
-    
+        ticker: Optional ticker to use predefined aliases for matching
+
     Returns:
         True if companies match with sufficient similarity
     """
     if not job_company or not target_company:
         return False
-    
-    # Clean the strings
+
+    # Clean the job company string
     job_clean = str(job_company).strip().lower()
-    target_clean = str(target_company).strip().lower()
-    
-    # If exact match after cleaning, return True immediately
-    if job_clean == target_clean:
+
+    # Build list of valid names to match against
+    valid_names = [target_company]
+
+    # Add aliases from config if ticker is provided
+    if ticker:
+        aliases = get_company_aliases(ticker)
+        valid_names.extend(aliases)
+    else:
+        # Try to find aliases by official name
+        aliases = get_aliases_by_official(target_company)
+        if aliases:
+            valid_names.extend(aliases)
+
+    # Remove duplicates and clean
+    valid_names_clean = list(set(name.strip().lower() for name in valid_names if name))
+
+    # Check for exact match first
+    if job_clean in valid_names_clean:
         return True
-    
-    # Use multiple similarity measures for robustness
-    scores = [
-        fuzz.token_sort_ratio(job_clean, target_clean),  # Handles word order
-        fuzz.partial_ratio(job_clean, target_clean),     # Handles substrings
-        fuzz.ratio(job_clean, target_clean),            # Simple ratio
-    ]
-    
-    # Return True if any score meets the threshold
-    return max(scores) >= threshold
+
+    # Fuzzy match against all valid names
+    for valid_name in valid_names_clean:
+        scores = [
+            fuzz.token_sort_ratio(job_clean, valid_name),  # Handles word order
+            fuzz.partial_ratio(job_clean, valid_name),     # Handles substrings
+            fuzz.ratio(job_clean, valid_name),             # Simple ratio
+        ]
+        if max(scores) >= threshold:
+            return True
+
+    return False
 
 async def step2_fetch_job_postings(
     state: Pipeline2State,
@@ -108,20 +138,30 @@ async def step2_fetch_job_postings(
     for company in state.companies:
         company_id = company.get("id", "")
         company_name = company.get("name", "")
-        
+        ticker = company.get("ticker", "").upper()
+
         if not company_name:
             continue
-        
+
+        # Get search name from mappings (falls back to company_name if not mapped)
+        search_name = None
+        if ticker:
+            search_name = get_company_search_name(ticker)
+        if not search_name:
+            search_name = get_search_name_by_official(company_name)
+        if not search_name:
+            search_name = company_name  # Fallback to original name
+
         # Rate limiting
         await asyncio.sleep(max(state.request_delay, settings.JOBSPY_REQUEST_DELAY))
-        
+
         try:
-            logger.info(f"   📥 Scraping: {company_name}...")
-            
-            # Scrape jobs - search by company name
+            logger.info(f"   📥 Scraping: {company_name} (search: '{search_name}')...")
+
+            # Scrape jobs - search by mapped search name
             jobs_df = scrape_jobs(
                 site_name=sites,
-                search_term=company_name,
+                search_term=search_name,
                 results_wanted=results_wanted,
                 hours_old=hours_old,
                 country_indeed="USA",
@@ -144,11 +184,12 @@ async def step2_fetch_job_postings(
                     job_company = str(row.get("company", "")) if clean_nan(row.get("company")) else ""
                     source = str(row.get("site", "unknown"))
                     
-                    # Use fuzzy matching instead of strict matching
+                    # Use fuzzy matching with aliases instead of strict matching
                     if not is_company_match_fuzzy(
-                        job_company, 
-                        company_name, 
-                        threshold=settings.JOBSPY_FUZZY_MATCH_THRESHOLD
+                        job_company,
+                        search_name,
+                        threshold=settings.JOBSPY_FUZZY_MATCH_THRESHOLD,
+                        ticker=ticker
                     ):
                         filtered_count += 1
                         
@@ -279,80 +320,53 @@ def calculate_job_score(jobs: List[Dict[str, Any]]) -> Dict[str, Any]:
     """
     Calculate job market score for AI hiring signals.
 
+    Uses pre-classified AI roles from step3 (is_ai_role flag) for consistency.
+
     Scoring Algorithm (0-100):
-    - AI Ratio Score: (ai_jobs / total_tech_jobs) * 60 (max 60 points)
-    - Skill Diversity: (unique_skills / 10) * 20 (max 20 points)
-    - Volume Bonus: (ai_jobs / 5) * 20 (max 20 points)
+    - AI Ratio Score: (ai_jobs / total_jobs) * 40 (max 40 points)
+    - AI Volume Score: ai_jobs * 2 (max 30 points, need 15 AI jobs)
+    - Skill Diversity: (unique_ai_keywords / 15) * 30 (max 30 points)
     """
+    total_jobs = len(jobs)
 
-    # AI keywords for job classification
-    AI_KEYWORDS = [
-        "machine learning", "ml engineer", "data scientist",
-        "artificial intelligence", "deep learning", "nlp",
-        "computer vision", "mlops", "ai engineer",
-        "pytorch", "tensorflow", "llm", "large language model"
-    ]
+    # Use pre-classified AI roles from step3
+    ai_jobs = sum(1 for job in jobs if job.get('is_ai_role', False))
 
-    # AI skills for diversity scoring
-    AI_SKILLS = [
-        "python", "pytorch", "tensorflow", "scikit-learn",
-        "spark", "hadoop", "kubernetes", "docker",
-        "aws sagemaker", "azure ml", "gcp vertex",
-        "huggingface", "langchain", "openai"
-    ]
-
-    # Tech job detection keywords
-    TECH_KEYWORDS = [
-        "engineer", "developer", "programmer", "software",
-        "data", "analyst", "scientist", "technical"
-    ]
-
-    total_tech_jobs = 0
-    ai_jobs = 0
-    all_skills = set()
-
+    # Collect unique AI keywords found across all jobs
+    all_ai_keywords = set()
     for job in jobs:
-        title = job.get('title', '').lower()
-        description = job.get('description', '') or ''
-        description = description.lower()
-        full_text = f"{title} {description}"
-
-        # Check if tech job (based on title)
-        if any(kw in title for kw in TECH_KEYWORDS):
-            total_tech_jobs += 1
-
-            # Check if AI job (based on full text)
-            if any(kw in full_text for kw in AI_KEYWORDS):
-                ai_jobs += 1
-
-                # Extract AI skills for diversity scoring
-                for skill in AI_SKILLS:
-                    if skill in full_text:
-                        all_skills.add(skill)
+        all_ai_keywords.update(job.get('ai_keywords_found', []))
 
     # Calculate AI ratio
-    ai_ratio = ai_jobs / total_tech_jobs if total_tech_jobs > 0 else 0
+    ai_ratio = ai_jobs / total_jobs if total_jobs > 0 else 0
 
-    # Calculate score components
-    ratio_score = min(ai_ratio * 60, 60)
-    diversity_score = min(len(all_skills) / 10, 1) * 20
-    volume_bonus = min(ai_jobs / 5, 1) * 20
+    # Calculate score components (updated - harder to max out)
+    ratio_score = min(ai_ratio * 100, 40)  # 40% AI jobs = max 40 points
+    volume_score = min(ai_jobs * 2, 30)     # 15 AI jobs = max 30 points
+    diversity_score = min(len(all_ai_keywords) / 15, 1) * 30  # 15 keywords = max 30 points
 
-    final_score = ratio_score + diversity_score + volume_bonus
+    final_score = ratio_score + volume_score + diversity_score
 
     # Calculate confidence based on sample size
-    confidence = min(0.5 + total_tech_jobs / 100, 0.95)
+    if total_jobs >= 100:
+        confidence = 0.95
+    elif total_jobs >= 50:
+        confidence = 0.85
+    elif total_jobs >= 20:
+        confidence = 0.70
+    else:
+        confidence = 0.50
 
     return {
         "score": round(final_score, 1),
         "ai_jobs": ai_jobs,
-        "total_tech_jobs": total_tech_jobs,
+        "total_jobs": total_jobs,
         "ai_ratio": round(ai_ratio, 3),
-        "all_skills": list(all_skills),
+        "ai_keywords": list(all_ai_keywords),
         "score_breakdown": {
             "ratio_score": round(ratio_score, 1),
-            "diversity_score": round(diversity_score, 1),
-            "volume_bonus": round(volume_bonus, 1)
+            "volume_score": round(volume_score, 1),
+            "diversity_score": round(diversity_score, 1)
         },
         "confidence": confidence
     }
@@ -365,6 +379,10 @@ def step4_score_job_market(state: Pipeline2State) -> Pipeline2State:
     logger.info("-" * 40)
     logger.info("📊 [4/5] SCORING JOB MARKET")
 
+    # Build lookup for target company names
+    company_name_lookup = {c.get("id"): c.get("name", c.get("id")) for c in state.companies}
+
+    # Group all jobs by TARGET company_id (from our database, not job site)
     company_jobs = defaultdict(list)
     for posting in state.job_postings:
         company_jobs[posting["company_id"]].append(posting)
@@ -383,11 +401,12 @@ def step4_score_job_market(state: Pipeline2State) -> Pipeline2State:
         # Store analysis for later use
         state.job_market_analyses[company_id] = analysis
 
-        company_name = jobs[0].get("company_name", company_id) if jobs else company_id
+        # Use TARGET company name from state, not job posting company name
+        company_name = company_name_lookup.get(company_id, company_id)
         breakdown = analysis["score_breakdown"]
         logger.info(
             f"   • {company_name}: {final_score:.1f}/100 "
-            f"(ratio={breakdown['ratio_score']:.1f}, diversity={breakdown['diversity_score']:.1f}, volume={breakdown['volume_bonus']:.1f})"
+            f"(ratio={breakdown['ratio_score']:.1f}, volume={breakdown['volume_score']:.1f}, diversity={breakdown['diversity_score']:.1f})"
         )
 
     logger.info(f"   ✅ Scored {len(state.job_market_scores)} companies")
@@ -397,15 +416,18 @@ def step4_score_job_market(state: Pipeline2State) -> Pipeline2State:
 def step4b_score_techstack(state: Pipeline2State) -> Pipeline2State:
     """
     Calculate techstack score for each company based on AI tools presence.
-    
+
     Uses both original scoring and TechStackCollector analysis.
     """
     logger.info("-" * 40)
     logger.info("🔧 [4b/5] SCORING TECH STACK")
-    
+
+    # Build lookup for target company names
+    company_name_lookup = {c.get("id"): c.get("name", c.get("id")) for c in state.companies}
+
     tech_collector = TechStackCollector()
     company_jobs = defaultdict(list)
-    
+
     for posting in state.job_postings:
         company_jobs[posting["company_id"]].append(posting)
     
@@ -464,7 +486,8 @@ def step4b_score_techstack(state: Pipeline2State) -> Pipeline2State:
             "combined_score": final_score
         }
         
-        company_name = jobs[0].get("company_name", company_id) if jobs else company_id
+        # Use TARGET company name from state, not job posting company name
+        company_name = company_name_lookup.get(company_id, company_id)
         log_techstack_results(
             company_name=company_name,
             original_score=original_score,
@@ -473,7 +496,7 @@ def step4b_score_techstack(state: Pipeline2State) -> Pipeline2State:
             keywords_count=len(all_techstack_keywords),
             ai_tools_count=len(original_analysis.get("ai_tools_found", []))
         )
-    
+
     logger.info(f"   ✅ Scored techstack for {len(state.techstack_scores)} companies")
     return state
 
