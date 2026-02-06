@@ -28,7 +28,6 @@
 |----------|------|
 | Codelab Document | [Link to Codelab](<!-- TODO: Add codelab link -->) |
 | Demo Video | [Link to Video](<!-- TODO: Add video link -->) |
-| GitHub Repository | [Link to Repo](<!-- TODO: Add repo link -->) |
 
 ---
 
