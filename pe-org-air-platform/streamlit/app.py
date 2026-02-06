@@ -55,6 +55,8 @@ if "base_url" not in st.session_state:
     st.session_state["base_url"] = "http://localhost:8000"
 if "last_ticker" not in st.session_state:
     st.session_state["last_ticker"] = "CAT"
+if "analysis_markdown" not in st.session_state:
+    st.session_state["analysis_markdown"] = None
 
 # Helper Functions
 def api_url(base: str, path: str) -> str:
@@ -102,11 +104,175 @@ def df_from_table(headers: List[str], rows: List[List[Any]]) -> pd.DataFrame:
         cols.append(f"col_{len(cols)}")
     return pd.DataFrame([r + [None]*(max_cols - len(r)) for r in rows], columns=cols)
 
+def parse_markdown_content(markdown_content: str) -> List[Dict]:
+    """
+    Parse markdown content and extract headings, text, and tables.
+    Returns a list of dicts with 'type', 'level', 'title', 'content', 'headers', 'rows'.
+    """
+    elements = []
+    lines = markdown_content.split('\n')
+    
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        
+        # Check for main title (# )
+        if line.startswith('# ') and not line.startswith('## '):
+            elements.append({
+                'type': 'heading',
+                'level': 1,
+                'title': line.lstrip('#').strip(),
+                'content': None
+            })
+            i += 1
+            continue
+        
+        # Check for h2 headings (## )
+        if line.startswith('## '):
+            elements.append({
+                'type': 'heading',
+                'level': 2,
+                'title': line.lstrip('#').strip(),
+                'content': None
+            })
+            i += 1
+            continue
+        
+        # Check for h3 headings (### )
+        if line.startswith('### '):
+            elements.append({
+                'type': 'heading',
+                'level': 3,
+                'title': line.lstrip('#').strip(),
+                'content': None
+            })
+            i += 1
+            continue
+        
+        # Check for h4 headings (#### )
+        if line.startswith('#### '):
+            elements.append({
+                'type': 'heading',
+                'level': 4,
+                'title': line.lstrip('#').strip(),
+                'content': None
+            })
+            i += 1
+            continue
+        
+        # Check if this is a table (starts with |)
+        if line.strip().startswith('|'):
+            table_lines = []
+            while i < len(lines) and lines[i].strip().startswith('|'):
+                table_lines.append(lines[i].strip())
+                i += 1
+            
+            # Parse the table
+            if len(table_lines) >= 2:
+                # First line is headers
+                header_line = table_lines[0]
+                headers = [cell.strip() for cell in header_line.split('|') if cell.strip()]
+                
+                # Skip separator line (second line with dashes)
+                rows = []
+                for tl in table_lines[2:]:
+                    cells = [cell.strip() for cell in tl.split('|') if cell.strip()]
+                    if cells:
+                        rows.append(cells)
+                
+                elements.append({
+                    'type': 'table',
+                    'level': 0,
+                    'title': None,
+                    'headers': headers,
+                    'rows': rows
+                })
+            continue
+        
+        # Check for regular text (non-empty, non-heading, non-table)
+        if line.strip() and not line.strip().startswith('|') and not line.startswith('#'):
+            # Collect consecutive text lines
+            text_content = []
+            while i < len(lines) and lines[i].strip() and not lines[i].startswith('#') and not lines[i].strip().startswith('|'):
+                text_content.append(lines[i].strip())
+                i += 1
+            
+            if text_content:
+                elements.append({
+                    'type': 'text',
+                    'level': 0,
+                    'title': None,
+                    'content': ' '.join(text_content)
+                })
+            continue
+        
+        i += 1
+    
+    return elements
+
+def parse_markdown_tables(markdown_content: str) -> List[Dict]:
+    """
+    Parse markdown content and extract tables with their headers.
+    Returns a list of dicts with 'title', 'headers', and 'rows'.
+    """
+    tables = []
+    lines = markdown_content.split('\n')
+    
+    current_title = ""
+    current_table_lines = []
+    in_table = False
+    
+    for i, line in enumerate(lines):
+        # Check for headers (## or ###)
+        if line.startswith('## ') or line.startswith('### '):
+            current_title = line.lstrip('#').strip()
+            continue
+        
+        # Check if this is a table line (starts with |)
+        if line.strip().startswith('|'):
+            if not in_table:
+                in_table = True
+                current_table_lines = []
+            current_table_lines.append(line.strip())
+        else:
+            # End of table
+            if in_table and current_table_lines:
+                # Parse the table
+                table_data = parse_single_table(current_table_lines)
+                if table_data:
+                    table_data['title'] = current_title
+                    tables.append(table_data)
+                current_table_lines = []
+                in_table = False
+    
+    # Handle last table if exists
+    if in_table and current_table_lines:
+        table_data = parse_single_table(current_table_lines)
+        if table_data:
+            table_data['title'] = current_title
+            tables.append(table_data)
+    
+    return tables
+
+def parse_single_table(table_lines: List[str]) -> Optional[Dict]:
+    """Parse a single markdown table into headers and rows."""
+    if len(table_lines) < 2:
+        return None
+    
+    # First line is headers
+    header_line = table_lines[0]
+    headers = [cell.strip() for cell in header_line.split('|') if cell.strip()]
+    
+    # Skip separator line (second line with dashes)
+    rows = []
+    for line in table_lines[2:]:
+        cells = [cell.strip() for cell in line.split('|') if cell.strip()]
+        if cells:
+            rows.append(cells)
+    
+    return {'headers': headers, 'rows': rows}
+
 def extract_section_content(text: str, section_name: str, max_chars: int = 1500) -> str:
-    """
-    Extract content for a specific section from the full document text.
-    Looks for section headers like 'Item 1. Business' and extracts following content.
-    """
     if not text:
         return ""
     
@@ -138,47 +304,36 @@ def extract_section_content(text: str, section_name: str, max_chars: int = 1500)
     return ""
 
 def extract_lines_containing(text: str, search_term: str, num_lines: int = 5, chars_per_line: int = 300) -> str:
-    """
-    Extract lines from text that contain the search term.
-    Returns the first num_lines matches with surrounding context.
-    """
     if not text:
         return ""
     
     results = []
     search_lower = search_term.lower()
-    
-    # Find all positions where the search term appears
     text_lower = text.lower()
     pos = 0
+    
     while len(results) < num_lines:
         idx = text_lower.find(search_lower, pos)
         if idx == -1:
             break
         
-        # Extract context around the match
         start = max(0, idx - 50)
         end = min(len(text), idx + chars_per_line)
         
-        # Try to start at a word boundary
         while start > 0 and text[start] not in ' \n\t':
             start -= 1
         
         snippet = text[start:end].strip()
-        snippet = re.sub(r'\s+', ' ', snippet)  # Normalize whitespace
+        snippet = re.sub(r'\s+', ' ', snippet)
         
         if snippet and len(snippet) > 20:
             results.append(snippet)
         
-        pos = idx + len(search_term) + 100  # Skip ahead to avoid duplicate matches
+        pos = idx + len(search_term) + 100
     
     return "\n\n---\n\n".join(results) if results else ""
 
 def load_json_file_content(s3_key: str, ticker: str, filing_type: str, filing_date: str) -> Tuple[str, str]:
-    """
-    Try to load the full text content from S3.
-    """
-    # Try the exact s3_key first
     keys_to_try = [
         s3_key,
         f"sec/parsed/{ticker}/{filing_type}/{filing_date}_full.json",
@@ -191,15 +346,13 @@ def load_json_file_content(s3_key: str, ticker: str, filing_type: str, filing_da
         try:
             content = fetch_from_s3(key)
             if content:
-                # Parse JSON and extract text
                 if content.strip().startswith('{'):
                     data = json.loads(content)
-                    # Try different keys where text might be stored
                     text = (data.get('text', '') or 
                             data.get('content', '') or 
                             data.get('full_text', '') or 
                             data.get('raw_text', '') or
-                            content)  # Fallback to raw JSON content
+                            content)
                     return text, f"s3://{S3_BUCKET}/{key}"
                 else:
                     return content, f"s3://{S3_BUCKET}/{key}"
@@ -276,7 +429,7 @@ main_section = st.sidebar.selectbox("Select Section", ["SEC Filings", "Signals"]
 if main_section == "SEC Filings":
     sub_page = st.sidebar.radio(
         "Pipeline Step",
-        ["1. Download Filings", "2. Parsing", "3. PDF Parsing", "4. De-duplication", "5. Chunking", "📊 Reports"],
+        ["1. Download Filings", "2. Parsing", "3. PDF Parsing", "4. De-duplication", "5. Chunking", "📊 Reports", "📈 SEC Analysis Summary"],
         index=0
     )
 else:
@@ -365,7 +518,6 @@ if main_section == "SEC Filings":
         st.divider()
         st.info("📥 Downloads filings from SEC EDGAR → Uploads to S3 → Saves metadata to Snowflake")
         
-        # Download by Ticker
         st.subheader("Option 1: Download by Ticker")
         with st.form("collect_form"):
             c1, c2 = st.columns(2)
@@ -399,9 +551,8 @@ if main_section == "SEC Filings":
         
         st.divider()
         
-        # Download ALL Companies
         st.subheader("Option 2: Download ALL Companies")
-        st.error("⚠️ **NOT RECOMMENDED**: Downloading all 10 companies at once may exceed the SEC EDGAR rate limit (0.1 - 10 requests/second). Use Option 1 for individual tickers instead.")
+        st.warning("⚠️ **NOT RECOMMENDED**: Downloading all 10 companies at once may exceed the SEC EDGAR rate limit (0.1 - 10 requests/second). Use Option 1 for individual tickers instead.")
         
         with st.form("collect_all_form"):
             c1, c2 = st.columns(2)
@@ -472,17 +623,15 @@ if main_section == "SEC Filings":
                         st.subheader("📊 RAW vs PARSED Content Comparison (10-K Document)")
                         st.caption("Showing 10-K document which contains Items 1, 1A, and 7")
                         
-                        # Find a 10-K document (which has Items 1, 1A, 7)
                         doc_10k = None
                         for r in results:
                             if r.get("filing_type") == "10-K":
                                 doc_10k = r
                                 break
                         
-                        # Fallback to first document if no 10-K found
                         if not doc_10k:
                             doc_10k = results[0]
-                            st.warning(f"⚠️ No 10-K document found. Showing {doc_10k.get('filing_type')} instead. Items 1, 1A, 7 are only in 10-K filings.")
+                            st.warning(f"⚠️ No 10-K document found. Showing {doc_10k.get('filing_type')} instead.")
                         
                         doc_id = doc_10k.get("document_id")
                         if doc_id:
@@ -497,26 +646,21 @@ if main_section == "SEC Filings":
                                     st.markdown("##### 📁 RAW Content")
                                     st.markdown(f"**S3 Key:** `{parsed_content.get('s3_key', 'N/A')}`")
                                     
-                                    # Show raw text preview
                                     raw_text = parsed_content.get('text_preview', '')
                                     
                                     if raw_text:
-                                        # Try to find and highlight sections in raw text
                                         st.markdown("**Raw Text (showing key sections if found):**")
                                         
                                         section_previews = []
                                         
-                                        # Item 1 - Business
                                         item1_match = re.search(r'(item\s*1[.\s]+business.{0,500})', raw_text, re.IGNORECASE | re.DOTALL)
                                         if item1_match:
                                             section_previews.append(("Item 1 - Business", item1_match.group(1)[:400]))
                                         
-                                        # Item 1A - Risk Factors
                                         item1a_match = re.search(r'(item\s*1a[.\s]+risk\s*factors.{0,500})', raw_text, re.IGNORECASE | re.DOTALL)
                                         if item1a_match:
                                             section_previews.append(("Item 1A - Risk Factors", item1a_match.group(1)[:400]))
                                         
-                                        # Item 7 - MD&A
                                         item7_match = re.search(r'(item\s*7[.\s]+management.{0,500})', raw_text, re.IGNORECASE | re.DOTALL)
                                         if item7_match:
                                             section_previews.append(("Item 7 - MD&A", item7_match.group(1)[:400]))
@@ -528,7 +672,6 @@ if main_section == "SEC Filings":
                                         else:
                                             st.text_area("Raw Text Content", value=raw_text[:2500], height=300, disabled=True, key="raw_text_parse")
                                     
-                                    # Show HTML table structure sample
                                     tables = parsed_content.get('tables', [])
                                     if tables:
                                         with st.expander(f"📋 Raw HTML Table Structure ({len(tables)} tables)"):
@@ -552,15 +695,12 @@ if main_section == "SEC Filings":
                                 with col2:
                                     st.markdown("##### 📄 PARSED Content")
                                     
-                                    # Show extracted sections (Items 1, 1A, 7)
                                     sections_list = parsed_content.get('sections', [])
                                     st.markdown(f"**Sections Found:** {', '.join(sections_list) if sections_list else 'None'}")
                                     
-                                    # Key SEC Filing Sections
                                     st.markdown("---")
                                     st.markdown("**📑 Key SEC Filing Sections (10-K only):**")
                                     
-                                    # Load full text from S3
                                     s3_key = parsed_content.get('s3_key', '')
                                     full_text, loaded_path = load_json_file_content(
                                         s3_key, 
@@ -574,12 +714,10 @@ if main_section == "SEC Filings":
                                         st.caption(f"📄 Total text length: {len(full_text):,} characters")
                                     else:
                                         st.warning(f"⚠️ Could not load JSON file from S3. Tried key: `{s3_key}`")
-                                        # Fallback to text_preview from API
                                         full_text = parsed_content.get('text_preview', '') or parsed_content.get('text', '') or ''
                                         if full_text:
                                             st.info(f"Using text_preview from API ({len(full_text):,} chars)")
                                     
-                                    # Extract lines containing "Item 1" (but not Item 1A)
                                     st.markdown("**✅ Item 1 - Business (lines containing 'Item 1. Business'):**")
                                     item1_lines = extract_lines_containing(full_text, "Item 1. Business", num_lines=3, chars_per_line=400)
                                     if not item1_lines:
@@ -589,7 +727,6 @@ if main_section == "SEC Filings":
                                     else:
                                         st.info("No lines found containing 'Item 1. Business'")
                                     
-                                    # Extract lines containing "Item 1A"
                                     st.markdown("**✅ Item 1A - Risk Factors (lines containing 'Item 1A'):**")
                                     item1a_lines = extract_lines_containing(full_text, "Item 1A", num_lines=3, chars_per_line=400)
                                     if item1a_lines:
@@ -597,7 +734,6 @@ if main_section == "SEC Filings":
                                     else:
                                         st.info("No lines found containing 'Item 1A'")
                                     
-                                    # Extract lines containing "Item 7"
                                     st.markdown("**✅ Item 7 - MD&A (lines containing 'Item 7'):**")
                                     item7_lines = extract_lines_containing(full_text, "Item 7", num_lines=3, chars_per_line=400)
                                     if item7_lines:
@@ -605,13 +741,11 @@ if main_section == "SEC Filings":
                                     else:
                                         st.info("No lines found containing 'Item 7'")
                                     
-                                    # Show parsed tables
                                     tables = parsed_content.get('tables', [])
                                     st.markdown("---")
                                     st.markdown(f"**📊 Parsed Tables ({len(tables)} total):**")
                                     
                                     if tables:
-                                        # Show first 3 quality tables
                                         shown = 0
                                         for idx, table in enumerate(tables):
                                             if shown >= 3:
@@ -646,7 +780,7 @@ if main_section == "SEC Filings":
         st.divider()
         
         st.subheader("Option 2: Parse ALL Companies")
-        st.error("⚠️ **NOT RECOMMENDED**: Parsing all companies at once may exceed the rate limit (0.1 - 10 requests/second). Use Option 1 instead.")
+        st.warning("⚠️ **NOT RECOMMENDED**: Parsing all companies at once may exceed the rate limit (0.1 - 10 requests/second). Use Option 1 instead.")
         
         if st.button("📄 Parse ALL Companies (Not Recommended)", use_container_width=True):
             try:
@@ -677,111 +811,8 @@ if main_section == "SEC Filings":
                 
                 if resp.status_code < 400:
                     st.success(f"✅ {data.get('message', 'PDF Parsing Complete!')}")
-                    
                     render_kpis([("Pages", data.get('page_count', 0)), ("Words", f"{data.get('word_count', 0):,}"), ("Tables", data.get('table_count', 0))])
-                    
                     st.markdown(f"**File**: `{data.get('pdf_file', 'N/A')}` | **Hash**: `{data.get('content_hash', 'N/A')}`")
-                    
-                    st.divider()
-                    st.subheader("📊 RAW PDF vs PARSED Tables Comparison")
-                    
-                    col1, col2 = st.columns(2)
-                    
-                    with col1:
-                        st.markdown("##### 📁 RAW PDF Content")
-                        content_preview = data.get('content_preview', '')
-                        if content_preview:
-                            st.code(content_preview, language="text")
-                        
-                        local_files = data.get('local_files', {})
-                        if local_files:
-                            with st.expander("📂 Local Files Saved"):
-                                for key, path in local_files.items():
-                                    if path:
-                                        st.markdown(f"- **{key}**: `{path}`")
-                    
-                    with col2:
-                        st.markdown("##### 📊 PARSED Tables")
-                        st.markdown(f"**Total Tables Found**: {data.get('table_count', 0)}")
-                        
-                        # Try to load full tables from the saved JSON file
-                        local_files = data.get('local_files', {})
-                        tables_json_path = local_files.get('tables_json')
-                        
-                        full_tables = []
-                        if tables_json_path:
-                            try:
-                                import os
-                                if os.path.exists(tables_json_path):
-                                    with open(tables_json_path, 'r', encoding='utf-8') as f:
-                                        tables_data = json.load(f)
-                                        full_tables = tables_data.get('tables', [])
-                                    st.caption(f"📂 Loaded {len(full_tables)} tables from: `{tables_json_path}`")
-                            except Exception as e:
-                                st.warning(f"Could not load tables file: {e}")
-                        
-                        if full_tables:
-                            # Filter for good quality tables
-                            good_tables = []
-                            for table in full_tables:
-                                row_count = table.get('row_count', len(table.get('rows', [])))
-                                col_count = table.get('col_count', len(table.get('headers', [])))
-                                headers = table.get('headers', [])
-                                rows = table.get('rows', [])
-                                
-                                # Check if table has meaningful content
-                                if row_count >= 2 and col_count >= 2 and rows:
-                                    meaningful_headers = [h for h in headers if h and len(str(h).strip()) > 1]
-                                    if len(meaningful_headers) >= 2:
-                                        good_tables.append(table)
-                            
-                            st.markdown(f"**Quality Tables (with data)**: {len(good_tables)}")
-                            st.divider()
-                            
-                            # Show top 5 good tables
-                            tables_to_show = good_tables[:5] if good_tables else full_tables[:5]
-                            
-                            for idx, table in enumerate(tables_to_show):
-                                table_num = table.get('table_index', idx) + 1
-                                page_num = table.get('page', 'N/A')
-                                rows = table.get('rows', [])
-                                headers = table.get('headers', [])
-                                
-                                st.markdown(f"**Table {table_num}** | Page {page_num} | {len(rows)} rows × {len(headers)} cols")
-                                
-                                if rows:
-                                    if not headers:
-                                        headers = [f"Col_{i+1}" for i in range(len(rows[0]))]
-                                    num_cols = len(headers)
-                                    norm_rows = []
-                                    for row in rows[:10]:
-                                        if isinstance(row, list):
-                                            norm_row = row[:num_cols] + [''] * (num_cols - len(row))
-                                            norm_rows.append(norm_row[:num_cols])
-                                    if norm_rows:
-                                        df = pd.DataFrame(norm_rows, columns=headers[:num_cols])
-                                        st.dataframe(df, use_container_width=True, hide_index=True, height=200)
-                                else:
-                                    st.caption(f"Headers: {', '.join(headers[:5])}{'...' if len(headers) > 5 else ''}")
-                                
-                                st.markdown("---")
-                            
-                            remaining = len(good_tables) - 5 if len(good_tables) > 5 else len(full_tables) - 5
-                            if remaining > 0:
-                                st.caption(f"... and {remaining} more tables available in the JSON file")
-                        else:
-                            # Fallback to tables_summary if can't load full tables
-                            tables_summary = data.get('tables_summary', [])
-                            if tables_summary:
-                                st.warning("⚠️ Full table data not available. Showing summary only.")
-                                for idx, table in enumerate(tables_summary[:5]):
-                                    st.markdown(f"**Table {table.get('table_index', idx) + 1}** (Page {table.get('page', 'N/A')})")
-                                    st.caption(f"Rows: {table.get('row_count', 0)} | Cols: {table.get('col_count', 0)}")
-                                    st.markdown(f"Headers: {', '.join(table.get('headers', []))}")
-                                    st.markdown("---")
-                            else:
-                                st.info("No tables extracted from PDF")
-                    
                     show_json("Raw JSON Response", data)
                 else:
                     st.error(f"❌ Error: {data.get('detail', data)}")
@@ -829,108 +860,7 @@ if main_section == "SEC Filings":
                     data = post(api_url(base_url, f"/api/v1/documents/chunk/{ticker}"), params={"chunk_size": chunk_size, "chunk_overlap": chunk_overlap})
                 st.success("✅ Chunking Complete!")
                 render_kpis([("Documents", data.get("total_documents", 0)), ("Chunked", data.get("chunked", 0)), ("Total Chunks", data.get("total_chunks", 0)), ("Failed", data.get("failed", 0))])
-                
                 show_json("Raw JSON Response", data)
-                
-                st.divider()
-                st.subheader("📊 RAW vs CHUNKED Content Comparison (First Document)")
-                st.caption("Showing how a document is split into chunks")
-                
-                # Get documents for this ticker to show comparison
-                try:
-                    doc_data = get(api_url(base_url, "/api/v1/documents"), params={"ticker": ticker, "limit": 10})
-                    docs = doc_data.get("documents", [])
-                    
-                    # Find a document with chunks
-                    doc_with_chunks = None
-                    for doc in docs:
-                        if doc.get("chunk_count", 0) > 0:
-                            doc_with_chunks = doc
-                            break
-                    
-                    if doc_with_chunks:
-                        doc_id = doc_with_chunks.get("id")
-                        st.markdown(f"**Document:** {doc_with_chunks.get('filing_type')} - {doc_with_chunks.get('filing_date')} | Chunks: {doc_with_chunks.get('chunk_count', 0)}")
-                        
-                        col1, col2 = st.columns(2)
-                        
-                        with col1:
-                            st.markdown("##### 📁 RAW/PARSED Content")
-                            
-                            # Try to get parsed content
-                            try:
-                                parsed_content = get(api_url(base_url, f"/api/v1/documents/parsed/{doc_id}"))
-                                
-                                st.markdown(f"**Word Count:** {parsed_content.get('word_count', 0):,}")
-                                sections = parsed_content.get('sections', [])
-                                st.markdown(f"**Sections:** {', '.join(sections) if sections else 'None'}")
-                                
-                                # Show key sections status
-                                st.markdown("---")
-                                st.markdown("**📑 Key SEC Sections:**")
-                                key_sections = {'business': 'Item 1', 'risk_factors': 'Item 1A', 'mda': 'Item 7'}
-                                for section_key, section_name in key_sections.items():
-                                    if section_key in sections:
-                                        st.success(f"✅ {section_name}")
-                                    else:
-                                        st.caption(f"⚪ {section_name}")
-                                
-                                # Show text preview
-                                raw_text = parsed_content.get('text_preview', '')
-                                if raw_text:
-                                    st.markdown("---")
-                                    st.markdown("**Text Preview:**")
-                                    st.text_area("Full Document Text", value=raw_text[:2500], height=250, disabled=True, key="raw_chunk_text")
-                                
-                            except Exception as e:
-                                st.warning(f"Could not load parsed content: {e}")
-                        
-                        with col2:
-                            st.markdown("##### 📦 CHUNKED Content")
-                            
-                            # Get chunks for this document
-                            try:
-                                chunk_data = get(api_url(base_url, f"/api/v1/documents/chunks/{doc_id}"))
-                                chunks = chunk_data.get("chunks", [])
-                                
-                                st.markdown(f"**Total Chunks:** {len(chunks)}")
-                                st.markdown(f"**Chunk Size:** {chunk_size} words | **Overlap:** {chunk_overlap} words")
-                                
-                                if chunks:
-                                    st.markdown("---")
-                                    st.markdown("**Sample Chunks:**")
-                                    
-                                    # Show first 3 chunks
-                                    for idx, chunk in enumerate(chunks[:3]):
-                                        section = chunk.get('section', 'N/A')
-                                        word_count = chunk.get('word_count', 0)
-                                        content = chunk.get('content', '')
-                                        
-                                        with st.expander(f"Chunk {chunk.get('chunk_index', idx)} | Section: {section} | {word_count} words", expanded=(idx == 0)):
-                                            st.text_area(f"Content", value=content[:800] + ("..." if len(content) > 800 else ""), height=150, disabled=True, key=f"chunk_{idx}")
-                                    
-                                    if len(chunks) > 3:
-                                        st.caption(f"... and {len(chunks) - 3} more chunks")
-                                    
-                                    # Show chunks by section
-                                    st.markdown("---")
-                                    st.markdown("**Chunks by Section:**")
-                                    section_counts = {}
-                                    for chunk in chunks:
-                                        sec = chunk.get('section') or 'unknown'
-                                        section_counts[sec] = section_counts.get(sec, 0) + 1
-                                    
-                                    for sec, count in section_counts.items():
-                                        st.caption(f"• {sec}: {count} chunks")
-                                
-                            except Exception as e:
-                                st.warning(f"Could not load chunks: {e}")
-                    else:
-                        st.info("No documents with chunks found. Make sure parsing was completed first.")
-                        
-                except Exception as e:
-                    st.warning(f"Could not load document comparison: {e}")
-                
                 st.divider()
                 fetch_chunks_table(base_url, ticker)
             except Exception as e:
@@ -939,7 +869,7 @@ if main_section == "SEC Filings":
         st.divider()
         
         st.subheader("Option 2: Chunk ALL Companies")
-        st.error("⚠️ **NOT RECOMMENDED**: Chunking all companies at once may exceed the rate limit (0.1 - 10 requests/second).")
+        st.warning("⚠️ **NOT RECOMMENDED**: Chunking all companies at once may exceed the rate limit (0.1 - 10 requests/second).")
         
         with st.form("chunk_all_form"):
             c1, c2 = st.columns(2)
@@ -986,6 +916,180 @@ if main_section == "SEC Filings":
                 show_json("Raw JSON Response", data)
             except Exception as e:
                 st.error(f"❌ Error: {e}")
+    
+    # NEW PAGE: SEC Analysis Summary
+    elif sub_page == "📈 SEC Analysis Summary":
+        st.header("📈 SEC Analysis Summary")
+        st.info("📊 Export and view section analysis for all companies with word counts and keyword mentions")
+        
+        # Define possible local file paths for sec_analysis_summary.md
+        LOCAL_ANALYSIS_PATHS = [
+            "sec_analysis_summary.md",
+            "./sec_analysis_summary.md",
+            "../sec_analysis_summary.md",
+            "../../sec_analysis_summary.md",
+            "../../../sec_analysis_summary.md",
+            "sec_analysis.md",
+            "./sec_analysis.md",
+            "../sec_analysis.md",
+            "../../sec_analysis.md",
+            "data/sec_analysis_summary.md",
+            "output/sec_analysis_summary.md",
+        ]
+        
+        def load_local_analysis_file() -> Optional[str]:
+            """Try to load sec_analysis.md from local filesystem."""
+            for path in LOCAL_ANALYSIS_PATHS:
+                if os.path.exists(path):
+                    try:
+                        with open(path, 'r', encoding='utf-8') as f:
+                            content = f.read()
+                            if content.strip():
+                                return content, path
+                    except Exception as e:
+                        continue
+            return None, None
+        
+        # Try to load from local file first (on page load)
+        if not st.session_state.get("analysis_markdown"):
+            local_content, local_path = load_local_analysis_file()
+            if local_content:
+                st.session_state["analysis_markdown"] = local_content
+                st.session_state["analysis_source"] = f"Local file: {local_path}"
+        
+        col1, col2, col3 = st.columns([1, 1, 1])
+        
+        with col1:
+            if st.button("📂 Load from Local File", type="primary", use_container_width=True):
+                local_content, local_path = load_local_analysis_file()
+                if local_content:
+                    st.session_state["analysis_markdown"] = local_content
+                    st.session_state["analysis_source"] = f"Local file: {local_path}"
+                    st.success(f"✅ Loaded from: `{local_path}`")
+                else:
+                    st.warning(f"⚠️ No local file found. Searched in: {', '.join(LOCAL_ANALYSIS_PATHS)}")
+        
+        with col2:
+            if st.button("🔄 Refresh from API", type="secondary", use_container_width=True):
+                try:
+                    with st.spinner("Fetching SEC Analysis from API (timeout: 10 minutes)..."):
+                        # Call the export endpoint with 10 minute timeout
+                        resp = requests.get(
+                            api_url(base_url, "/api/v1/documents/analysis/export"),
+                            timeout=600  # 10 minutes timeout
+                        )
+                        
+                        if resp.status_code < 400:
+                            markdown_content = resp.text
+                            st.session_state["analysis_markdown"] = markdown_content
+                            st.session_state["analysis_source"] = "API: /api/v1/documents/analysis/export"
+                            
+                            # Save to local file for future use
+                            try:
+                                with open("sec_analysis_summary.md", 'w', encoding='utf-8') as f:
+                                    f.write(markdown_content)
+                                st.success("✅ Analysis loaded from API and saved to `sec_analysis_summary.md`")
+                            except:
+                                st.success("✅ Analysis loaded from API!")
+                        else:
+                            st.error(f"❌ Error: {resp.status_code} - {resp.text[:200]}")
+                except requests.exceptions.Timeout:
+                    st.error("❌ Request timed out after 10 minutes. The analysis may take too long to generate.")
+                except Exception as e:
+                    st.error(f"❌ Error fetching analysis: {e}")
+        
+        with col3:
+            if st.session_state.get("analysis_markdown"):
+                st.download_button(
+                    label="💾 Save as Markdown",
+                    data=st.session_state["analysis_markdown"],
+                    file_name="sec_analysis.md",
+                    mime="text/markdown",
+                    use_container_width=True
+                )
+        
+        # Show source info
+        if st.session_state.get("analysis_source"):
+            st.caption(f"📍 Source: {st.session_state['analysis_source']}")
+        
+        st.divider()
+        
+        # Display the analysis if loaded
+        if st.session_state.get("analysis_markdown"):
+            markdown_content = st.session_state["analysis_markdown"]
+            
+            # Parse all elements (headings, text, tables)
+            elements = parse_markdown_content(markdown_content)
+            
+            if elements:
+                for element in elements:
+                    elem_type = element.get('type')
+                    level = element.get('level', 0)
+                    title = element.get('title', '')
+                    
+                    # Display headings
+                    if elem_type == 'heading':
+                        if level == 1:
+                            st.title(f"📊 {title}")
+                        elif level == 2:
+                            st.header(f"📈 {title}")
+                        elif level == 3:
+                            st.subheader(f"📋 {title}")
+                        elif level == 4:
+                            st.markdown(f"**{title}**")
+                    
+                    # Display text content
+                    elif elem_type == 'text':
+                        content = element.get('content', '')
+                        if content:
+                            st.markdown(content)
+                    
+                    # Display tables
+                    elif elem_type == 'table':
+                        headers = element.get('headers', [])
+                        rows = element.get('rows', [])
+                        
+                        if headers and rows:
+                            # Normalize rows
+                            normalized_rows = []
+                            for row in rows:
+                                if len(row) < len(headers):
+                                    row = row + [''] * (len(headers) - len(row))
+                                elif len(row) > len(headers):
+                                    row = row[:len(headers)]
+                                normalized_rows.append(row)
+                            
+                            df = pd.DataFrame(normalized_rows, columns=headers)
+                            st.dataframe(df, use_container_width=True, hide_index=True)
+                        
+                        st.markdown("")  # Add some spacing after tables
+            else:
+                # Fallback: Just render the markdown directly
+                st.markdown("### Raw Markdown Content")
+                st.markdown(markdown_content)
+            
+            # Also show raw markdown in expander
+            with st.expander("📄 View Raw Markdown", expanded=False):
+                st.code(markdown_content, language="markdown")
+        else:
+            st.warning("⚠️ No analysis data loaded. Click 'Load from Local File' or 'Refresh from API' above.")
+            
+            # Show what the analysis includes
+            st.markdown("""
+            ### What's included in the analysis:
+            
+            - **Section Word Counts** - Word counts for each section (Business, Risk Factors, MD&A, etc.) by company
+            - **Keyword Mentions** - Frequency of key terms like "risk", "growth", "competition", etc.
+            - **Filing Coverage** - Overview of 10-K, 10-Q, 8-K, and DEF 14A filings per company
+            - **Comparative Analysis** - Side-by-side comparison across all 10 companies
+            
+            ---
+            
+            ### Local File Locations Searched:
+            """)
+            for path in LOCAL_ANALYSIS_PATHS:
+                exists = "✅" if os.path.exists(path) else "❌"
+                st.caption(f"{exists} `{path}`")
 
 # Signals Section
 else:
