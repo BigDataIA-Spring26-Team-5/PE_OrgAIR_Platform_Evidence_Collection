@@ -27,7 +27,7 @@
 | Resource | Link |
 |----------|------|
 | Codelab Document | [Link to Codelab](https://codelabs-preview.appspot.com/?file_id=1zjg7GVe7g4RFy6kKCJcK1QNSoU7jn8RWnn62KT6tgjI#0) |
-| Demo Video | [Link to Video](<!-- TODO: Add video link -->) |
+| Demo Video | [Link to Video](https://northeastern-my.sharepoint.com/personal/bukka_b_northeastern_edu/_layouts/15/stream.aspx?id=%2Fpersonal%2Fbukka_b_northeastern_edu%2FDocuments%2FRecordings%2FMeeting+with+Bhavya+Likhitha+Bukka-20260206_155007-Meeting+Recording.mp4&referrer=StreamWebApp.Web&referrerScenario=AddressBarCopied.view.418eceb9-0292-4bb4-a582-2dbfdcbc5e55&startedResponseCatch=true)|
 
 ---
 
