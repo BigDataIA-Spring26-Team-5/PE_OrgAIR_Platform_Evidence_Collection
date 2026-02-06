@@ -674,6 +674,7 @@ from app.repositories.chunk_repository import get_chunk_repository
 from app.services.section_analysis_service import get_section_analysis_service
 from app.services.s3_storage import get_s3_service
 import json
+from app.repositories.signal_repository import get_signal_repository
 
 logger = logging.getLogger(__name__)
 
@@ -942,6 +943,7 @@ async def get_evidence_report():
     
     repo = get_document_repository()
     chunk_repo = get_chunk_repository()
+    signal_repo = get_signal_repository()
     
     summary = repo.get_summary_statistics()
     status_breakdown = repo.get_status_breakdown()
@@ -951,13 +953,17 @@ async def get_evidence_report():
     total_chunks = chunk_repo.get_total_chunks()
     summary["total_chunks"] = total_chunks
     
+    # Get total signals
+    total_signals = signal_repo.get_total_signal_count()
+
     return {
         "report_generated_at": datetime.now(timezone.utc).isoformat(),
         "summary": {
             "companies_processed": summary["companies_processed"],
             "total_documents": summary["total_documents"],
             "total_chunks": total_chunks,
-            "total_words": summary["total_words"]
+            "total_words": summary["total_words"],
+            "total signals": total_signals
         },
         "status_breakdown": status_breakdown,
         "documents_by_company": company_stats
