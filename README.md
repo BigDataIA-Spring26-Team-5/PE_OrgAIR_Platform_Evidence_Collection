@@ -1,4 +1,4 @@
-# PE-OrgAIR Platform — Evidence Collection (Case Study 2)
+# PE-OrgAIR Platform Evidence Collection (Case Study 2)
 
 > **"SEC filings tell you what companies say. External signals tell you what they do."**
 
@@ -138,19 +138,19 @@ Run the schema files against Snowflake in order:
 ```bash
 # Core tables (from CS1)
 # Then CS2 extensions:
-#   app/database/document_schema.sql
-#   app/database/document_chunks_schema.sql
-#   app/database/signals_schema.sql
+  app/database/document_schema.sql
+  app/database/document_chunks_schema.sql
+  app/database/signals_schema.sql
 ```
 
 ### 5. Run with Docker (Recommended)
 
 ```bash
-cd docker
 docker-compose up --build
+docker ps
 ```
 
-### 6. Run Locally
+### 6. Run Locally (fast api)
 
 ```bash
 uvicorn app.main:app --reload
@@ -158,7 +158,7 @@ uvicorn app.main:app --reload
 
 ### 7. Collect Evidence
  
-- test the api end points for evidence part
+- Test the api end points for evidence part (refer to Swagger UI Docs)
 
 ### 8. Run Tests
 
@@ -285,10 +285,13 @@ pe-org-air-platform/
 
 ### 1. SEC Document Pipeline
 
-![Architecture Diagram](case%20study2%20docs/Screenshots/sec_edgar_flow.png)
+<!-- ![Architecture Diagram](case%20study2%20docs/Screenshots/sec_edgar_flow.png) -->
+<img src="case%20study2%20docs/Screenshots/sec_edgar_flow.png" alt="SEC EDGAR Flow" width="700" height="700">
 
 ### 2. External Signals Pipeline
-![Architecture Diagram](case%20study2%20docs/Screenshots/signals_flow.png)
+<!-- ![Architecture Diagram](case%20study2%20docs/Screenshots/signals_flow.png) -->
+
+<img src="case%20study2%20docs/Screenshots/signals_flow.png" alt="Signals Flow" width="700" and height = "700">
 
 --- 
 
