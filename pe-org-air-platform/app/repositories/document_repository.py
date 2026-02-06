@@ -324,6 +324,25 @@ class DocumentRepository:
         finally:
             cur.close()
 
+    def get_freshness_by_ticker(self) -> List[Dict]:
+        """Get last collected and last processed timestamps per ticker."""
+        sql = """
+        SELECT
+            ticker,
+            MAX(created_at) as last_collected,
+            MAX(processed_at) as last_processed
+        FROM documents
+        GROUP BY ticker
+        ORDER BY ticker
+        """
+        cur = self.conn.cursor()
+        try:
+            cur.execute(sql)
+            columns = [col[0].lower() for col in cur.description]
+            return [dict(zip(columns, row)) for row in cur.fetchall()]
+        finally:
+            cur.close()
+
     def delete_by_ticker(self, ticker: str) -> int:
         """Delete all documents for a ticker"""
         sql = "DELETE FROM documents WHERE ticker = %s"

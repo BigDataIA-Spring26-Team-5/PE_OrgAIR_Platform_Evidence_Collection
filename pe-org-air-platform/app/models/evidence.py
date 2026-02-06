@@ -97,3 +97,66 @@ class BackfillTaskStatus(BaseModel):
     company_results: List[CompanyBackfillResult] = []
     started_at: Optional[str] = None
     completed_at: Optional[str] = None
+
+
+# =============================================================================
+# Stats Models
+# =============================================================================
+
+class CompanyDocumentStat(BaseModel):
+    """Document counts by filing type for one company."""
+    ticker: str
+    form_10k: int = 0
+    form_10q: int = 0
+    form_8k: int = 0
+    def_14a: int = 0
+    total: int = 0
+    chunks: int = 0
+    word_count: int = 0
+    last_collected: Optional[str] = None
+    last_processed: Optional[str] = None
+
+
+class CompanySignalStat(BaseModel):
+    """Signal scores and detailed metrics for one company."""
+    ticker: str
+    # Scores
+    hiring_score: Optional[float] = None
+    innovation_score: Optional[float] = None
+    tech_stack_score: Optional[float] = None
+    leadership_score: Optional[float] = None
+    composite_score: Optional[float] = None
+    signal_count: int = 0
+    # Job metrics
+    total_jobs: int = 0
+    ai_jobs: int = 0
+    ai_job_ratio: Optional[float] = None
+    # Patent metrics
+    total_patents: int = 0
+    ai_patents: int = 0
+    ai_patent_ratio: Optional[float] = None
+    # Tech stack
+    techstack_keywords: List[str] = []
+    # Timestamps
+    last_updated: Optional[str] = None
+
+
+class SignalCategoryBreakdown(BaseModel):
+    """Signal count and average confidence per category."""
+    category: str
+    count: int = 0
+    avg_score: Optional[float] = None
+    avg_confidence: Optional[float] = None
+
+
+class EvidenceStatsResponse(BaseModel):
+    """Overall evidence collection statistics."""
+    companies_tracked: int
+    total_documents: int
+    total_chunks: int
+    total_words: int
+    total_signals: int
+    documents_by_status: Dict[str, int] = {}
+    signals_by_category: List[SignalCategoryBreakdown] = []
+    documents_by_company: List[CompanyDocumentStat] = []
+    signals_by_company: List[CompanySignalStat] = []

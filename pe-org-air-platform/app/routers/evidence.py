@@ -4,11 +4,13 @@ app/routers/evidence.py
 
 Endpoints:
 - GET  /api/v1/companies/{ticker}/evidence      - Get all collected evidence for a company
+- GET  /api/v1/evidence/stats                    - Get evidence collection statistics
 - POST /api/v1/evidence/backfill                 - Trigger full backfill for all 10 companies
 - GET  /api/v1/evidence/backfill/tasks/{task_id} - Check backfill progress
 """
 
 import asyncio
+import json
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from uuid import uuid4
 from datetime import datetime, timezone
@@ -18,6 +20,7 @@ import logging
 from app.repositories.company_repository import CompanyRepository
 from app.repositories.document_repository import get_document_repository
 from app.repositories.signal_repository import get_signal_repository
+from app.repositories.signal_scores_repository import SignalScoresRepository
 from app.services.document_collector import get_document_collector_service
 from app.services.job_signal_service import get_job_signal_service
 from app.services.patent_signal_service import get_patent_signal_service
@@ -34,6 +37,10 @@ from app.models.evidence import (
     BackfillProgress,
     BackfillStatus,
     CompanyBackfillResult,
+    EvidenceStatsResponse,
+    CompanyDocumentStat,
+    CompanySignalStat,
+    SignalCategoryBreakdown,
 )
 
 logger = logging.getLogger(__name__)
@@ -126,6 +133,101 @@ async def get_company_evidence(ticker: str):
         signals=signal_evidence,
         signal_count=len(signal_evidence),
         signal_summary=signal_summary,
+    )
+
+
+# =============================================================================
+# GET /api/v1/evidence/stats - Evidence collection statistics
+# =============================================================================
+
+@router.get(
+    "/evidence/stats",
+    response_model=EvidenceStatsResponse,
+    summary="Get evidence collection statistics",
+    description="""
+    Returns comprehensive statistics across all companies including:
+    - Document counts by filing type and processing status
+    - Document freshness (last collected / last processed per company)
+    - Signal scores with detailed metrics (jobs, patents, tech keywords)
+    - Signal breakdown by category with average scores and confidence
+    """,
+)
+async def get_evidence_stats():
+    """Get evidence collection statistics."""
+    doc_repo = get_document_repository()
+    signal_repo = get_signal_repository()
+    scores_repo = SignalScoresRepository()
+
+    # Document stats
+    doc_summary = doc_repo.get_summary_statistics()
+    status_breakdown = doc_repo.get_status_breakdown()
+    company_doc_stats = doc_repo.get_all_company_stats()
+    freshness = {r["ticker"]: r for r in doc_repo.get_freshness_by_ticker()}
+
+    # Signal stats
+    total_signals = signal_repo.get_total_signal_count()
+    category_breakdown = signal_repo.get_category_breakdown()
+
+    # Detailed signal scores (jobs, patents, keywords)
+    all_scores = scores_repo.get_all()
+
+    # Build per-company document stats with freshness
+    doc_stats = []
+    for s in company_doc_stats:
+        ticker = s["ticker"]
+        fresh = freshness.get(ticker, {})
+        last_collected = fresh.get("last_collected")
+        last_processed = fresh.get("last_processed")
+        doc_stats.append(CompanyDocumentStat(
+            **s,
+            last_collected=last_collected.isoformat() if last_collected else None,
+            last_processed=last_processed.isoformat() if last_processed else None,
+        ))
+
+    # Build per-company signal stats from SIGNAL_SCORES table
+    signal_stats = []
+    for sc in all_scores:
+        total_jobs = sc.get("total_jobs", 0)
+        ai_jobs = sc.get("ai_jobs", 0)
+        total_patents = sc.get("total_patents", 0)
+        ai_patents = sc.get("ai_patents", 0)
+        updated_at = sc.get("updated_at")
+        signal_stats.append(CompanySignalStat(
+            ticker=sc.get("ticker", ""),
+            hiring_score=sc.get("hiring_score"),
+            innovation_score=sc.get("innovation_score"),
+            tech_stack_score=sc.get("tech_stack_score"),
+            leadership_score=sc.get("leadership_score"),
+            composite_score=sc.get("composite_score"),
+            signal_count=signal_repo._get_signal_count(sc.get("company_id", "")),
+            total_jobs=total_jobs,
+            ai_jobs=ai_jobs,
+            ai_job_ratio=round(ai_jobs / total_jobs * 100, 1) if total_jobs > 0 else None,
+            total_patents=total_patents,
+            ai_patents=ai_patents,
+            ai_patent_ratio=round(ai_patents / total_patents * 100, 1) if total_patents > 0 else None,
+            techstack_keywords=json.loads(sc["techstack_keywords"]) if isinstance(sc.get("techstack_keywords"), str) else (sc.get("techstack_keywords") or []),
+            last_updated=updated_at.isoformat() if updated_at else None,
+        ))
+
+    return EvidenceStatsResponse(
+        companies_tracked=doc_summary["companies_processed"],
+        total_documents=doc_summary["total_documents"],
+        total_chunks=doc_summary["total_chunks"],
+        total_words=doc_summary["total_words"],
+        total_signals=total_signals,
+        documents_by_status=status_breakdown,
+        signals_by_category=[
+            SignalCategoryBreakdown(
+                category=c.get("category", ""),
+                count=c.get("count", 0),
+                avg_score=round(c["avg_score"], 2) if c.get("avg_score") is not None else None,
+                avg_confidence=round(c["avg_confidence"], 3) if c.get("avg_confidence") is not None else None,
+            )
+            for c in category_breakdown
+        ],
+        documents_by_company=doc_stats,
+        signals_by_company=signal_stats,
     )
 
 
