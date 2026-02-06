@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 from datetime import datetime, date
+from enum import Enum
 
 
 class DocumentEvidence(BaseModel):
@@ -51,3 +52,48 @@ class CompanyEvidenceResponse(BaseModel):
     signals: List[SignalEvidence] = []
     signal_count: int = 0
     signal_summary: Optional[SignalSummary] = None
+
+
+# =============================================================================
+# Backfill Models
+# =============================================================================
+
+class BackfillStatus(str, Enum):
+    QUEUED = "queued"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    COMPLETED_WITH_ERRORS = "completed_with_errors"
+    FAILED = "failed"
+
+
+class BackfillResponse(BaseModel):
+    """Returned immediately when a backfill is triggered."""
+    task_id: str
+    status: BackfillStatus
+    message: str
+
+
+class CompanyBackfillResult(BaseModel):
+    """Result of backfill for a single company."""
+    ticker: str
+    status: str
+    sec_result: Optional[Dict[str, Any]] = None
+    signal_result: Optional[Dict[str, Any]] = None
+    error: Optional[str] = None
+
+
+class BackfillProgress(BaseModel):
+    """Progress info for a backfill task."""
+    companies_completed: int = 0
+    total_companies: int = 0
+    current_company: Optional[str] = None
+
+
+class BackfillTaskStatus(BaseModel):
+    """Full status response for a backfill task."""
+    task_id: str
+    status: BackfillStatus
+    progress: BackfillProgress
+    company_results: List[CompanyBackfillResult] = []
+    started_at: Optional[str] = None
+    completed_at: Optional[str] = None
