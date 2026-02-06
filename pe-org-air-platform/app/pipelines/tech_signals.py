@@ -109,32 +109,87 @@ class TechStackCollector:
 
 def calculate_techstack_score(techstack_keywords: Set[str], tech_detections: List[TechnologyDetection]) -> Dict[str, Any]:
     """
-    Calculate techstack score using pseudo code algorithm.
-    
-    Scoring (pseudo code):
-    - Each AI technology: 10 points (max 50)
-    - Each category covered: 12.5 points (max 50)
+    Calculate techstack score for Digital Presence signals.
+
+    UPDATED Scoring (harder to max out):
+    =====================================
+    Component 1: AI-Specific Tools (max 40 points)
+      - Explicit AI tools: 8 points each (need 5 to max)
+      - AI tools: aws sagemaker, azure ml, databricks, tensorflow, pytorch,
+                  huggingface, openai, mlflow, kubeflow, vertex ai
+
+    Component 2: AI-Related Infrastructure (max 30 points)
+      - Supporting tech: 3 points each (need 10 to max)
+      - e.g., kubernetes, spark, kafka, airflow, docker (for ML pipelines)
+
+    Component 3: General Tech Stack Breadth (max 30 points)
+      - Any tech keyword: 1 point each (need 30 to max)
+      - Shows overall technical sophistication
+
+    Total: 100 points
     """
-    # Get AI technologies from detections
-    ai_techs = [t for t in tech_detections if t.is_ai_related]
-    
-    # Score by category
-    categories_found = set(t.category for t in ai_techs)
-    
-    # Pseudo code scoring
-    tech_score = min(len(ai_techs) * 10, 50)
-    category_score = min(len(categories_found) * 12.5, 50)
-    
-    score = tech_score + category_score
-    
+    # AI-SPECIFIC tools (highest weight)
+    AI_SPECIFIC_TOOLS = {
+        "aws sagemaker", "azure ml", "azure machine learning", "google vertex ai",
+        "databricks", "tensorflow", "pytorch", "huggingface", "hugging face",
+        "openai", "mlflow", "kubeflow", "ray", "langchain", "llamaindex",
+        "anthropic", "bedrock", "sagemaker", "vertex ai"
+    }
+
+    # AI-related infrastructure (medium weight)
+    AI_INFRASTRUCTURE = {
+        "kubernetes", "k8s", "spark", "apache spark", "kafka", "apache kafka",
+        "airflow", "apache airflow", "docker", "containerization",
+        "snowflake", "bigquery", "redshift", "dbt", "prefect", "dagster",
+        "argo", "argo workflows", "flink", "beam"
+    }
+
+    # Count AI-specific tools
+    ai_tools_found = []
+    for kw in techstack_keywords:
+        kw_lower = kw.lower()
+        if kw_lower in AI_SPECIFIC_TOOLS:
+            ai_tools_found.append(kw)
+
+    # Count AI infrastructure
+    infra_found = []
+    for kw in techstack_keywords:
+        kw_lower = kw.lower()
+        if kw_lower in AI_INFRASTRUCTURE and kw_lower not in [t.lower() for t in ai_tools_found]:
+            infra_found.append(kw)
+
+    # Calculate scores
+    ai_tools_score = min(len(ai_tools_found) * 8, 40)      # 5 AI tools = max 40
+    infra_score = min(len(infra_found) * 3, 30)            # 10 infra = max 30
+    breadth_score = min(len(techstack_keywords) * 1, 30)   # 30 keywords = max 30
+
+    total_score = ai_tools_score + infra_score + breadth_score
+
+    # Calculate confidence
+    if len(techstack_keywords) >= 20:
+        confidence = 0.90
+    elif len(techstack_keywords) >= 10:
+        confidence = 0.75
+    elif len(techstack_keywords) >= 5:
+        confidence = 0.60
+    else:
+        confidence = 0.45
+
     return {
-        "score": round(score, 1),
-        "tech_score": tech_score,
-        "category_score": category_score,
-        "ai_technologies": [t.name for t in ai_techs],
-        "categories": list(categories_found),
-        "total_technologies": len(tech_detections),
-        "confidence": 0.85
+        "score": round(total_score, 1),
+        "ai_tools_score": ai_tools_score,
+        "infra_score": infra_score,
+        "breadth_score": breadth_score,
+        "ai_tools_found": ai_tools_found,
+        "infra_found": infra_found,
+        "total_keywords": len(techstack_keywords),
+        "total_ai_tools": len(ai_tools_found),
+        "score_breakdown": {
+            "ai_tools_score": f"{ai_tools_score}/40 ({len(ai_tools_found)} AI tools)",
+            "infra_score": f"{infra_score}/30 ({len(infra_found)} infra)",
+            "breadth_score": f"{breadth_score}/30 ({len(techstack_keywords)} keywords)"
+        },
+        "confidence": confidence
     }
 
 def create_external_signal_from_techstack(

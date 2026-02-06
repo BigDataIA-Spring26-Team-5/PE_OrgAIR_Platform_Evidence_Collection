@@ -1,9 +1,135 @@
 """Application configuration with comprehensive validation."""
-from typing import Optional, Literal, List
+from typing import Optional, Literal, List, Dict
 from functools import lru_cache
 from decimal import Decimal
 from pydantic import Field, field_validator, model_validator, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+# =============================================================================
+# COMPANY NAME MAPPINGS
+# =============================================================================
+# Maps ticker -> search name and aliases for job scraping and fuzzy matching
+# - "search": Primary name to use when searching job sites
+# - "aliases": All valid variations for fuzzy matching (includes search name)
+# =============================================================================
+
+COMPANY_NAME_MAPPINGS: Dict[str, Dict[str, any]] = {
+    "CAT": {
+        "official": "Caterpillar Inc.",
+        "search": "Caterpillar",
+        "aliases": ["Caterpillar", "Caterpillar Inc", "Caterpillar Inc.", "CAT"]
+    },
+    "DE": {
+        "official": "Deere & Company",
+        "search": "John Deere",
+        "aliases": ["John Deere", "Deere", "Deere & Company", "JD"]
+    },
+    "UNH": {
+        "official": "UnitedHealth Group Incorporated",
+        "search": "UnitedHealth",
+        "aliases": ["UnitedHealth", "UnitedHealth Group", "United Health", "UnitedHealthcare", "UHG"]
+    },
+    "HCA": {
+        "official": "HCA Healthcare, Inc.",
+        "search": "HCA Healthcare",
+        "aliases": ["HCA Healthcare", "HCA", "HCA Inc", "Hospital Corporation of America"]
+    },
+    "ADP": {
+        "official": "Automatic Data Processing, Inc.",
+        "search": "ADP",
+        "aliases": ["ADP", "Automatic Data Processing", "ADP Inc"]
+    },
+    "PAYX": {
+        "official": "Paychex, Inc.",
+        "search": "Paychex",
+        "aliases": ["Paychex", "Paychex Inc", "Paychex Inc."]
+    },
+    "WMT": {
+        "official": "Walmart Inc.",
+        "search": "Walmart",
+        "aliases": ["Walmart", "Walmart Inc", "Walmart Inc.", "Wal-Mart", "Wal Mart"]
+    },
+    "TGT": {
+        "official": "Target Corporation",
+        "search": "Target",
+        "aliases": ["Target", "Target Corporation", "Target Corp"]
+    },
+    "JPM": {
+        "official": "JPMorgan Chase & Co.",
+        "search": "JPMorgan Chase",
+        "aliases": ["JPMorgan Chase", "JPMorgan", "JP Morgan", "Chase", "J.P. Morgan", "JPMC"]
+    },
+    "GS": {
+        "official": "The Goldman Sachs Group, Inc.",
+        "search": "Goldman Sachs",
+        "aliases": ["Goldman Sachs", "Goldman", "GS", "Goldman Sachs Group"]
+    },
+}
+
+
+def get_company_search_name(ticker: str) -> Optional[str]:
+    """
+    Get the search name for a company ticker.
+
+    Args:
+        ticker: Company ticker symbol (e.g., "DE", "ADP")
+
+    Returns:
+        Search name to use for job sites, or None if not mapped
+    """
+    ticker = ticker.upper()
+    mapping = COMPANY_NAME_MAPPINGS.get(ticker)
+    return mapping["search"] if mapping else None
+
+
+def get_company_aliases(ticker: str) -> List[str]:
+    """
+    Get all valid name aliases for a company ticker.
+
+    Args:
+        ticker: Company ticker symbol
+
+    Returns:
+        List of valid name variations for fuzzy matching
+    """
+    ticker = ticker.upper()
+    mapping = COMPANY_NAME_MAPPINGS.get(ticker)
+    return mapping["aliases"] if mapping else []
+
+
+def get_search_name_by_official(official_name: str) -> Optional[str]:
+    """
+    Get search name from official company name.
+
+    Args:
+        official_name: Official company name (e.g., "Deere & Company")
+
+    Returns:
+        Search name to use for job sites, or None if not mapped
+    """
+    official_lower = official_name.lower().strip()
+    for ticker, mapping in COMPANY_NAME_MAPPINGS.items():
+        if mapping["official"].lower() == official_lower:
+            return mapping["search"]
+    return None
+
+
+def get_aliases_by_official(official_name: str) -> List[str]:
+    """
+    Get all valid name aliases from official company name.
+
+    Args:
+        official_name: Official company name
+
+    Returns:
+        List of valid name variations for fuzzy matching
+    """
+    official_lower = official_name.lower().strip()
+    for ticker, mapping in COMPANY_NAME_MAPPINGS.items():
+        if mapping["official"].lower() == official_lower:
+            return mapping["aliases"]
+    return []
 
 class Settings(BaseSettings):
     """Application settings with production-grade validation."""
